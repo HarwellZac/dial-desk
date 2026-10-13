@@ -12,8 +12,11 @@ Dial Desk is the outbound calling CRM for an appointment-setting team. Callers w
 ## Data model
 - `profiles`: one row per person; `role` is `owner`, `admin` or `caller`; `active` turns access on/off.
 - `invites`: emails allowed to sign up. The first account ever created becomes the Owner; everyone else must be invited (enforced by the `handle_new_user` trigger).
-- `leads`: contact fields, `extra` (jsonb for unmapped import columns), `status`, `owner_id` (assigned caller), callback/appointment fields, `notes`.
-- `calls`: one row per logged call (lead, caller, status, note). Written only through `log_call()`.
+- `leads`: contact fields (including revenue, employees, industry, website), `extra` (jsonb for unmapped import columns), `status`, `owner_id` (assigned caller), callback/appointment fields, `notes`.
+- `calls`: one row per logged call (lead, caller, status, note, `prev` = lead state before the call). Written only through `log_call()`; `undo_call()` reverses the latest call on a lead.
+- `lead_notes`: dated comments on a lead (author, body, created_at). A trigger copies the newest note into `leads.notes/notes_at/notes_by` for the Lead board and search.
+- Trash: leads are soft-deleted with `deleted_at`/`deleted_by` (admins only, enforced by the `guard_leads` trigger). Callers never see trashed leads; admins restore them or delete forever from the Trash filter on the Lead board.
+- `status_rank` is a generated column giving the pipeline order for sorting.
 - Statuses: `new`, `call1` (1st Call), `call2`, `call3`, `gatekeeper`, `appointment` (Appointment Set), `dead`, `bad_info` (Bad Information).
 
 ## Permissions
