@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Dial Desk</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232447d6'/%3E%3Cpath d='M6 16h3l3-7 5 14 4-9 2 2h3' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<style>
+/* Layout: app shell. Ink sidebar with navigation and the signed-in person; main column with a page header, a KPI strip and the working surface. Cobalt accent for primary actions and selection only. */
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --surface-2:#f1f3f6; --fg:#0f1420; --muted:#5f6878; --line:#e4e7ed; --line-2:#d4d9e1;
+  --side:#0f1522; --side-fg:#d3d9e4; --side-muted:#7f899b; --side-hover:#182133; --side-active:#1f2a40; --side-line:#1d2638;
+  --accent:#2447d6; --accent-ink:#ffffff; --accent-soft:#e9eefc;
+  --ok:#13834f; --warn:#b26b00; --bad:#c4321f; --call:#0e7490; --neutral:#6b7383;
+  --shadow:0 1px 2px rgba(15,20,32,.05),0 1px 3px rgba(15,20,32,.04);
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:10px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0b0f17; --surface:#121823; --surface-2:#182030; --fg:#e6eaf2; --muted:#95a0b3; --line:#222b3b; --line-2:#2c3749;
+  --side:#070a10; --side-hover:#111827; --side-active:#18223a; --side-line:#151c2a;
+  --accent:#6d8bff; --accent-ink:#0a1130; --accent-soft:#1a2547;
+  --ok:#3cc488; --warn:#e5a643; --bad:#ff7a66; --call:#39c0d8; --neutral:#95a0b3;
+  --shadow:0 1px 2px rgba(0,0,0,.35); color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font:14px/1.5 var(--sans);margin:0}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.015em;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+svg.ic{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+a{color:var(--accent)}
+
+/* Sign-in */
+.authwrap{min-height:100%;display:grid;place-items:center;padding:32px 16px}
+.authcard{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 40px rgba(15,20,32,.08);padding:30px;display:grid;gap:18px}
+.authcard .logo b{color:var(--fg)}
+.authcard form{display:grid;gap:14px}
+.authcard .btn.primary{width:100%;padding:10px}
+.authlinks{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px}
+.authlinks button{background:none;border:0;padding:0;color:var(--accent);cursor:pointer;font-weight:500}
+.msg{font-size:13px;border-radius:8px;padding:9px 12px}
+.msg.err{background:color-mix(in srgb,var(--bad) 10%,var(--surface));color:var(--bad)}
+.msg.ok{background:color-mix(in srgb,var(--ok) 10%,var(--surface));color:var(--ok)}
+
+/* Shell */
+.app{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100%}
+.side{background:var(--side);color:var(--side-fg);display:flex;flex-direction:column;gap:22px;padding:18px 12px;position:sticky;top:0;height:100vh;height:100dvh}
+.logo{display:flex;align-items:center;gap:10px;padding:2px 8px}
+.mark{width:32px;height:32px;border-radius:8px;background:#2447d6;display:grid;place-items:center;flex:none}
+.mark svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.logo b{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em;color:#fff}
+.logo small{display:block;font-size:12px;color:var(--side-muted)}
+.authcard .logo small{color:var(--muted)}
+.nav{display:grid;gap:2px}
+.nav .lab{font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--side-muted);padding:10px 10px 6px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;border-radius:7px;padding:8px 10px;color:var(--side-fg);cursor:pointer;text-align:left;font-weight:500}
+.nav button:hover{background:var(--side-hover)}
+.nav button[aria-selected="true"]{background:var(--side-active);color:#fff}
+.nav button[aria-selected="true"] svg{stroke:#8ea6ff}
+.nav .count{margin-left:auto;font:500 11px/1 var(--mono);background:var(--side-hover);color:var(--side-fg);border-radius:99px;padding:3px 7px}
+.who{margin-top:auto;display:flex;align-items:center;gap:10px;border-top:1px solid var(--side-line);padding:14px 8px 0}
+.who .av{width:30px;height:30px;font-size:12px}
+.who b{display:block;color:#fff;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who small{display:block;color:var(--side-muted);font-size:12px}
+.who button{margin-left:auto;background:none;border:0;color:var(--side-muted);cursor:pointer;padding:4px;border-radius:6px}
+.who button:hover{color:#fff;background:var(--side-hover)}
+.mainc{min-width:0;padding-inline:28px;padding-block:22px 56px}
+.inner{max-width:1240px;margin:0 auto;display:grid;gap:18px}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr}
+  .side{position:sticky;top:0;height:auto;z-index:10;flex-direction:row;align-items:center;gap:8px;padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top,0px));overflow-x:auto}
+  .side .logo small,.nav .lab{display:none}
+  .side .logo{padding:0}
+  .nav{display:flex;gap:2px}
+  .nav button{white-space:nowrap;padding:7px 9px}
+  .who{margin:0 0 0 auto;border:0;padding:0}
+  .who div{display:none}
+  .mainc{padding-inline:16px}
+}
+.pagehead{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.pagehead h1{font-size:24px}
+.pagehead p{margin:2px 0 0;color:var(--muted)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+/* Controls */
+.banner{background:color-mix(in srgb,var(--warn) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:var(--r);padding:10px 14px;font-size:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line-2);background:var(--surface);border-radius:7px;padding:7px 13px;cursor:pointer;font-weight:500;font-size:13.5px;box-shadow:var(--shadow)}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.07);background:var(--accent)}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.danger{color:var(--bad)}
+.btn.link{border:0;background:none;box-shadow:none;color:var(--accent);padding:4px 6px}
+.btn svg.ic{width:15px;height:15px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=text],input[type=email],input[type=password],input[type=search],input[type=datetime-local],select,textarea{background:var(--surface);border:1px solid var(--line-2);border-radius:7px;padding:8px 10px;min-width:0;width:100%}
+.toolbar select,.bulk select{width:auto}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+textarea{resize:vertical;min-height:72px}
+label.f{display:grid;gap:5px;font-size:12.5px;color:var(--muted);font-weight:500}
+label.f input,label.f select,label.f textarea{color:var(--fg);font-weight:400}
+.eyebrow{font:500 10.5px/1.2 var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.stat{font-size:12.5px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;border-radius:6px;padding:2px 8px;white-space:nowrap;--t:var(--neutral);color:var(--t);background:color-mix(in srgb,var(--t) 11%,transparent);border:1px solid color-mix(in srgb,var(--t) 22%,transparent)}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--t)}
+.t-info{--t:var(--accent)}.t-ok{--t:var(--ok)}.t-warn{--t:var(--warn)}.t-bad{--t:var(--bad)}.t-muted{--t:var(--neutral)}.t-call{--t:var(--call)}
+.av{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;font-size:10.5px;font-weight:700;color:#fff;background:var(--c,#6b7383);flex:none;vertical-align:middle}
+.person{display:inline-flex;align-items:center;gap:8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);min-width:0}
+.panel-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-h h2{font-size:15px}
+.panel-b{padding:18px;display:grid;gap:14px}
+.empty{padding:36px 20px;text-align:center;color:var(--muted)}
+.empty h3{color:var(--fg);font-size:16px;margin-bottom:4px}
+.role{font:600 10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--line-2);border-radius:4px;padding:3px 6px}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:14px 16px;display:grid;gap:4px}
+.kpi b{font-size:26px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi span{font-size:12.5px;color:var(--muted)}
+
+/* Queue */
+.queue{display:grid;grid-template-columns:340px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1100px){.queue{grid-template-columns:300px minmax(0,1fr)}}
+@media (max-width:760px){.queue{grid-template-columns:1fr}}
+.qitems{max-height:calc(100vh - 290px);min-height:200px;overflow:auto;padding-bottom:6px}
+.qgroup{padding:12px 16px 6px;display:flex;justify-content:space-between}
+.qitem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;width:100%;text-align:left;background:none;border:0;border-left:2px solid transparent;padding:10px 16px 10px 14px;cursor:pointer;border-bottom:1px solid var(--line)}
+.qitem:hover{background:var(--surface-2)}
+.qitem[aria-current="true"]{background:var(--accent-soft);border-left-color:var(--accent)}
+.qitem b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qitem .sub{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qitem .when{font-size:11.5px;color:var(--muted);text-align:right}
+.card-top{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:20px 22px 18px;border-bottom:1px solid var(--line)}
+.card-top h2{font-size:22px;line-height:1.2}
+.contact{font-size:14.5px;margin-top:3px}
+.sec{padding:18px 22px;border-bottom:1px solid var(--line);display:grid;gap:12px}
+.phones{display:flex;flex-wrap:wrap;gap:10px}
+.phone{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:8px;padding:8px 10px 8px 12px;background:var(--surface-2)}
+.phone .num{font:500 17px/1.2 var(--mono);user-select:all}
+.phone small{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-family:var(--mono)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px 20px;margin:0}
+.facts div{min-width:0;overflow-wrap:anywhere}
+.facts dt{font:500 10.5px/1.4 var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.facts dd{margin:2px 0 0}
+.facts a{text-decoration:none}
+details.more summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:500}
+.outcomes{display:grid;grid-template-columns:repeat(auto-fill,minmax(138px,1fr));gap:8px}
+.outcome{border:1px solid var(--line-2);background:var(--surface);border-radius:7px;padding:9px 11px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:500;font-size:13.5px}
+.outcome i{width:8px;height:8px;border-radius:50%;background:var(--t);flex:none}
+.outcome:hover{border-color:var(--t)}
+.outcome[aria-pressed="true"]{border-color:var(--t);background:color-mix(in srgb,var(--t) 10%,var(--surface));box-shadow:inset 0 0 0 1px var(--t)}
+.outcome em{font-style:normal;font:500 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-left:auto}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.row > label.f{flex:1 1 200px}
+.savebar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--surface-2);padding:14px 22px;border-radius:0 0 var(--r) var(--r)}
+.hist ol{list-style:none;margin:0;padding:0;display:grid;gap:12px;max-height:240px;overflow:auto}
+.hist li{display:grid;grid-template-columns:110px 1fr;gap:2px 12px;font-size:13.5px}
+.hist .note{grid-column:2;color:var(--muted);overflow-wrap:anywhere}
+
+/* Board */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--surface);border-radius:7px;padding:6px 11px;cursor:pointer;font-size:13px;font-weight:500;--t:var(--neutral);box-shadow:var(--shadow)}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--t)}
+.chip b{font-family:var(--mono);font-weight:500;font-variant-numeric:tabular-nums;color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--t);background:color-mix(in srgb,var(--t) 9%,var(--surface));box-shadow:inset 0 0 0 1px var(--t)}
+.chip[aria-pressed="true"] b{color:var(--fg)}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.toolbar input[type=search]{flex:1 1 240px;width:auto}
+.bulk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;background:var(--accent-soft);border-bottom:1px solid var(--line)}
+.tablebox{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+th{font:500 10.5px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);background:var(--surface-2)}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td .co{font-weight:600}
+td.notecell{white-space:normal;min-width:200px;max-width:300px;color:var(--muted);font-size:12.5px}
+td.email{color:var(--muted);font-size:13px}
+.boardfoot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--line)}
+
+/* Import + team */
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px;align-items:start}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.drop{border:1.5px dashed var(--line-2);border-radius:var(--r);padding:30px;text-align:center;display:grid;gap:8px;justify-items:center;background:var(--surface-2);cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop svg.ic{width:26px;height:26px;stroke:var(--accent)}
+.maptable td,.maptable th{white-space:normal}
+.progress,.meter{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.progress i,.meter i{display:block;height:100%;background:var(--t,var(--accent));width:0;transition:width .2s}
+ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:7px;overflow:hidden;box-shadow:var(--shadow)}
+.seg button{border:0;background:var(--surface);padding:6px 13px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--surface-2);color:var(--fg)}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:13.5px;z-index:20;max-width:calc(100% - 32px);box-shadow:0 8px 24px rgba(0,0,0,.2)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ Sign in ============ -->
+<div class="authwrap" id="authview" hidden>
+  <div class="authcard">
+    <div class="logo"><span class="mark"><svg viewBox="0 0 24 24"><path d="M4 12h2l2-5 4 10 3-7 2 2h3"/></svg></span><div><b>Dial Desk</b><small>Outbound CRM</small></div></div>
+    <div id="authmsg"></div>
+    <form id="f-signin" data-view="signin">
+      <h2>Sign in</h2>
+      <label class="f">Work email<input type="email" id="si-email" autocomplete="email" required></label>
+      <label class="f">Password<input type="password" id="si-pass" autocomplete="current-password" required></label>
+      <button class="btn primary" type="submit">Sign in</button>
+      <div class="authlinks"><button type="button" data-go="signup">Create your account</button><button type="button" data-go="forgot">Forgot password?</button></div>
+    </form>
+    <form id="f-signup" data-view="signup" hidden>
+      <h2>Create your account</h2>
+      <p class="stat" style="margin:0">Use the email address your admin invited.</p>
+      <label class="f">Your name<input type="text" id="su-name" autocomplete="name" required></label>
+      <label class="f">Work email<input type="email" id="su-email" autocomplete="email" required></label>
+      <label class="f">Password (8+ characters)<input type="password" id="su-pass" autocomplete="new-password" minlength="8" required></label>
+      <button class="btn primary" type="submit">Create account</button>
+      <div class="authlinks"><button type="button" data-go="signin">I already have an account</button></div>
+    </form>
+    <form id="f-forgot" data-view="forgot" hidden>
+      <h2>Reset your password</h2>
+      <label class="f">Work email<input type="email" id="fp-email" autocomplete="email" required></label>
+      <button class="btn primary" type="submit">Email me a reset link</button>
+      <div class="authlinks"><button type="button" data-go="signin">Back to sign in</button></div>
+    </form>
+    <form id="f-reset" data-view="reset" hidden>
+      <h2>Choose a new password</h2>
+      <label class="f">New password (8+ characters)<input type="password" id="rp-pass" autocomplete="new-password" minlength="8" required></label>
+      <button class="btn primary" type="submit">Save password</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ App ============ -->
+<div class="app" id="appview" hidden>
+  <aside class="side">
+    <div class="logo"><span class="mark"><svg viewBox="0 0 24 24"><path d="M4 12h2l2-5 4 10 3-7 2 2h3"/></svg></span><div><b>Dial Desk</b><small>Outbound CRM</small></div></div>
+    <nav class="nav" role="tablist">
+      <span class="lab">Workspace</span>
+      <button role="tab" data-tab="queue" aria-selected="true"><svg class="ic" viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg>My queue<span class="count" id="navcount" hidden></span></button>
+      <button role="tab" data-tab="board" aria-selected="false"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 10v10"/></svg>Lead board</button>
+      <span class="lab" data-admin hidden>Admin</span>
+      <button role="tab" data-tab="import" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 15v4h14v-4"/></svg>Import</button>
+      <button role="tab" data-tab="team" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M16 5a3 3 0 0 1 0 6M18 14c2 .5 3 2 3 5"/></svg>Team</button>
+    </nav>
+    <div class="who"><span class="av" id="meav"></span><div style="min-width:0"><b id="mename"></b><small id="merole"></small></div>
+      <button id="signout" title="Sign out" aria-label="Sign out"><svg class="ic" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg></button></div>
+  </aside>
+
+  <main class="mainc"><div class="inner">
+    <div id="banner"></div>
+
+    <section id="tab-queue" class="inner">
+      <div class="pagehead"><div><h1>My queue</h1><p>Callbacks that are due come first, then new leads, then leads to call again.</p></div>
+        <div class="actions"><span class="stat" id="poolnote"></span><button class="btn primary" id="pull"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Pull 25 new leads</button></div></div>
+      <div class="kpis" id="mykpis"></div>
+      <div class="queue">
+        <div class="panel">
+          <div class="panel-h"><h2>Up next</h2><span class="stat" id="qcount"></span></div>
+          <div class="qitems" id="qitems"><div class="empty">Loading your leads…</div></div>
+        </div>
+        <div id="callcard" class="panel"><div class="empty"><h3>No lead selected</h3>Pick a lead from your queue, or pull new leads to start dialing.</div></div>
+      </div>
+    </section>
+
+    <section id="tab-board" class="inner" hidden>
+      <div class="pagehead"><div><h1>Lead board</h1><p id="boardsub">Every lead and where it stands.</p></div>
+        <div class="actions"><button class="btn" id="exportbtn" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
+      <div class="chips" id="chips"></div>
+      <div class="panel">
+        <div class="toolbar">
+          <input type="search" id="lsearch" placeholder="Search company, contact, phone, email or notes">
+          <select id="lowner" aria-label="Caller" data-admin hidden></select>
+        </div>
+        <div class="bulk" id="bulk" hidden>
+          <b id="selcount"></b><button class="btn link" id="selallmatch" hidden></button>
+          <select id="assignto" aria-label="Assign to"></select>
+          <button class="btn small" id="assignbtn">Assign</button>
+          <select id="setstatus" aria-label="Set status"></select>
+          <button class="btn small" id="statusbtn">Set status</button>
+          <button class="btn small danger" id="delbtn">Delete</button>
+        </div>
+        <div class="tablebox"><table>
+          <thead><tr><th class="selcol" data-admin hidden><input type="checkbox" id="selpage" aria-label="Select this page"></th><th>Company</th><th>Contact</th><th>Phone</th><th>Email</th><th>Status</th><th>Caller</th><th class="num">Calls</th><th>Next / last call</th><th>Notes</th></tr></thead>
+          <tbody id="ltbody"></tbody>
+        </table></div>
+        <div class="boardfoot"><span class="stat" id="lfoot"></span><div class="actions"><button class="btn small" id="prevpg">Previous</button><button class="btn small" id="nextpg">Next</button></div></div>
+      </div>
+    </section>
+
+    <section id="tab-import" class="inner" hidden>
+      <div class="pagehead"><div><h1>Import leads</h1><p>Bring in a ZoomInfo export or any CSV or Excel list.</p></div></div>
+      <div class="grid2">
+        <div class="panel"><div class="panel-h"><h2>1. Choose a file</h2></div><div class="panel-b">
+          <label class="drop" id="drop">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 15v4h14v-4"/></svg>
+            <strong>Drop a .csv or .xlsx file here</strong>
+            <span class="muted">or click to browse</span>
+            <input type="file" id="file" accept=".csv,.txt,.xlsx,.xls,text/csv" hidden>
+          </label>
+          <details><summary class="muted">Paste CSV text instead</summary>
+            <textarea id="paste" placeholder="First Name,Last Name,Company Name,Direct Phone Number,…" style="margin-top:8px"></textarea>
+            <button class="btn small" id="parsepaste" style="margin-top:8px">Read pasted text</button>
+          </details>
+          <ul class="tips">
+            <li>ZoomInfo and Frappe column names are matched automatically, and you can change any match.</li>
+            <li>Commas, semicolons or tabs all work. Quoted values with commas or line breaks stay intact.</li>
+            <li>Columns you don't map are kept on each lead under "More details".</li>
+            <li>Rows that repeat a phone number, email or ZoomInfo ID already in Dial Desk are skipped.</li>
+          </ul>
+        </div></div>
+        <div class="panel" id="mappanel"><div class="panel-h"><h2>2. Check columns and import</h2></div><div class="empty">Choose a file to see how its columns line up.</div></div>
+      </div>
+    </section>
+
+    <section id="tab-team" class="inner" hidden>
+      <div class="pagehead"><div><h1>Team</h1><p>Activity, appointments, people and storage.</p></div>
+        <div class="seg" id="period"><button data-p="today" aria-pressed="true">Today</button><button data-p="week" aria-pressed="false">7 days</button><button data-p="month" aria-pressed="false">30 days</button></div></div>
+      <div class="kpis" id="kpis"></div>
+      <div class="grid2">
+        <div class="panel"><div class="panel-h"><h2>By caller</h2></div><div class="tablebox"><table id="callertable"></table></div></div>
+        <div class="panel"><div class="panel-h"><h2>Upcoming appointments</h2></div><div id="appts"></div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><div><h2>People</h2><p class="stat" style="margin:2px 0 0">Invite someone, then send them this site's address. They click "Create your account" and use the invited email.</p></div></div>
+        <form class="toolbar" id="inviteform">
+          <input type="email" id="invemail" placeholder="name@company.com" required style="flex:1 1 240px;width:auto">
+          <select id="invrole" aria-label="Role"><option value="caller">Caller</option><option value="admin">Admin</option></select>
+          <button class="btn primary" type="submit">Invite</button>
+        </form>
+        <div class="tablebox"><table id="roster"></table></div>
+      </div>
+      <div class="panel"><div class="panel-h"><h2>Storage</h2></div><div class="panel-b"><div class="meter" id="capmeter"><i></i></div><p class="stat" id="capnote" style="margin:0"></p></div></div>
+    </section>
+  </div></main>
+</div>
+
+<script>
+/* ===================== Configuration ===================== */
+const SUPABASE_URL = 'https://cioqpzsblddghiuzpbvy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable__2tlKocdNJ9JImcWkSOwuw_LaeHxDsK';
+const FREE_DB_BYTES = 500 * 1024 * 1024;
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const STATUSES={
+  new:{label:'New',tone:'info'},
+  call1:{label:'1st Call',tone:'call'}, call2:{label:'2nd Call',tone:'call'}, call3:{label:'3rd Call',tone:'call'},
+  gatekeeper:{label:'Gatekeeper',tone:'warn'}, appointment:{label:'Appointment Set',tone:'ok'},
+  dead:{label:'Dead',tone:'bad'}, bad_info:{label:'Bad Information',tone:'bad'}
+};
+const LOG_STATUSES=['call1','call2','call3','gatekeeper','appointment','dead','bad_info'];
+const OPEN=['new','call1','call2','call3','gatekeeper'];
+const FIELDS=[
+  ['first_name','First name',['firstname','first','contactfirstname']],
+  ['last_name','Last name',['lastname','last','contactlastname','surname']],
+  ['full_name','Full name (split if no first/last)',['fullname','contactname','name','leadname','contactfullname']],
+  ['title','Job title',['jobtitle','title','position','designation']],
+  ['company','Company',['companyname','company','organization','organisation','accountname','organizationname','business']],
+  ['phone','Direct phone',['directphonenumber','directphone','phone','phoneno','phonenumber','businessphone','workphone','telephone']],
+  ['mobile','Mobile',['mobilephone','mobile','mobileno','mobilenumber','mobilephonenumber','cellphone','cell']],
+  ['company_phone','Company phone',['companyhqphone','hqphone','companyphone','companyphonenumber','mainphone']],
+  ['email','Email',['emailaddress','email','emailid','businessemail','workemail','email1','primaryemail']],
+  ['address','Street address',['companystreetaddress','streetaddress','address','address1','addressline1','personstreet','companyaddress','street']],
+  ['city','City',['personcity','city','companycity']],
+  ['state','State',['personstate','state','companystate','stateprovince','province']],
+  ['zip','ZIP',['personzipcode','companyzipcode','zipcode','zip','postalcode','pincode','companypostalcode']],
+  ['industry','Industry',['primaryindustry','industry','companyindustry','industrylabel']],
+  ['website','Website',['website','companywebsite','url','domain','websiteurl']],
+  ['employees','Employees',['employees','noofemployees','employeecount','numberofemployees','companyemployees','employeerange']],
+  ['revenue','Revenue',['revenue','annualrevenue','revenueinusd000s','companyrevenue','revenuerange']],
+  ['linkedin','LinkedIn',['linkedincontactprofileurl','linkedinurl','linkedin','linkedinprofile','personlinkedinurl']],
+  ['zoominfo_id','ZoomInfo ID',['zoominfocontactid','zoominfoid','contactid','recordid']]
+];
+const PAGE=100;
+
+/* ===================== State ===================== */
+let me=null; const people={}; let invites=[];
+let tab='queue', queue=[], pool=0, cur=null, curCalls=[], draft=null, period='today';
+const board={status:'',owner:'',search:'',page:0,rows:[],total:0,counts:{},sel:new Set(),all:false};
+let imp=null;
+
+/* ===================== Utilities ===================== */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const digits=s=>String(s||'').replace(/\D/g,'');
+const isAdmin=()=>me&&(me.role==='owner'||me.role==='admin');
+const isOwner=()=>me&&me.role==='owner';
+function fmtPhone(p){const d=digits(p);const t=d.length===11&&d[0]==='1'?d.slice(1):d;return t.length===10?`(${t.slice(0,3)}) ${t.slice(3,6)}-${t.slice(6)}`:String(p||'')}
+function fmtWhen(iso){if(!iso)return'';const d=new Date(iso),n=new Date();if(isNaN(d))return'';
+  return d.toDateString()===n.toDateString()?d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):d.toLocaleDateString([],{month:'short',day:'numeric'})+(Math.abs(d-n)<6*864e5?', '+d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'')}
+function fmtFull(iso){return iso?new Date(iso).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}
+const stOf=s=>STATUSES[s]||{label:s||'Unknown',tone:'muted'};
+const badge=s=>`<span class="badge t-${stOf(s).tone}">${esc(stOf(s).label)}</span>`;
+const contactName=l=>[l.first_name,l.last_name].filter(Boolean).join(' ');
+const PALETTE=['#2447d6','#0e7490','#13834f','#b26b00','#c4321f','#7c3aed','#be185d','#4d7c0f'];
+function colorFor(id){let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;return PALETTE[h%PALETTE.length]}
+function nameOf(id){const p=people[id];return p?(p.full_name||p.email):'Former teammate'}
+function who(id){if(!id)return'Unassigned';return id===me?.id?nameOf(id)+' (you)':nameOf(id)}
+function avatar(id){const n=nameOf(id);const ini=n.split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';return `<span class="av" style="--c:${colorFor(id)}">${esc(ini)}</span>`}
+const personCell=id=>id?`<span class="person">${avatar(id)}${esc(who(id))}</span>`:'<span class="muted">Unassigned</span>';
+const suggest=l=>['call1','call2','call3'][Math.min(l.attempts||0,2)];
+const webUrl=w=>{if(!w)return'';const u=/^https?:\/\//i.test(w)?w:'https://'+w;return /^https?:\/\/[^\s"<>]+$/i.test(u)?u:''};
+const friendly=e=>{const m=String(e?.message||e||'');return m.replace(/^NOT_INVITED:\s*/,'')||'Something went wrong. Try again.'};
+let toastT;function toast(msg){let t=$('.toast');if(!t){t=document.createElement('div');t.className='toast';t.setAttribute('role','status');document.body.appendChild(t)}t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3600)}
+function toLocalInput(d){const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`}
+
+/* ===================== Auth ===================== */
+function showAuth(view,msg,kind='err'){
+  $('#appview').hidden=true;$('#authview').hidden=false;
+  document.querySelectorAll('#authview form').forEach(f=>f.hidden=f.dataset.view!==view);
+  $('#authmsg').innerHTML=msg?`<div class="msg ${kind}">${esc(msg)}</div>`:'';
+}
+document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showAuth(b.dataset.go));
+function busy(form,on){form.querySelector('button[type=submit]').disabled=on}
+$('#f-signin').onsubmit=async e=>{e.preventDefault();busy(e.target,true);
+  const {error}=await sb.auth.signInWithPassword({email:$('#si-email').value.trim(),password:$('#si-pass').value});
+  busy(e.target,false);if(error)showAuth('signin',error.message==='Invalid login credentials'?'That email and password don’t match. Try again or reset your password.':friendly(error));};
+$('#f-signup').onsubmit=async e=>{e.preventDefault();busy(e.target,true);
+  const {data,error}=await sb.auth.signUp({email:$('#su-email').value.trim(),password:$('#su-pass').value,options:{data:{full_name:$('#su-name').value.trim()},emailRedirectTo:location.origin+location.pathname}});
+  busy(e.target,false);
+  if(error){showAuth('signup',/database error|not_invited|invited/i.test(error.message)?'That email hasn’t been invited yet. Ask your admin to invite it on the Team page.':friendly(error));return}
+  if(!data.session)showAuth('signin','Account created. Check your email for a confirmation link, then sign in.','ok');};
+$('#f-forgot').onsubmit=async e=>{e.preventDefault();busy(e.target,true);
+  const {error}=await sb.auth.resetPasswordForEmail($('#fp-email').value.trim(),{redirectTo:location.origin+location.pathname});
+  busy(e.target,false);showAuth(error?'forgot':'signin',error?friendly(error):'If that email has an account, a reset link is on its way.',error?'err':'ok');};
+$('#f-reset').onsubmit=async e=>{e.preventDefault();busy(e.target,true);
+  const {error}=await sb.auth.updateUser({password:$('#rp-pass').value});busy(e.target,false);
+  if(error)return showAuth('reset',friendly(error));toast('Password saved');enter();};
+$('#signout').onclick=async()=>{await sb.auth.signOut();me=null;showAuth('signin','You’re signed out.','ok')};
+
+let entering=false;
+async function enter(){
+  if(entering)return;entering=true;
+  try{
+    const {data:{user}}=await sb.auth.getUser();
+    if(!user){showAuth('signin');return}
+    const {data:p}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
+    if(!p||!p.active){await sb.auth.signOut();showAuth('signin',p?'Your access to Dial Desk has been turned off. Contact your admin.':'This account isn’t set up for Dial Desk. Ask your admin to invite your email.');return}
+    me=p;await loadPeople();
+    $('#authview').hidden=true;$('#appview').hidden=false;
+    $('#mename').textContent=p.full_name||p.email;$('#merole').textContent=p.role==='owner'?'Owner':p.role==='admin'?'Admin':'Caller';
+    $('#meav').outerHTML=avatar(p.id).replace('class="av"','class="av" id="meav"');
+    applyRole();setTab(tab);
+  } finally{entering=false}
+}
+sb.auth.onAuthStateChange((ev,session)=>{
+  if(ev==='PASSWORD_RECOVERY'){setTimeout(()=>showAuth('reset'),0);return}
+  if(ev==='SIGNED_IN'&&!me)setTimeout(enter,0);
+  if(ev==='SIGNED_OUT'){me=null;showAuth('signin')}
+});
+(async()=>{const {data}=await sb.auth.getSession();if(data.session)enter();else if(!/type=recovery/.test(location.hash))showAuth('signin')})();
+
+async function loadPeople(){const {data}=await sb.from('profiles').select('id,email,full_name,role,active,created_at').order('created_at');(data||[]).forEach(p=>people[p.id]=p)}
+
+/* ===================== Navigation ===================== */
+const TABS=['queue','board','import','team'];
+function setTab(t){if(!isAdmin()&&(t==='import'||t==='team'))t='queue';tab=t;
+  document.querySelectorAll('.nav button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===t));
+  TABS.forEach(k=>$('#tab-'+k).hidden=k!==t);
+  if(t==='queue')loadQueue();else if(t==='board')loadBoard();else if(t==='team')loadTeam()}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+function applyRole(){const a=isAdmin();document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=!a);
+  $('#boardsub').textContent=a?'Every lead and where it stands.':'Your leads and where each one stands.';
+  $('#invrole').querySelector('[value=admin]').hidden=!isOwner();}
+
+/* ===================== Queue ===================== */
+function groups(){
+  const now=Date.now();const due=[],fresh=[],retry=[],later=[];
+  for(const l of queue){const cb=l.callback_at?new Date(l.callback_at).getTime():0;
+    if(cb&&cb>now)later.push(l);else if(cb)due.push(l);else if(l.status==='new')fresh.push(l);else retry.push(l)}
+  const by=k=>(a,b)=>(a[k]||'').localeCompare(b[k]||'');
+  due.sort(by('callback_at'));fresh.sort(by('created_at'));retry.sort(by('last_call_at'));later.sort(by('callback_at'));
+  return [['Callbacks due',due],['New leads',fresh],['Call again',retry],['Callbacks scheduled',later]];
+}
+async function loadQueue(){
+  const [q,pc,st]=await Promise.all([
+    sb.from('leads').select('*').eq('owner_id',me.id).in('status',OPEN).order('created_at').limit(2000),
+    sb.rpc('unassigned_count'),
+    sb.rpc('team_stats',{p_since:new Date(new Date().setHours(0,0,0,0)).toISOString()})]);
+  if(q.error){$('#qitems').innerHTML=`<div class="empty"><h3>Couldn’t load your leads</h3>${esc(friendly(q.error))}</div>`;return}
+  queue=q.data||[];pool=pc.data||0;
+  const mine=(st.data||[]).find(r=>r.caller_id===me.id)||{calls:0,appointments:0};
+  const g=groups();const total=queue.length;
+  $('#mykpis').innerHTML=[['Calls today',mine.calls],['Appointments today',mine.appointments],['Callbacks due',g[0][1].length],['Leads in my queue',total]].map(([k,v])=>`<div class="kpi"><b>${Number(v)||0}</b><span>${k}</span></div>`).join('');
+  $('#navcount').hidden=!total;$('#navcount').textContent=total;$('#qcount').textContent=total?`${total} lead${total>1?'s':''}`:'';
+  $('#poolnote').textContent=pool?`${pool.toLocaleString()} unassigned`:'';$('#pull').disabled=!pool;
+  renderQueue();
+  if(!cur&&queue.length)selectLead(g.flatMap(x=>x[1])[0].id);
+}
+function renderQueue(){
+  const box=$('#qitems');const gs=groups().filter(g=>g[1].length);
+  if(!gs.length){box.innerHTML=`<div class="empty"><h3>Your queue is empty</h3>${pool?`${pool.toLocaleString()} unassigned new lead${pool>1?'s are':' is'} waiting. Use <b>Pull 25 new leads</b> to start.`:'No unassigned leads left. Ask an admin to import or assign more.'}</div>`;return}
+  box.innerHTML=gs.map(([label,ls])=>`<div class="qgroup"><span class="eyebrow">${label}</span><span class="eyebrow">${ls.length}</span></div>`+
+    ls.map(l=>{const when=l.callback_at?fmtWhen(l.callback_at):l.last_call_at?fmtWhen(l.last_call_at):'';
+      return `<button class="qitem" data-id="${l.id}" aria-current="${l.id===cur?.id}"><b>${esc(l.company||contactName(l)||'Unnamed lead')}</b><span class="when mono">${esc(when)}</span><span class="sub">${esc(contactName(l))}${l.title?' · '+esc(l.title):''}</span><span>${badge(l.status)}</span></button>`}).join('')).join('');
+  box.querySelectorAll('.qitem').forEach(b=>b.onclick=()=>selectLead(b.dataset.id));
+}
+$('#pull').onclick=async()=>{$('#pull').disabled=true;const {data,error}=await sb.rpc('pull_leads',{p_n:25});
+  if(error)toast(friendly(error));else toast(data?`Pulled ${data} lead${data>1?'s':''} into your queue`:'No unassigned new leads to pull');loadQueue()};
+
+/* ===================== Lead card ===================== */
+async function selectLead(id){
+  if(tab!=='queue'){tab='queue';document.querySelectorAll('.nav button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab==='queue'));TABS.forEach(k=>$('#tab-'+k).hidden=k!=='queue');loadQueue()}
+  const [l,c]=await Promise.all([sb.from('leads').select('*').eq('id',id).maybeSingle(),sb.from('calls').select('*').eq('lead_id',id).order('created_at',{ascending:false}).limit(50)]);
+  if(!l.data){toast('That lead is no longer available');return}
+  cur=l.data;curCalls=c.data||[];
+  draft={status:suggest(cur),note:'',callbackAt:'',apptAt:'',apptRep:'',leadNotes:cur.notes||'',notesDirty:false};
+  renderQueue();renderCard();
+}
+function phoneChip(label,p){if(!p)return'';return `<div class="phone"><div><small>${label}</small><span class="num">${esc(fmtPhone(p))}</span></div><button class="btn small" data-copy="${esc(digits(p))}">Copy</button></div>`}
+const FACTS=[['industry','Industry'],['employees','Employees'],['revenue','Revenue'],['linkedin','LinkedIn'],['zoominfo_id','ZoomInfo ID'],['source','Imported from']];
+function renderCard(){
+  const box=$('#callcard');const l=cur;
+  if(!l){box.innerHTML=`<div class="empty"><h3>No lead selected</h3>Pick a lead from your queue, or pull new leads to start dialing.</div>`;return}
+  const loc=[l.address,l.city,[l.state,l.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  const extra=Object.entries(l.extra||{});const wu=webUrl(l.website);
+  box.innerHTML=`<div class="card-top"><div style="min-width:0"><p class="eyebrow">${esc(l.industry||'Lead')}</p><h2>${esc(l.company||'Unnamed company')}</h2>
+      <div class="contact">${esc(contactName(l)||'No contact name')}${l.title?` <span class="muted">· ${esc(l.title)}</span>`:''}</div></div>
+      <div style="text-align:right;display:grid;gap:6px;justify-items:end">${badge(l.status)}<span class="stat">${l.attempts||0} call${l.attempts===1?'':'s'}</span>${l.owner_id?`<span class="stat person">${avatar(l.owner_id)}${esc(who(l.owner_id))}</span>`:''}</div></div>
+    <div class="sec">
+      <div class="phones">${phoneChip('Direct',l.phone)}${phoneChip('Mobile',l.mobile)}${phoneChip('Company',l.company_phone)}${!l.phone&&!l.mobile&&!l.company_phone?'<span class="muted">No phone number on file</span>':''}</div>
+      <dl class="facts">
+        <div><dt>Email</dt><dd>${l.email?`<span style="user-select:all">${esc(l.email)}</span> <button class="btn small" data-copy="${esc(l.email)}">Copy</button>`:'<span class="muted">Not on file</span>'}</dd></div>
+        <div><dt>Website</dt><dd>${wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(l.website.replace(/^https?:\/\/(www\.)?/i,''))}</a>`:esc(l.website||'—')}</dd></div>
+        <div><dt>Location</dt><dd>${esc(loc||'—')}</dd></div>
+        <div><dt>${l.status==='appointment'?'Appointment':'Next callback'}</dt><dd>${esc(l.status==='appointment'?fmtFull(l.appt_at)+(l.appt_rep?' with '+l.appt_rep:''):fmtFull(l.callback_at)||'—')}</dd></div>
+      </dl>
+      <details class="more"><summary>More details</summary><dl class="facts" style="margin-top:12px">${FACTS.filter(([k])=>l[k]).map(([k,t])=>`<div><dt>${t}</dt><dd>${esc(l[k])}</dd></div>`).join('')}${extra.map(([k,v])=>`<div><dt>${esc(k.replace(/_/g,' '))}</dt><dd>${esc(v)}</dd></div>`).join('')}${!FACTS.some(([k])=>l[k])&&!extra.length?'<div class="muted">Nothing else on file.</div>':''}</dl></details>
+    </div>
+    ${curCalls.length?`<div class="sec hist"><p class="eyebrow">Call history</p><ol>${curCalls.map(e=>`<li><span class="mono stat">${esc(fmtWhen(e.created_at))}</span><span>${badge(e.status)} <span class="stat">${esc(who(e.caller_id))}</span></span>${e.note?`<span class="note">${esc(e.note)}</span>`:''}</li>`).join('')}</ol></div>`:''}
+    <div class="sec" id="cnotes"></div><div id="cform"></div>`;
+  box.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(b.dataset.copy,b));
+  renderNotes();renderForm();
+}
+function copy(text,btn){const ok=()=>{btn.textContent='Copied';setTimeout(()=>btn.textContent='Copy',1400)};
+  try{navigator.clipboard.writeText(text).then(ok,()=>toast('Select the text and copy it'))}catch{toast('Select the text and copy it')}}
+function renderNotes(){
+  const n=$('#cnotes');const l=cur;
+  n.innerHTML=`<label class="f" for="lnotes"><span class="eyebrow">Lead notes</span></label>
+    <textarea id="lnotes" placeholder="Standing notes about this lead: decision maker, best time to call, budget, objections">${esc(draft.leadNotes)}</textarea>
+    <div class="row" style="justify-content:space-between;align-items:center"><span class="stat">${l.notes_by?`Last edited by ${esc(who(l.notes_by))}, ${esc(fmtWhen(l.notes_at))}`:'Everyone working this lead sees these notes.'}</span>
+    <button class="btn small" id="savenotes">Save notes</button></div>`;
+  const ta=n.querySelector('#lnotes');ta.oninput=()=>{draft.leadNotes=ta.value;draft.notesDirty=true};
+  n.querySelector('#savenotes').onclick=async()=>{if(await saveNotes()){toast('Notes saved');renderNotes()}};
+}
+async function saveNotes(){const now=new Date().toISOString();
+  const {error}=await sb.from('leads').update({notes:draft.leadNotes.trim(),notes_by:me.id,notes_at:now}).eq('id',cur.id);
+  if(error){toast(friendly(error));return false}cur.notes=draft.leadNotes.trim();cur.notes_by=me.id;cur.notes_at=now;draft.notesDirty=false;return true}
+function renderForm(){
+  const f=$('#cform');const d=draft;const sug=suggest(cur);
+  f.innerHTML=`<div class="sec"><p class="eyebrow">Log this call · choose the new status</p>
+    <div class="outcomes">${LOG_STATUSES.map(o=>`<button class="outcome t-${STATUSES[o].tone}" data-o="${o}" aria-pressed="${d.status===o}"><i></i>${STATUSES[o].label}${o===sug?'<em>Next</em>':''}</button>`).join('')}</div>
+    ${d.status==='appointment'?`<div class="row"><label class="f">Appointment date and time<input type="datetime-local" id="apAt" value="${esc(d.apptAt)}"></label>
+      <label class="f">Sales rep<input type="text" id="apRep" value="${esc(d.apptRep)}" placeholder="Who takes the meeting"></label></div>`:''}
+    ${OPEN.includes(d.status)?`<div class="row"><label class="f">Call back on (optional)<input type="datetime-local" id="cbAt" value="${esc(d.callbackAt)}"></label>
+      <div class="row" style="gap:6px">${[['In 2 hours',2],['Tomorrow 10 AM','t'],['Next week',168]].map(([t,v])=>`<button class="btn small" data-quick="${v}">${t}</button>`).join('')}</div></div>`:''}
+    <label class="f">Call notes<textarea id="cnote" placeholder="What happened on this call">${esc(d.note)}</textarea></label></div>
+    <div class="savebar"><span class="stat">Saving logs the call and opens your next lead.</span>
+      <div class="row" style="gap:8px"><button class="btn" id="skip">Skip</button><button class="btn primary" id="save">Save call and next</button></div></div>`;
+  f.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{draft.status=b.dataset.o;renderForm()});
+  const bind=(id,k)=>{const el=f.querySelector(id);if(el)el.oninput=()=>draft[k]=el.value};
+  bind('#cbAt','callbackAt');bind('#apAt','apptAt');bind('#apRep','apptRep');bind('#cnote','note');
+  f.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{const v=b.dataset.quick;let t=new Date();
+    if(v==='t'){t.setDate(t.getDate()+1);t.setHours(10,0,0,0)}else t=new Date(Date.now()+(+v)*36e5);draft.callbackAt=toLocalInput(t);renderForm()});
+  f.querySelector('#save').onclick=saveCall;f.querySelector('#skip').onclick=()=>goNext(cur.id);
+}
+function goNext(afterId){const order=groups().flatMap(g=>g[1]).map(l=>l.id);const i=order.indexOf(afterId);
+  const next=(i>=0?order.slice(i+1):order).find(id=>id!==afterId)||order.find(id=>id!==afterId);
+  if(next)selectLead(next);else{cur=null;renderCard();renderQueue()}}
+let saving=false;
+async function saveCall(){
+  if(saving)return;const d=draft;
+  if(d.status==='appointment'&&!d.apptAt)return toast('Set the appointment date and time');
+  saving=true;$('#save').disabled=true;
+  try{
+    if(d.notesDirty&&!(await saveNotes()))return;
+    const order=groups().flatMap(g=>g[1]).map(l=>l.id);const i=order.indexOf(cur.id);
+    const nextId=(i>=0?order.slice(i+1):order).find(id=>id!==cur.id)||null;
+    const {error}=await sb.rpc('log_call',{p_lead:cur.id,p_status:d.status,p_note:d.note.trim(),
+      p_callback:OPEN.includes(d.status)&&d.callbackAt?new Date(d.callbackAt).toISOString():null,
+      p_appt_at:d.status==='appointment'?new Date(d.apptAt).toISOString():null,p_appt_rep:d.apptRep.trim()});
+    if(error){toast(friendly(error));return}
+    toast(d.status==='appointment'?'Appointment booked':`Saved as ${STATUSES[d.status].label}`);
+    cur=null;await loadQueue();if(nextId&&queue.some(l=>l.id===nextId))selectLead(nextId);else goNext(null);
+  } finally{saving=false;const s=$('#save');if(s)s.disabled=false}
+}
+
+/* ===================== Lead board ===================== */
+function ownerFilter(){if(!isAdmin())return me.id;const o=board.owner;return o==='__me'?me.id:(o&&o!=='__none'?o:null)}
+function searchTerm(){const s=board.search.trim().toLowerCase();if(!s)return'';return /^[\d\s()+.\-]+$/.test(s)&&digits(s).length>=3?digits(s):s}
+function likeEsc(s){return s.replace(/[\\%_]/g,m=>'\\'+m)}
+function filtered(q,withStatus=true){const o=ownerFilter();if(o)q=q.eq('owner_id',o);else if(isAdmin()&&board.owner==='__none')q=q.is('owner_id',null);
+  if(withStatus&&board.status)q=q.eq('status',board.status);const s=searchTerm();if(s)q=q.like('search_text',`%${likeEsc(s)}%`);return q}
+let boardSeq=0;
+async function loadBoard(){
+  const seq=++boardSeq;renderBoardControls();
+  const [r,c]=await Promise.all([
+    filtered(sb.from('leads').select('*',{count:'exact'})).order('updated_at',{ascending:false}).range(board.page*PAGE,board.page*PAGE+PAGE-1),
+    sb.rpc('status_counts',{p_owner:ownerFilter(),p_unassigned:isAdmin()&&board.owner==='__none',p_search:searchTerm()?likeEsc(searchTerm()):''})]);
+  if(seq!==boardSeq)return;
+  if(r.error){$('#ltbody').innerHTML=`<tr><td colspan="10"><div class="empty">${esc(friendly(r.error))}</div></td></tr>`;return}
+  board.rows=r.data||[];board.total=r.count||0;board.counts={};(c.data||[]).forEach(x=>board.counts[x.status]=Number(x.n));
+  renderBoard();
+}
+function renderBoardControls(){
+  const ow=$('#lowner'),as=$('#assignto'),ss=$('#setstatus');const ids=Object.values(people).filter(p=>p.active).map(p=>p.id);
+  const ov=board.owner,av=as.value,sv=ss.value;
+  ow.innerHTML=`<option value="">All callers</option><option value="__me">My leads</option><option value="__none">Unassigned</option>`+ids.map(id=>`<option value="${id}">${esc(who(id))}</option>`).join('');
+  as.innerHTML=`<option value="__none">Unassigned</option>`+ids.map(id=>`<option value="${id}">${esc(who(id))}</option>`).join('');
+  ss.innerHTML=Object.entries(STATUSES).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join('');
+  ow.value=ov;as.value=av||me.id;ss.value=sv||'dead';
+}
+function renderBoard(){
+  const a=isAdmin();const all=Object.values(board.counts).reduce((x,y)=>x+y,0);
+  $('#chips').innerHTML=`<button class="chip" data-s="" aria-pressed="${!board.status}" style="--t:var(--fg)"><i></i>All <b>${all.toLocaleString()}</b></button>`+
+    Object.entries(STATUSES).map(([k,v])=>`<button class="chip t-${v.tone}" data-s="${k}" aria-pressed="${board.status===k}"><i></i>${v.label} <b>${(board.counts[k]||0).toLocaleString()}</b></button>`).join('');
+  $('#chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{board.status=c.dataset.s;board.page=0;clearSel();loadBoard()});
+  $('#ltbody').innerHTML=board.rows.length?board.rows.map(l=>{
+    const when=l.status==='appointment'?'Appt '+fmtWhen(l.appt_at):l.callback_at&&OPEN.includes(l.status)?'Callback '+fmtWhen(l.callback_at):fmtWhen(l.last_call_at);
+    const note=l.notes||'';
+    return `<tr class="click" data-id="${l.id}">${a?`<td><input type="checkbox" data-sel="${l.id}" ${board.all||board.sel.has(l.id)?'checked':''} aria-label="Select lead"></td>`:''}
+    <td><span class="co">${esc(l.company||'—')}</span></td><td>${esc(contactName(l))}<div class="stat">${esc(l.title||'')}</div></td>
+    <td class="mono">${esc(fmtPhone(l.phone||l.mobile||l.company_phone))}</td><td class="email">${esc(l.email||'—')}</td><td>${badge(l.status)}</td><td>${personCell(l.owner_id)}</td>
+    <td class="num">${l.attempts||0}</td><td class="stat">${esc(when)}</td><td class="notecell">${esc(note.length>90?note.slice(0,90)+'…':note)}</td></tr>`}).join('')
+    :`<tr><td colspan="10"><div class="empty">No leads match these filters.</div></td></tr>`;
+  const from=board.total?board.page*PAGE+1:0,to=Math.min(board.total,(board.page+1)*PAGE);
+  $('#lfoot').textContent=`${from.toLocaleString()}–${to.toLocaleString()} of ${board.total.toLocaleString()} leads`;
+  $('#prevpg').disabled=board.page===0;$('#nextpg').disabled=to>=board.total;
+  $('#ltbody').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=e=>{if(e.target.matches('input'))return;selectLead(tr.dataset.id)});
+  $('#ltbody').querySelectorAll('[data-sel]').forEach(c=>c.onchange=()=>{board.all=false;c.checked?board.sel.add(c.dataset.sel):board.sel.delete(c.dataset.sel);renderBulk();renderBoardChecks()});
+  renderBoardChecks();renderBulk();
+}
+function renderBoardChecks(){const rows=board.rows;$('#selpage').checked=rows.length>0&&(board.all||rows.every(l=>board.sel.has(l.id)))}
+function clearSel(){board.sel.clear();board.all=false}
+function selCount(){return board.all?board.total:board.sel.size}
+function renderBulk(){const n=selCount();$('#bulk').hidden=!n||!isAdmin();$('#selcount').textContent=`${n.toLocaleString()} selected`;
+  const pageAll=board.rows.length&&board.rows.every(l=>board.sel.has(l.id));
+  $('#selallmatch').hidden=board.all||!pageAll||board.total<=board.rows.length;$('#selallmatch').textContent=`Select all ${board.total.toLocaleString()} matching leads`;
+  $('#delbtn').textContent='Delete';delArm=false}
+$('#selpage').onchange=e=>{board.all=false;board.rows.forEach(l=>e.target.checked?board.sel.add(l.id):board.sel.delete(l.id));renderBoard()};
+$('#selallmatch').onclick=()=>{board.all=true;renderBoard()};
+let st;$('#lsearch').addEventListener('input',e=>{clearTimeout(st);st=setTimeout(()=>{board.search=e.target.value;board.page=0;clearSel();loadBoard()},300)});
+$('#lowner').addEventListener('input',e=>{board.owner=e.target.value;board.page=0;clearSel();loadBoard()});
+$('#prevpg').onclick=()=>{board.page--;loadBoard()};$('#nextpg').onclick=()=>{board.page++;loadBoard()};
+function bulkTarget(q){return board.all?filtered(q).not('id','is',null):q.in('id',[...board.sel])}
+async function bulk(q,done){const {error}=await bulkTarget(q);if(error)return toast(friendly(error));toast(done);clearSel();loadBoard()}
+$('#assignbtn').onclick=()=>{const to=$('#assignto').value==='__none'?null:$('#assignto').value;const n=selCount();
+  bulk(sb.from('leads').update({owner_id:to}),`Assigned ${n.toLocaleString()} lead${n>1?'s':''} to ${who(to)}`)};
+$('#statusbtn').onclick=()=>{const s=$('#setstatus').value;const n=selCount();const patch={status:s};if(!OPEN.includes(s))patch.callback_at=null;
+  bulk(sb.from('leads').update(patch),`Set ${n.toLocaleString()} lead${n>1?'s':''} to ${STATUSES[s].label}`)};
+let delArm=false;
+$('#delbtn').onclick=()=>{const n=selCount();if(!delArm){delArm=true;$('#delbtn').textContent=`Click again to delete ${n.toLocaleString()}`;return}
+  bulk(sb.from('leads').delete(),`Deleted ${n.toLocaleString()} lead${n>1?'s':''}`)};
+const csvCell=v=>{const s=String(v??'');return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+$('#exportbtn').onclick=async()=>{
+  const btn=$('#exportbtn');btn.disabled=true;
+  try{
+    let rows=[];
+    if(board.sel.size&&!board.all){const {data,error}=await sb.from('leads').select('*').in('id',[...board.sel]);if(error)throw error;rows=data}
+    else for(let i=0;;i+=1000){const {data,error}=await filtered(sb.from('leads').select('*')).order('updated_at',{ascending:false}).range(i,i+999);if(error)throw error;rows.push(...data);if(data.length<1000)break}
+    if(!rows.length)return toast('No leads to export');
+    const extraKeys=[...new Set(rows.flatMap(l=>Object.keys(l.extra||{})))];const flds=FIELDS.filter(([k])=>k!=='full_name');
+    const head=[...flds.map(f=>f[1]),'Status','Caller','Calls','Last call','Next callback','Appointment','Sales rep','Lead notes','Source',...extraKeys];
+    const lines=[head.map(csvCell).join(',')];
+    for(const l of rows)lines.push([...flds.map(([k])=>l[k]),stOf(l.status).label,l.owner_id?nameOf(l.owner_id):'',l.attempts,l.last_call_at||'',l.callback_at||'',l.appt_at||'',l.appt_rep,l.notes,l.source,...extraKeys.map(k=>l.extra?.[k]??'')].map(csvCell).join(','));
+    const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'});const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);a.download=`dial-desk-leads-${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    toast(`Exported ${rows.length.toLocaleString()} leads`);
+  }catch(e){toast(friendly(e))}finally{btn.disabled=false}
+};
+
+/* ===================== Import ===================== */
+function detectDelim(text){const line=text.split(/\r?\n/).find(l=>l.trim())||'';let best=',',max=-1;
+  for(const d of [',',';','\t','|']){let n=0,q=false;for(const c of line){if(c==='"')q=!q;else if(!q&&c===d)n++}if(n>max){max=n;best=d}}return best}
+function parseCSV(text){text=text.replace(/^﻿/,'');const d=detectDelim(text);const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"'&&f==='')q=true;else if(c===d){row.push(f);f=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}else f+=c}
+  if(f!==''||row.length){row.push(f);rows.push(row)}return rows.filter(r=>r.some(x=>String(x).trim()!==''))}
+const clean=v=>{let s=String(v??'').trim();const m=s.match(/^="(.*)"$/);if(m)s=m[1];return s.slice(0,1000)};
+const norm=h=>String(h).toLowerCase().replace(/[^a-z0-9]/g,'');
+function autoMap(headers){const n=headers.map(norm),map={},used=new Set();
+  for(const [k,,syn] of FIELDS){for(const s of syn){const i=n.findIndex((h,j)=>h===s&&!used.has(j));if(i>=0){map[k]=i;used.add(i);break}}}return map}
+function loadTable(rows,fileName){if(rows.length<2)return toast('That file has no data rows');
+  const width=Math.max(...rows.map(r=>r.length));const seen={};
+  const headers=Array.from({length:width},(_,j)=>{let h=clean(rows[0][j])||`Column ${j+1}`;if(seen[h]){seen[h]++;h=`${h} (${seen[h]})`}else seen[h]=1;return h});
+  imp={fileName,headers,rows:rows.slice(1),map:autoMap(headers),assign:'__none',running:false};renderImport()}
+async function readFile(file){
+  if(!file)return;const name=file.name;
+  try{if(/\.(xlsx|xls)$/i.test(name)){if(!window.XLSX)return toast('The Excel reader is still loading. Try again in a second.');
+      const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];
+      loadTable(XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:''}),name)}
+    else loadTable(parseCSV(await file.text()),name)}
+  catch{toast('Couldn’t read that file. Save it as .csv or .xlsx and try again.')}}
+$('#file').onchange=e=>readFile(e.target.files[0]);
+const drop=$('#drop');drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');readFile(e.dataTransfer.files[0])};
+$('#parsepaste').onclick=()=>loadTable(parseCSV($('#paste').value),'Pasted list');
+function buildLeads(){
+  const mapped=new Set(Object.values(imp.map).filter(v=>v!=null));const out=[];let blank=0,dupInFile=0;const keys=new Set();
+  for(const r of imp.rows){const l={};for(const [k] of FIELDS){const i=imp.map[k];l[k]=i==null?'':clean(r[i])}
+    if(l.full_name&&!l.first_name&&!l.last_name){const parts=l.full_name.split(/\s+/);l.first_name=parts.shift()||'';l.last_name=parts.join(' ')}delete l.full_name;
+    if(!l.company&&!l.first_name&&!l.last_name&&!l.phone&&!l.mobile){blank++;continue}
+    const ks=[l.phone,l.mobile].map(p=>digits(p).slice(-10)).filter(x=>x.length===10).map(x=>'p'+x);if(l.email)ks.push('e'+l.email.toLowerCase());if(l.zoominfo_id)ks.push('z'+l.zoominfo_id);
+    if(ks.some(k=>keys.has(k))){dupInFile++;continue}ks.forEach(k=>keys.add(k));
+    const extra={};let n=0;imp.headers.forEach((h,j)=>{if(mapped.has(j)||n>=40)return;const v=clean(r[j]);if(v){extra[h.slice(0,80)]=v.slice(0,500);n++}});
+    l.extra=extra;out.push(l)}
+  return {out,blank,dupInFile}}
+function renderImport(){
+  const p=$('#mappanel');if(!imp)return;
+  const {out,blank,dupInFile}=buildLeads();const ids=Object.values(people).filter(x=>x.active).map(x=>x.id);
+  const unmapped=imp.headers.filter((h,j)=>!Object.values(imp.map).includes(j)).length;
+  p.innerHTML=`<div class="panel-h"><h2>2. Check columns and import</h2><span class="stat">${esc(imp.fileName)} · ${imp.rows.length.toLocaleString()} rows · ${imp.headers.length} columns</span></div>
+   <div class="tablebox"><table class="maptable"><thead><tr><th>Dial Desk field</th><th>Column in your file</th><th>First row</th></tr></thead><tbody>
+   ${FIELDS.map(([k,label])=>{const i=imp.map[k];return `<tr><td>${label}</td><td><select data-map="${k}" aria-label="${esc(label)}"><option value="">Not used</option>${imp.headers.map((h,j)=>`<option value="${j}" ${i===j?'selected':''}>${esc(h)}</option>`).join('')}</select></td><td class="stat">${esc(i==null?'':clean(imp.rows[0][i]))}</td></tr>`}).join('')}
+   </tbody></table></div>
+   <div class="panel-b">
+   ${unmapped?`<p class="stat" style="margin:0">${unmapped} other column${unmapped>1?'s':''} will be kept under "More details" on each lead.</p>`:''}
+   <label class="f">Assign imported leads to<select id="impassign"><option value="__none">Unassigned (callers pull them)</option>${ids.map(id=>`<option value="${id}" ${imp.assign===id?'selected':''}>${esc(who(id))}</option>`).join('')}</select></label>
+   <p style="margin:0"><b>${out.length.toLocaleString()}</b> lead${out.length===1?'':'s'} ready${dupInFile?` · <span class="muted">${dupInFile} repeated in this file</span>`:''}${blank?` · <span class="muted">${blank} empty row${blank>1?'s':''} skipped</span>`:''}. Leads already in Dial Desk are skipped during import.</p>
+   <div class="progress" id="impprog" hidden><i></i></div>
+   <div class="row"><button class="btn primary" id="impgo" ${!out.length||imp.running?'disabled':''}>Import ${out.length.toLocaleString()} lead${out.length===1?'':'s'}</button><button class="btn" id="impclear">Start over</button></div></div>`;
+  p.querySelectorAll('[data-map]').forEach(s=>s.onchange=()=>{imp.map[s.dataset.map]=s.value===''?undefined:+s.value;renderImport()});
+  p.querySelector('#impassign').onchange=e=>imp.assign=e.target.value;
+  p.querySelector('#impclear').onclick=()=>{imp=null;$('#file').value='';p.innerHTML=`<div class="panel-h"><h2>2. Check columns and import</h2></div><div class="empty">Choose a file to see how its columns line up.</div>`};
+  p.querySelector('#impgo').onclick=async()=>{
+    const {out}=buildLeads();imp.running=true;p.querySelector('#impgo').disabled=true;const bar=$('#impprog');bar.hidden=false;
+    const owner=imp.assign==='__none'?null:imp.assign;let inserted=0,dups=0;
+    try{for(let i=0;i<out.length;i+=200){
+        const {data,error}=await sb.rpc('import_leads',{p_rows:out.slice(i,i+200),p_owner:owner,p_source:imp.fileName});
+        if(error)throw error;inserted+=data.inserted;dups+=data.duplicates;bar.firstElementChild.style.width=(100*Math.min(i+200,out.length)/out.length)+'%'}
+      imp=null;$('#file').value='';
+      p.innerHTML=`<div class="panel-h"><h2>Import complete</h2></div><div class="empty"><h3>${inserted.toLocaleString()} lead${inserted===1?'':'s'} imported</h3>${dups?`${dups.toLocaleString()} already in Dial Desk were skipped. `:''}${owner?'They’re in '+esc(who(owner))+'’s queue.':'Callers can pull them from My queue.'}</div>`}
+    catch(e){imp.running=false;toast(`Import stopped after ${inserted} leads: ${friendly(e)}. Import the same file again to add the rest.`);renderImport()}
+  };
+}
+
+/* ===================== Team ===================== */
+async function loadTeam(){
+  const start=new Date();if(period==='today')start.setHours(0,0,0,0);else start.setDate(start.getDate()-(period==='week'?7:30));
+  await loadPeople();
+  const [st,ap,inv,cnt,size]=await Promise.all([
+    sb.rpc('team_stats',{p_since:start.toISOString()}),
+    sb.from('leads').select('id,company,first_name,last_name,appt_at,appt_rep,appt_booked_by').eq('status','appointment').gte('appt_at',new Date().toISOString()).order('appt_at').limit(15),
+    sb.from('invites').select('*').order('created_at'),
+    sb.from('leads').select('id',{count:'exact',head:true}),
+    sb.rpc('storage_used')]);
+  const rows=(st.data||[]).map(r=>({...r,calls:+r.calls,gatekeeper:+r.gatekeeper,appointments:+r.appointments,dead:+r.dead,bad_info:+r.bad_info}));
+  const tot=k=>rows.reduce((n,r)=>n+r[k],0);
+  $('#kpis').innerHTML=[['Calls logged',tot('calls')],['Gatekeepers',tot('gatekeeper')],['Appointments set',tot('appointments')],['Marked dead',tot('dead')],['Bad information',tot('bad_info')]]
+    .map(([k,v])=>`<div class="kpi"><b>${v.toLocaleString()}</b><span>${k}</span></div>`).join('');
+  rows.sort((a,b)=>b.appointments-a.appointments||b.calls-a.calls);
+  $('#callertable').innerHTML=`<thead><tr><th>Caller</th><th class="num">Calls</th><th class="num">Gatekeeper</th><th class="num">Appts</th><th class="num">Dead</th><th class="num">Bad info</th></tr></thead><tbody>`+
+    (rows.length?rows.map(r=>`<tr><td>${personCell(r.caller_id)}</td><td class="num">${r.calls}</td><td class="num">${r.gatekeeper}</td><td class="num"><b>${r.appointments}</b></td><td class="num">${r.dead}</td><td class="num">${r.bad_info}</td></tr>`).join('')
+    :`<tr><td colspan="6"><div class="empty">No calls logged in this period.</div></td></tr>`)+`</tbody>`;
+  const aps=ap.data||[];
+  $('#appts').innerHTML=aps.length?`<div class="tablebox"><table><tbody>${aps.map(l=>`<tr class="click" data-id="${l.id}"><td class="mono">${esc(fmtFull(l.appt_at))}</td><td><span class="co">${esc(l.company)}</span><div class="stat">${esc(contactName(l))}${l.appt_rep?' · with '+esc(l.appt_rep):''}</div></td><td>${l.appt_booked_by?personCell(l.appt_booked_by):''}</td></tr>`).join('')}</tbody></table></div>`
+    :`<div class="empty">No upcoming appointments yet.</div>`;
+  $('#appts').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>selectLead(tr.dataset.id));
+  invites=inv.data||[];
+  const ps=Object.values(people).sort((a,b)=>(a.role==='owner'?-1:0)-(b.role==='owner'?-1:0)||nameOf(a.id).localeCompare(nameOf(b.id)));
+  $('#roster').innerHTML=`<thead><tr><th>Person</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>`+
+    ps.map(p=>{const ctl=isOwner()&&p.role!=='owner'?`<button class="btn small" data-role="${p.id}" data-to="${p.role==='admin'?'caller':'admin'}">${p.role==='admin'?'Make caller':'Make admin'}</button> <button class="btn small ${p.active?'danger':''}" data-active="${p.id}" data-to="${p.active?'0':'1'}">${p.active?'Turn off access':'Turn on access'}</button>`:'';
+      return `<tr><td>${personCell(p.id)}</td><td class="email">${esc(p.email)}</td><td><span class="role">${p.role==='owner'?'Owner':p.role==='admin'?'Admin':'Caller'}</span></td><td class="stat">${p.active?'Active':'Access off'}</td><td style="text-align:right">${ctl}</td></tr>`}).join('')+
+    invites.map(i=>`<tr><td class="muted">Invited</td><td class="email">${esc(i.email)}</td><td><span class="role">${i.role==='admin'?'Admin':'Caller'}</span></td><td class="stat">Hasn’t created an account yet</td><td style="text-align:right"><button class="btn small" data-uninvite="${esc(i.email)}">Cancel invite</button></td></tr>`).join('')+`</tbody>`;
+  $('#roster').querySelectorAll('[data-role]').forEach(b=>b.onclick=async()=>{const p=people[b.dataset.role];const {error}=await sb.rpc('set_member',{p_user:p.id,p_role:b.dataset.to,p_active:p.active});if(error)toast(friendly(error));else{toast('Role updated');loadTeam()}});
+  $('#roster').querySelectorAll('[data-active]').forEach(b=>b.onclick=async()=>{const p=people[b.dataset.active];const {error}=await sb.rpc('set_member',{p_user:p.id,p_role:p.role,p_active:b.dataset.to==='1'});if(error)toast(friendly(error));else{toast('Access updated');loadTeam()}});
+  $('#roster').querySelectorAll('[data-uninvite]').forEach(b=>b.onclick=async()=>{const {error}=await sb.from('invites').delete().eq('email',b.dataset.uninvite);if(error)toast(friendly(error));else loadTeam()});
+  const used=Number(size.data)||0;const pct=Math.min(1,used/FREE_DB_BYTES);
+  $('#capmeter').style.setProperty('--t',pct>.8?'var(--bad)':pct>.6?'var(--warn)':'var(--ok)');$('#capmeter i').style.width=(100*pct)+'%';
+  $('#capnote').textContent=`${(cnt.count||0).toLocaleString()} leads stored, using ${(used/1048576).toFixed(0)} MB of the free plan's 500 MB. Export and delete Dead and Bad Information leads from the Lead board when this gets high.`;
+}
+$('#period').querySelectorAll('button').forEach(b=>b.onclick=()=>{period=b.dataset.p;$('#period').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));loadTeam()});
+$('#inviteform').onsubmit=async e=>{e.preventDefault();const email=$('#invemail').value.trim().toLowerCase();
+  const {error}=await sb.from('invites').insert({email,role:$('#invrole').value,invited_by:me.id});
+  if(error)return toast(/duplicate/i.test(error.message)?'That email is already invited':friendly(error));
+  $('#invemail').value='';toast(`Invited ${email}. Send them this site's address.`);loadTeam()};
+
+/* Keep the queue fresh while the page is open. */
+setInterval(()=>{if(me&&document.visibilityState==='visible'&&tab==='queue'&&!saving)loadQueue()},60000);
+</script>
+</body>
+</html>
