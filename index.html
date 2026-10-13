@@ -451,7 +451,8 @@ async function enter(){
   try{
     const {data:{user}}=await sb.auth.getUser();
     if(!user){showAuth('signin');return}
-    const {data:p}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
+    const {data:p,error:pe}=await sb.from('profiles').select('*').eq('id',user.id).maybeSingle();
+    if(pe){showAuth('signin',`Dial Desk couldn\u2019t load your account (${pe.message}). Send this message to whoever set up Dial Desk.`);return}
     if(!p||!p.active){await sb.auth.signOut();showAuth('signin',p?'Your access to Dial Desk has been turned off. Contact your admin.':'This account isn’t set up for Dial Desk. Ask your admin to invite your email.');return}
     me=p;await loadPeople();
     $('#authview').hidden=true;$('#appview').hidden=false;
