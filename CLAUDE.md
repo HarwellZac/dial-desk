@@ -13,7 +13,7 @@ Dial Desk is the outbound calling CRM for an appointment-setting team. Callers w
 - `profiles`: one row per person; `role` is `owner`, `admin`, `salesperson` or `caller`; `active` turns access on/off.
 - `invites`: emails allowed to sign up. The first account ever created becomes the Owner; everyone else must be invited (enforced by the `handle_new_user` trigger).
 - `leads`: contact fields (including revenue, employees, industry, website), `extra` (jsonb for unmapped import columns), `status`, `owner_id` (assigned caller), callback/appointment fields, `notes`.
-- `calls`: one row per logged call (lead, caller, status, note, `prev` = lead state before the call). Written only through `log_call()`; `undo_call()` reverses the latest call on a lead.
+- `calls`: one row per logged call (lead, caller, status, note, `prev` = lead state before the call). Written only through `log_call()`; `undo_call()` reverses the latest call on a lead. Logging `call3` puts the lead `on_ice` and reassigns it to the Owner (the call row keeps status `call3`).
 - `lead_notes`: dated comments on a lead (author, body, created_at). Never hard-deleted: `set_note_deleted()` sets `deleted_at/deleted_by` (author or admin) and can restore; deleted notes stay visible (struck through) in history. A trigger copies the newest non-deleted note into `leads.notes/notes_at/notes_by` for the Leads page and search.
 - Trash: leads are soft-deleted with `deleted_at`/`deleted_by` (admins only, enforced by the `guard_leads` trigger). Callers never see trashed leads; admins restore them or delete forever from the Trash filter on the Leads page.
 - `status_rank` is a generated column giving the pipeline order for sorting.
@@ -22,8 +22,9 @@ Dial Desk is the outbound calling CRM for an appointment-setting team. Callers w
 - `opportunities` (UI says "Deal"): deal_name, client_id ("Client Name"), agency_id, owner_id (salesperson), type (`first_deal`/`returning`), stage (`prospecting`,`proposal`,`nurturing`,`closed_won`,`closed_lost`; negotiation was removed in v4), probability, amount, follow_up_date ("Follow Up"), lead_source, description, products[], lead_id, converted_by. Legacy columns close_date, next_step and contact_* still exist but the UI no longer uses them. Soft-deleted with `deleted_at` (admins only).
 - `opp_contacts`: any number of contacts per deal (name, title, email, phone); soft-removed with `deleted_at` and restorable. The `log_contact()` trigger writes contact_added/removed/restored/edited rows into `change_log` (row_id = opp id).
 - `opp_notes`: dated notes on deals; soft-deleted like lead notes via `set_note_deleted('opp', ...)`.
+- Editing notes: `edit_note(kind 'lead'|'opp'|'call', id, body)` (author or admin) updates the text, sets `edited_at/edited_by`, and writes a `note_edited` / `call_note_edited` row to `change_log` (changes.body = [old, new], changes.note_id = [null, id]) so old wording stays in history and can be undone.
 - `change_log`: edit history written by the `log_changes()` trigger on leads, opportunities and clients (field -> [old, new], who, when). `updated_by` on leads/opportunities/clients is set by `touch_updated_at()`.
-- Lead statuses: `new`, `call1` (1st Call), `call2`, `call3`, `gatekeeper`, `appointment` (Appointment Set), `converted`, `dead`, `bad_info` (Bad Information).
+- Lead statuses: `new`, `call1` (1st Call), `call2`, `call3`, `on_ice` (On Ice), `gatekeeper`, `appointment` (Appointment Set), `converted`, `dead`, `bad_info` (Bad Information).
 
 ## Permissions
 - Callers see and update only leads assigned to them (admins assign them on Leads; there is no Calling/queue page and no Pull button any more). They can convert their leads with "Appointment Set!". They never see opportunities or reports, and the Caller column is hidden for them.
@@ -33,6 +34,7 @@ Dial Desk is the outbound calling CRM for an appointment-setting team. Callers w
 
 ## UI layout (v4)
 - Tabs: Leads (home for callers/admins), Opportunities (home for salespeople), Reports, Import, Team. Clicking a lead opens the lead page with ← Leads, Previous/Next (follows the Leads list order) and the Convert / Appointment Set! button at top right. "Save call & next" moves to the next lead in the Leads list.
+- Logging a call: tapping a result saves immediately (no Save button) and stays on the lead; callback date (quick buttons In 2/3/7 days) saves straight to the lead. "Appointment Set!" (result button or top button) opens a short form for callers: company, contact name/email/phone, salesperson, notes (prefilled from notes and call notes); admins/salespeople get the full Convert form.
 - History is never hidden: edits, calls and notes (including deleted ones) all show; field edits have an Undo button in the history.
 
 ## Making changes

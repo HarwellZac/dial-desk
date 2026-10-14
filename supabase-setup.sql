@@ -1,5 +1,5 @@
 -- =====================================================================
--- Dial Desk database setup  (version 4: follow-up dates, multiple contacts, kept history)
+-- Dial Desk database setup  (version 5: editable notes, On Ice status, follow-up dates, multiple contacts)
 -- Paste this whole file into Supabase > SQL Editor > New query > Run.
 -- Safe to run again: it creates what is missing and updates the rest.
 -- Your leads, calls and people are kept.
@@ -83,7 +83,7 @@ alter table public.leads add column if not exists deleted_by uuid references pub
 -- Version 3 additions: conversion to an opportunity, last edited by
 alter table public.leads drop constraint if exists leads_status_check;
 alter table public.leads add constraint leads_status_check
-  check (status in ('new','call1','call2','call3','gatekeeper','appointment','converted','dead','bad_info'));
+  check (status in ('new','call1','call2','call3','on_ice','gatekeeper','appointment','converted','dead','bad_info'));
 alter table public.leads add column if not exists sales_owner_id uuid references public.profiles(id) on delete set null;
 alter table public.leads add column if not exists opportunity_id uuid;
 alter table public.leads add column if not exists converted_at timestamptz;
@@ -92,8 +92,8 @@ alter table public.leads add column if not exists pre_convert_status text;
 alter table public.leads add column if not exists updated_by uuid references public.profiles(id) on delete set null;
 alter table public.leads drop column if exists status_rank;
 alter table public.leads add column status_rank int generated always as (
-  case status when 'new' then 1 when 'call1' then 2 when 'call2' then 3 when 'call3' then 4
-    when 'gatekeeper' then 5 when 'appointment' then 6 when 'converted' then 7 when 'bad_info' then 8 when 'dead' then 9 else 10 end) stored;
+  case status when 'new' then 1 when 'call1' then 2 when 'call2' then 3 when 'call3' then 4 when 'on_ice' then 5
+    when 'gatekeeper' then 6 when 'appointment' then 7 when 'converted' then 8 when 'bad_info' then 9 when 'dead' then 10 else 11 end) stored;
 create index if not exists leads_sales_owner_idx on public.leads (sales_owner_id) where sales_owner_id is not null;
 
 create index if not exists leads_owner_status_idx on public.leads (owner_id, status);
@@ -300,6 +300,7 @@ returns bigint language plpgsql security definer set search_path = public as $$
 declare
   l public.leads%rowtype;
   cid bigint;
+  boss uuid;
 begin
   if not public.is_member() then raise exception 'Please sign in again.'; end if;
   select * into l from public.leads where id = p_lead for update;
@@ -315,15 +316,19 @@ begin
   if p_status = 'appointment' and p_appt_at is null then
     raise exception 'Set the appointment date and time.';
   end if;
+  -- After the 3rd call the lead goes On Ice and back to the Owner.
+  if p_status = 'call3' then
+    select id into boss from public.profiles where role = 'owner' and active order by created_at limit 1;
+  end if;
   update public.leads set
-    status = p_status,
+    status = case when p_status = 'call3' then 'on_ice' else p_status end,
     attempts = attempts + 1,
     last_call_at = now(),
-    callback_at = case when p_status in ('call1','call2','call3','gatekeeper') then p_callback else null end,
+    callback_at = case when p_status in ('call1','call2','gatekeeper') then p_callback else null end,
     appt_at = case when p_status = 'appointment' then p_appt_at else appt_at end,
     appt_rep = case when p_status = 'appointment' then coalesce(p_appt_rep, '') else appt_rep end,
     appt_booked_by = case when p_status = 'appointment' then auth.uid() else appt_booked_by end,
-    owner_id = coalesce(owner_id, auth.uid())
+    owner_id = case when p_status = 'call3' then coalesce(boss, owner_id, auth.uid()) else coalesce(owner_id, auth.uid()) end
   where id = p_lead;
   insert into public.calls (lead_id, caller_id, status, note, prev)
   values (p_lead, auth.uid(), p_status, coalesce(p_note, ''), jsonb_build_object(
@@ -890,6 +895,47 @@ create policy "edit contacts" on public.opp_contacts for update to authenticated
   with check (public.is_admin() or (public.is_sales() and exists (select 1 from public.opportunities o
     where o.id = opp_contacts.opp_id and (o.owner_id = auth.uid() or o.created_by = auth.uid()))));
 
+-- =====================================================================
+-- Version 5: editable notes (old wording kept in history), On Ice status
+-- =====================================================================
+alter table public.lead_notes add column if not exists edited_at timestamptz;
+alter table public.lead_notes add column if not exists edited_by uuid references public.profiles(id) on delete set null;
+alter table public.opp_notes add column if not exists edited_at timestamptz;
+alter table public.opp_notes add column if not exists edited_by uuid references public.profiles(id) on delete set null;
+alter table public.calls add column if not exists edited_at timestamptz;
+alter table public.calls add column if not exists edited_by uuid references public.profiles(id) on delete set null;
+
+-- Edit a note (or the note saved with a call). The author or an admin can edit; the old wording goes into the history.
+create or replace function public.edit_note(p_kind text, p_id bigint, p_body text) returns void
+language plpgsql security definer set search_path = public as $$
+declare a uuid; old_body text; rid uuid; tbl text;
+begin
+  if not public.is_member() then raise exception 'Please sign in again.'; end if;
+  if p_kind = 'lead' then
+    select author_id, body, lead_id into a, old_body, rid from public.lead_notes where id = p_id; tbl := 'leads';
+  elsif p_kind = 'opp' then
+    select author_id, body, opp_id into a, old_body, rid from public.opp_notes where id = p_id; tbl := 'opportunities';
+  elsif p_kind = 'call' then
+    select caller_id, note, lead_id into a, old_body, rid from public.calls where id = p_id; tbl := 'leads';
+  else raise exception 'Unknown note.'; end if;
+  if not found then raise exception 'That note no longer exists.'; end if;
+  if not (public.is_admin() or a = auth.uid()) then raise exception 'You can only edit your own notes.'; end if;
+  if p_kind <> 'call' and coalesce(btrim(p_body), '') = '' then raise exception 'A note can''t be empty. Use Delete instead.'; end if;
+  if coalesce(old_body, '') = coalesce(p_body, '') then return; end if;
+  if p_kind = 'lead' then
+    update public.lead_notes set body = p_body, edited_at = now(), edited_by = auth.uid() where id = p_id;
+  elsif p_kind = 'opp' then
+    update public.opp_notes set body = p_body, edited_at = now(), edited_by = auth.uid() where id = p_id;
+  else
+    update public.calls set note = coalesce(p_body, ''), edited_at = now(), edited_by = auth.uid() where id = p_id;
+  end if;
+  if rid is not null then
+    insert into public.change_log (table_name, row_id, action, changed_by, changes)
+    values (tbl, rid, case when p_kind = 'call' then 'call_note_edited' else 'note_edited' end, auth.uid(),
+      jsonb_build_object('body', jsonb_build_array(old_body, p_body), 'note_id', jsonb_build_array(null, p_id)));
+  end if;
+end $$;
+
 -- ---------- Access for signed-in users (row level security still applies) ----------
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
@@ -905,6 +951,7 @@ revoke execute on function public.storage_used() from anon;
 revoke execute on function public.convert_lead(uuid, uuid, text, text, text, text, text, numeric, date, timestamptz, text, text[]) from anon;
 revoke execute on function public.unconvert_lead(uuid) from anon;
 revoke execute on function public.set_note_deleted(text, bigint, boolean) from anon;
+revoke execute on function public.edit_note(text, bigint, text) from anon;
 revoke execute on function public.ensure_client(text, jsonb) from anon;
 revoke execute on function public.ensure_agency(text) from anon;
 

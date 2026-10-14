@@ -29,6 +29,7 @@
 .s-call1{--c:#0891b2;--t:#dcf3f8;--ink:#0e6f87}
 .s-call2{--c:#7c3aed;--t:#efe7ff;--ink:#6025d0}
 .s-call3{--c:#db2777;--t:#fde5f0;--ink:#b0185d}
+.s-on_ice{--c:#7dd3fc;--t:#e6f6fe;--ink:#075985;--on:#0c4a6e}
 .s-gatekeeper{--c:#f59e0b;--t:#fff1d6;--ink:#92400e;--on:#3b2300}
 .s-appointment{--c:#16a34a;--t:#ddf5e5;--ink:#11803a}
 .s-dead{--c:#6b7280;--t:#eceef1;--ink:#4b5563}
@@ -298,6 +299,11 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 .chg span b{font-weight:600}
 .chg s{color:var(--faint)}
 .linkbtn{border:0;background:none;color:var(--accent);font-weight:700;cursor:pointer;padding:0}
+.savedmsg{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#e8f8ef;border:1px solid #b7e9cb;color:#067647;border-radius:10px;padding:8px 12px;font-size:13.5px}
+.cbbox{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.tl .edited{font-size:11.5px;color:var(--faint);font-weight:600}
+.chg .was{white-space:pre-wrap;color:var(--faint);text-decoration:line-through}
+.chg .now{white-space:pre-wrap}
 .btn.apptbtn{padding:11px 20px;font-size:15px;font-weight:800;background:#16a34a;border-color:#16a34a;color:#fff}
 .btn.apptbtn:hover{background:#15803d;border-color:#15803d}
 .leadnav{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -544,8 +550,8 @@ const SUPABASE_KEY = 'sb_publishable__2tlKocdNJ9JImcWkSOwuw_LaeHxDsK';
 const FREE_DB_BYTES = 500 * 1024 * 1024;
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const STATUSES={new:'New',call1:'1st Call',call2:'2nd Call',call3:'3rd Call',gatekeeper:'Gatekeeper',appointment:'Appointment Set',converted:'Converted',dead:'Dead',bad_info:'Bad Information'};
-const STATUS_ORDER=['new','call1','call2','call3','gatekeeper','appointment','converted','bad_info','dead'];
+const STATUSES={new:'New',call1:'1st Call',call2:'2nd Call',call3:'3rd Call',on_ice:'On Ice',gatekeeper:'Gatekeeper',appointment:'Appointment Set',converted:'Converted',dead:'Dead',bad_info:'Bad Information'};
+const STATUS_ORDER=['new','call1','call2','call3','on_ice','gatekeeper','appointment','converted','bad_info','dead'];
 const LOG_STATUSES=['call1','call2','call3','gatekeeper','appointment','dead','bad_info'];
 const OPEN=['new','call1','call2','call3','gatekeeper'];
 const FIELDS=[
@@ -734,7 +740,7 @@ async function selectLead(id){
   const seq=++leadSeq;
   const [l,c,n,h]=await Promise.all([
     sb.from('leads').select('*').eq('id',id).maybeSingle(),
-    sb.from('calls').select('id,lead_id,caller_id,status,note,created_at').eq('lead_id',id).order('created_at',{ascending:false}).limit(100),
+    sb.from('calls').select('*').eq('lead_id',id).order('created_at',{ascending:false}).limit(100),
     sb.from('lead_notes').select('*').eq('lead_id',id).order('created_at',{ascending:false}).limit(300),
     sb.from('change_log').select('*').eq('row_id',id).order('created_at',{ascending:false}).limit(200)]);
   if(seq!==leadSeq)return;
@@ -818,6 +824,7 @@ async function saveEdit(e){
 }
 function refreshBoardRow(id,patch){const q=board.rows.find(x=>x.id===id);if(q)Object.assign(q,patch)}
 async function afterLeadUndo(id,prev){refreshBoardRow(id,prev);if(cur?.id===id)await selectLead(id)}
+let lastSaved=null;
 function renderLog(){
   const p=$('#plog');const d=draft;const l=cur;const sug=suggest(l);const locked=!!l.deleted_at;
   if(l.status==='converted'||!(isAdmin()||l.owner_id===me.id)){
@@ -825,41 +832,54 @@ function renderLog(){
       ?`<div class="convbox"><span>Converted ${esc(fmtFull(l.converted_at))}${l.converted_by?' by <b>'+esc(nameOf(l.converted_by))+'</b>':''}.</span><span>Assigned to salesperson <b>${esc(who(l.sales_owner_id))}</b>.</span>${canSell()&&l.opportunity_id?'<span><button class="linkbtn" id="openopp">Open the opportunity →</button></span>':''}</div>`
       :'<p class="stat" style="margin:0">Only the assigned caller logs calls on this lead.</p>'}</div>`;
     const b=$('#openopp');if(b)b.onclick=()=>openOpp(l.opportunity_id);return}
-  p.innerHTML=`<div class="panel-h"><h3>Log this call</h3><span class="stat">Choose the new status</span></div>
+  const ls=lastSaved&&lastSaved.leadId===l.id?lastSaved:null;
+  p.innerHTML=`<div class="panel-h"><h3>Log this call</h3><span class="stat">Tap the result. It saves right away.</span></div>
     <div class="panel-b">
-      <div class="outcomes">${LOG_STATUSES.map(o=>`<button type="button" class="outcome s-${o}" data-o="${o}" aria-pressed="${d.status===o}" ${locked?'disabled':''}><i></i>${STATUSES[o]}${o===sug?'<em>Next</em>':''}</button>`).join('')}</div>
-      ${d.status==='appointment'?`<label class="f">Appointment date and time<input type="datetime-local" id="apAt" value="${esc(d.apptAt)}"></label>
-        <label class="f">Sales rep<input type="text" id="apRep" value="${esc(d.apptRep)}" placeholder="Who takes the meeting"></label>`:''}
-      ${OPEN.includes(d.status)?`<label class="f">Call back on (optional)<input type="datetime-local" id="cbAt" value="${esc(d.callbackAt)}"></label>
-        <div class="quick">${[['In 2 hours',2],['Tomorrow 10 AM','t'],['Next week',168]].map(([t,v])=>`<button type="button" class="btn small" data-quick="${v}">${t}</button>`).join('')}</div>`:''}
-      <label class="f">What happened on this call<textarea id="cnote" placeholder="Saved with the call under Notes &amp; activity">${esc(d.note)}</textarea></label>
+      <label class="f">What happened on this call <span class="hint">optional · type it first, then tap the result</span><textarea id="cnote" placeholder="Saved with the call under Notes &amp; history">${esc(d.note)}</textarea></label>
+      <div class="outcomes">${LOG_STATUSES.map(o=>`<button type="button" class="outcome s-${o}" data-o="${o}" aria-pressed="${ls?.status===o}" ${locked?'disabled':''}><i></i>${o==='appointment'?'Appointment Set!':STATUSES[o]}${o==='call3'?`<em>${o===sug?'Next · ':''}→ On Ice</em>`:o===sug?'<em>Next</em>':''}</button>`).join('')}</div>
+      ${ls?`<div class="savedmsg"><span>✓ Saved as <b>${ls.status==='call3'?'3rd Call → On Ice':esc(STATUSES[ls.status])}</b> ${esc(fmtWhen(ls.at))}</span><button class="btn small" id="undocall">Undo</button></div>`:''}
+      ${OPEN.includes(l.status)&&!locked?`<div class="cbbox"><label class="f">Call back on <span class="hint">saves when you pick it</span><input type="datetime-local" id="cbAt" value="${l.callback_at?esc(toLocalInput(new Date(l.callback_at))):''}"></label>
+        <div class="quick">${[['In 2 days',2],['In 3 days',3],['In 7 days',7]].map(([t,v])=>`<button type="button" class="btn small" data-quick="${v}">${t}</button>`).join('')}${l.callback_at?'<button type="button" class="btn small ghost" id="cbclear">Clear</button>':''}</div></div>`:''}
     </div>
-    <div class="savebar"><button class="btn" id="skip">Skip</button><button class="btn primary" id="save" ${locked?'disabled':''}>Save call &amp; next</button></div>`;
-  p.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{draft.status=b.dataset.o;renderLog()});
-  const bind=(id,k)=>{const el=p.querySelector(id);if(el)el.oninput=()=>draft[k]=el.value};
-  bind('#cbAt','callbackAt');bind('#apAt','apptAt');bind('#apRep','apptRep');bind('#cnote','note');
-  p.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{const v=b.dataset.quick;let t=new Date();
-    if(v==='t'){t.setDate(t.getDate()+1);t.setHours(10,0,0,0)}else t=new Date(Date.now()+(+v)*36e5);draft.callbackAt=toLocalInput(t);renderLog()});
-  $('#save').onclick=saveCall;$('#skip').onclick=()=>goNext(cur.id);
+    <div class="savebar"><button class="btn primary" id="skip" ${neighbor(l.id,1)?'':'disabled'}>Next lead ›</button></div>`;
+  const ta=$('#cnote');ta.oninput=()=>draft.note=ta.value;
+  p.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>logCall(b.dataset.o));
+  const cb=$('#cbAt');if(cb)cb.onchange=()=>{if(cb.value)saveCallback(new Date(cb.value))};
+  p.querySelectorAll('[data-quick]').forEach(b=>b.onclick=()=>{const t=new Date();t.setDate(t.getDate()+(+b.dataset.quick));t.setMinutes(Math.round(t.getMinutes()/15)*15,0,0);saveCallback(t)});
+  if($('#cbclear'))$('#cbclear').onclick=()=>saveCallback(null);
+  if($('#undocall'))$('#undocall').onclick=()=>undoCall(ls.cid,l.id);
+  $('#skip').onclick=()=>goNext(cur.id);
 }
+// Callback dates save straight to the lead.
+async function saveCallback(t){
+  const id=cur.id,prev=cur.callback_at||null,val=t?t.toISOString():null;
+  const {error}=await sb.from('leads').update({callback_at:val}).eq('id',id);if(error)return toast(friendly(error));
+  draft.cbSet=true;if(cur?.id===id){cur.callback_at=val;renderHead();renderLog()}refreshBoardRow(id,{callback_at:val});
+  toast(t?`Callback set for ${fmtFull(val)}`:'Callback cleared',{undo:async()=>{const {error}=await sb.from('leads').update({callback_at:prev}).eq('id',id);if(error)throw error;await afterLeadUndo(id,{callback_at:prev});toast('Callback put back')}})}
 function goNext(afterId){const next=neighbor(afterId,1);window.scrollTo({top:0});
   if(next)selectLead(next);else{toast('That was the last lead on this page of Leads');setTab('board')}}
 let saving=false;
-async function saveCall(){
-  if(saving)return;const d=draft;
-  if(d.status==='appointment'&&!d.apptAt)return toast('Set the appointment date and time');
-  saving=true;$('#save').disabled=true;
+async function logCall(status){
+  if(saving)return;const l=cur;
+  if(status==='appointment'){if(canConvert(l))return openConvert();return toast('Only the assigned caller or a salesperson can set this appointment')}
+  saving=true;document.querySelectorAll('#plog [data-o]').forEach(b=>b.disabled=true);
   try{
-    const leadId=cur.id;
-    const {data:cid,error}=await sb.rpc('log_call',{p_lead:leadId,p_status:d.status,p_note:d.note.trim(),
-      p_callback:OPEN.includes(d.status)&&d.callbackAt?new Date(d.callbackAt).toISOString():null,
-      p_appt_at:d.status==='appointment'?new Date(d.apptAt).toISOString():null,p_appt_rep:d.apptRep.trim()});
-    if(error){toast(friendly(error));return}
-    const label=d.status==='appointment'?'Appointment booked':`Saved as ${STATUSES[d.status]}`;
-    refreshBoardRow(leadId,{status:d.status,last_call_at:new Date().toISOString()});goNext(leadId);
-    toast(label,{undo:async()=>{const {error}=await sb.rpc('undo_call',{p_call:cid});if(error)throw error;openLead(leadId);toast('Call undone')}});
-  } finally{saving=false;const s=$('#save');if(s)s.disabled=false}
+    const leadId=l.id;const keepCb=draft.cbSet&&l.callback_at&&['call1','call2','gatekeeper'].includes(status);
+    const {data:cid,error}=await sb.rpc('log_call',{p_lead:leadId,p_status:status,p_note:draft.note.trim(),
+      p_callback:keepCb?l.callback_at:null,p_appt_at:null,p_appt_rep:''});
+    if(error){toast(friendly(error));renderLog();return}
+    lastSaved={leadId,status,cid,at:new Date().toISOString()};
+    if(status==='call3'){
+      const boss=Object.values(people).find(p=>p.role==='owner'&&p.active);
+      refreshBoardRow(leadId,{status:'on_ice',owner_id:boss?.id||l.owner_id,last_call_at:lastSaved.at});
+      if(boss&&boss.id!==me.id){toast(`3rd call saved. The lead is On Ice and back with ${nameOf(boss.id)}.`,{undo:()=>undoCall(cid,leadId)});goNext(leadId);return}
+    }else refreshBoardRow(leadId,{status,last_call_at:lastSaved.at});
+    const keepTl=draft.tl;await selectLead(leadId);draft.tl=keepTl;
+    toast(`Saved as ${STATUSES[status==='call3'?'on_ice':status]}`,{undo:()=>undoCall(cid,leadId)});
+  } finally{saving=false}
 }
+async function undoCall(cid,leadId){const {error}=await sb.rpc('undo_call',{p_call:cid});if(error)return toast(friendly(error));
+  lastSaved=null;refreshBoardRow(leadId,{});openLead(leadId);toast('Call undone')}
 function renderNotes(){
   const p=$('#pnotes');const l=cur;const canAdd=canEditLead(l);const f=draft.tl||'all';
   const items=[...curNotes.map(n=>({k:'note',at:n.created_at,n})),...curCalls.map(c=>({k:'call',at:c.created_at,c})),...curHist.map(h=>({k:'edit',at:h.created_at,h}))]
@@ -869,13 +889,15 @@ function renderNotes(){
       ${canAdd?`<div class="composer"><textarea id="nbody" placeholder="Add a note: who you spoke with, objections, best time to reach them…">${esc(draft.noteText)}</textarea>
         <div class="row"><span class="stat">Stamped with the date and your name · Ctrl+Enter to add</span><button class="btn primary small" id="nadd">Add note</button></div></div>`:''}
       ${items.length?`<ul class="tl">${items.map(it=>it.k==='edit'?histItem(it.h,LEAD_LABELS,'lead',canUndoLead(it.h)):it.k==='note'?noteItem(it.n):
-        `<li><span class="dot call ${sc(it.c.status)}">${ICON.call}</span><div><div class="head"><span class="date">${esc(fmtFull(it.at))}</span>${pill(it.c.status)}<b>${esc(nameOf(it.c.caller_id))}</b></div>${it.c.note?`<div class="body">${esc(it.c.note)}</div>`:''}</div></li>`).join('')}</ul>`
+        `<li><span class="dot call ${sc(it.c.status)}">${ICON.call}</span><div><div class="head"><span class="date">${esc(fmtFull(it.at))}</span>${pill(it.c.status)}<b>${esc(nameOf(it.c.caller_id))}</b>${isAdmin()||it.c.caller_id===me.id?`<button class="undo" data-cedit="${it.c.id}">${it.c.note?'Edit note':'Add note'}</button>`:''}</div>${it.c.note?`<div class="body">${esc(it.c.note)}</div>`:''}${it.c.edited_at?`<div class="edited">Edited ${esc(fmtWhen(it.c.edited_at))}${it.c.edited_by?' by '+esc(nameOf(it.c.edited_by)):''}</div>`:''}</div></li>`).join('')}</ul>`
         :'<p class="stat" style="margin:0">Nothing here yet.</p>'}
     </div>`;
   if(canAdd){const ta=$('#nbody');ta.oninput=()=>draft.noteText=ta.value;ta.onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();addNote()}};$('#nadd').onclick=addNote}
   p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>setNoteDeleted('lead',+b.dataset.del,true));
   p.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>setNoteDeleted('lead',+b.dataset.restore,false));
   p.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>undoLeadEdit(+b.dataset.undo));
+  p.querySelectorAll('[data-nedit]').forEach(b=>b.onclick=()=>{const n=curNotes.find(x=>x.id===+b.dataset.nedit);if(n)openNoteEdit('lead',n.id,n.body,refreshLeadNotes)});
+  p.querySelectorAll('[data-cedit]').forEach(b=>b.onclick=()=>{const c=curCalls.find(x=>x.id===+b.dataset.cedit);if(c)openNoteEdit('call',c.id,c.note||'',refreshLeadNotes)});
   p.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{draft.tl=b.dataset.f;renderNotes()});
 }
 async function addNote(){
@@ -892,9 +914,12 @@ async function setNoteDeleted(kind,nid,del){
   toast(del?'Note deleted. It stays in the history.':'Note restored',del?{undo:()=>setNoteDeleted(kind,nid,false)}:{})}
 // Any edit to a lead's details can be put back from the history.
 const LEAD_UNDO=new Set(EDIT_FIELDS.map(f=>f[0]));
-const canUndoLead=h=>canEditLead(cur)&&h.action!=='created'&&Object.keys(h.changes||{}).length>0&&Object.keys(h.changes).every(k=>LEAD_UNDO.has(k));
+const isNoteEdit=h=>h.action==='note_edited'||h.action==='call_note_edited';
+const canUndoNote=h=>isNoteEdit(h)&&(isAdmin()||h.changed_by===me.id)&&h.changes?.note_id?.[1];
+const canUndoLead=h=>canUndoNote(h)||canEditLead(cur)&&h.action==='update'&&Object.keys(h.changes||{}).length>0&&Object.keys(h.changes).every(k=>LEAD_UNDO.has(k));
 async function undoLeadEdit(hid){
   const h=curHist.find(x=>x.id===hid);if(!h)return;const id=cur.id;const back={},redo={};
+  if(isNoteEdit(h))return undoNoteEdit(h,h.action==='call_note_edited'?'call':'lead',refreshLeadNotes);
   for(const [k,[a,b]] of Object.entries(h.changes)){back[k]=a??'';redo[k]=cur[k]??''}
   const {error}=await sb.from('leads').update(back).eq('id',id);if(error)return toast(friendly(error));
   await afterLeadUndo(id,back);
@@ -1142,8 +1167,8 @@ const STAGE_PROB={prospecting:10,nurturing:25,proposal:75,closed_won:100,closed_
 const CLOSED=['closed_won','closed_lost'];
 const TYPES={first_deal:'1st Deal',returning:'Returning Client'};
 const LEAD_SOURCES=['Cold Calling','Self-Generated','Returning Client','Referral','Agency','Inbound','Other'];
-const DEFAULT_PRODUCTS=['TBN Linear','TBN+','TBN Israel','Inspire','Enlace','YouTube','Interview','Podcast','Social Media'];
-const RETIRED_PRODUCTS=['Watchman'];
+const DEFAULT_PRODUCTS=['TBN Linear','TBN+','TBN Israel','Inspire','YouTube','Interview','Programmer','Award Show'];
+const RETIRED_PRODUCTS=['Watchman','Enlace','Podcast','Social Media'];
 const stagePill=s=>`<span class="pill g-${s}">${esc(STAGES[s]||s)}</span>`;
 const money=v=>{if(v==null||v===''||!isFinite(Number(v)))return'';const n=Number(v);return '$'+n.toLocaleString(undefined,n%1?{minimumFractionDigits:2,maximumFractionDigits:2}:{maximumFractionDigits:0})};
 const pad2=n=>String(n).padStart(2,'0');
@@ -1205,7 +1230,10 @@ function fmtVal(k,v){
 const CONTACT_LABELS={name:'Name',title:'Title',email:'Email',phone:'Phone'};
 function histItem(h,labels,kind,undo){
   const ch=h.changes||{};let verb,lines;
-  if(String(h.action).startsWith('contact_')){
+  if(isNoteEdit(h)){
+    verb=h.action==='call_note_edited'?'edited a call note':'edited a note';
+    const [a,b]=ch.body||[];lines=`<span class="was">${esc(a||'(blank)')}</span><span class="now">${esc(b||'(blank)')}</span>`;
+  }else if(String(h.action).startsWith('contact_')){
     const nm=h.action==='contact_removed'?ch.name?.[0]:(ch.contact?.[1]??ch.name?.[1]);
     verb={contact_added:'added a contact',contact_removed:'removed a contact',contact_restored:'restored a contact',contact_edited:'edited a contact'}[h.action];
     lines=h.action==='contact_edited'?Object.entries(ch).filter(([k])=>k!=='contact').map(([k,[a,b]])=>`<span><b>${esc(CONTACT_LABELS[k]||k)}:</b> <s>${esc(fmtVal(k,a))}</s> → ${esc(fmtVal(k,b))}</span>`).join(''):'';
@@ -1216,16 +1244,31 @@ function histItem(h,labels,kind,undo){
       :`<span><b>${esc(labels[k]||k)}:</b> <s>${esc(fmtVal(k,a))}</s> → ${esc(fmtVal(k,b))}</span>`).join('');
   }
   return `<li><span class="dot edit">${ICON.edit}</span><div><div class="head"><span class="date">${esc(fmtFull(h.created_at))}</span><b>${esc(h.changed_by?nameOf(h.changed_by):'System')}</b><span>${verb}</span>${undo?`<button class="undo" data-undo="${h.id}" title="Put the old values back">Undo</button>`:''}</div>${lines?`<div class="chg">${lines}</div>`:''}</div></li>`}
+async function undoNoteEdit(h,kind,after){const [a]=h.changes.body;
+  const {error}=await sb.rpc('edit_note',{p_kind:kind,p_id:h.changes.note_id[1],p_body:a||''});if(error)return toast(friendly(error));await after();toast('Old wording put back')}
 function noteItem(n){const mine=isAdmin()||n.author_id===me.id;const gone=!!n.deleted_at;
   return `<li class="${gone?'gone':''}"><span class="dot note">${ICON.note}</span><div><div class="head"><span class="date">${esc(fmtFull(n.created_at))}</span><span>${esc(ago(n.created_at))}</span><b>${esc(nameOf(n.author_id))}</b>
     ${gone?`<span class="gonetag">Deleted${n.deleted_by?' by '+esc(nameOf(n.deleted_by)):''} ${esc(fmtWhen(n.deleted_at))}</span>${mine?`<button class="undo" data-restore="${n.id}">Restore</button>`:''}`
-      :mine?`<button class="x" data-del="${n.id}" title="Delete note (it stays in the history)">Delete</button>`:''}</div><div class="body">${esc(n.body)}</div></div></li>`}
+      :mine?`<button class="undo" data-nedit="${n.id}" title="Edit this note (the old wording stays in the history)">Edit</button><button class="x" data-del="${n.id}" title="Delete note (it stays in the history)">Delete</button>`:''}</div><div class="body">${esc(n.body)}</div>${n.edited_at?`<div class="edited">Edited ${esc(fmtWhen(n.edited_at))}${n.edited_by?' by '+esc(nameOf(n.edited_by)):''}</div>`:''}</div></li>`}
+// Edit a note (or a call's note). The old wording is kept in the history.
+function openNoteEdit(kind,id,text,after){
+  openModal(kind==='call'?'Edit call note':'Edit note',`<label class="f">Note<textarea name="body" style="min-height:160px">${esc(text)}</textarea></label><p class="stat" style="margin:0">The old wording stays in Notes &amp; history.</p>`,{submit:'Save note',onSubmit:async fd=>{
+    const body=String(fd.get('body')||'').trim();if(kind!=='call'&&!body){toast('A note can’t be empty. Use Delete instead.');return false}
+    if(body===String(text||'').trim())return;
+    const {error}=await sb.rpc('edit_note',{p_kind:kind,p_id:id,p_body:body});if(error)throw error;
+    await after();toast('Note updated',{undo:async()=>{const {error}=await sb.rpc('edit_note',{p_kind:kind,p_id:id,p_body:text});if(error)throw error;await after();toast('Old wording put back')}})}})}
+async function refreshLeadNotes(){const id=cur.id;const [c,n,h]=await Promise.all([
+    sb.from('calls').select('*').eq('lead_id',id).order('created_at',{ascending:false}).limit(100),
+    sb.from('lead_notes').select('*').eq('lead_id',id).order('created_at',{ascending:false}).limit(300),
+    sb.from('change_log').select('*').eq('row_id',id).order('created_at',{ascending:false}).limit(200)]);
+  if(cur?.id!==id)return;curCalls=c.data||curCalls;curNotes=n.data||curNotes;curHist=h.data||curHist;renderNotes()}
 
 /* ===================== Convert lead ===================== */
 async function openConvert(){
   const l=cur;try{await loadLookups()}catch(e){return toast(friendly(e))}
   const s=sellers();if(!s.length)return toast('Add a salesperson on the Team page first');
   const caller=!canSell();
+  if(caller)return openApptSet(l,s);
   const client=(l.company||contactName(l)).trim();
   const known=Object.values(lookups.clients).some(n=>n.toLowerCase().trim()===client.toLowerCase());
   const appt=l.appt_at?toLocalInput(new Date(l.appt_at)):'';
@@ -1256,6 +1299,38 @@ async function openConvert(){
     toast(caller?`Appointment booked and sent to ${nameOf(sid)}`:`Converted and assigned to ${nameOf(sid)}`,{undo:async()=>{const {error}=await sb.rpc('unconvert_lead',{p_lead:lid});if(error)throw error;oppRows=null;await reloadLead(lid);toast('Undone')}});
   }});
   const ca=$('#cappt'),cf=$('#cfollow');let touched=false;cf.oninput=()=>touched=true;ca.oninput=()=>{if(!touched)cf.value=ca.value.slice(0,10)};
+}
+// Callers: a short form. Everything else already in Dial Desk carries over automatically.
+function leadHistoryText(){
+  const items=[...curNotes.filter(n=>!n.deleted_at).map(n=>[n.created_at,n.body]),...curCalls.filter(c=>c.note).map(c=>[c.created_at,`Call (${STATUSES[c.status]||c.status}): ${c.note}`])]
+    .sort((a,b)=>b[0].localeCompare(a[0])).slice(0,15);
+  return items.map(([at,t])=>`${fmtDate(at)}: ${t}`).join('\n')}
+function openApptSet(l,s){
+  const phone=l.phone||l.mobile||l.company_phone||'';
+  const body=`<p class="stat" style="margin:0">Nice work! Check the details, pick the salesperson, and add any notes. Everything else on this lead (company details, call history) goes with it.</p>
+   <div class="fgrid">
+    <label class="f wide">Company Name <span class="req">*</span><input type="text" name="company" required value="${esc(l.company||'')}"></label>
+    <div class="fsec">Contact</div>
+    <label class="f">First name<input type="text" name="first_name" value="${esc(l.first_name||'')}"></label>
+    <label class="f">Last name<input type="text" name="last_name" value="${esc(l.last_name||'')}"></label>
+    <label class="f">Email<input type="email" name="email" value="${esc(l.email||'')}"></label>
+    <label class="f">Phone<input type="text" name="phone" value="${esc(fmtPhone(phone))}"></label>
+    <label class="f wide">Assign to salesperson <span class="req">*</span><select name="sales" required><option value="">Choose a salesperson</option>${s.map(p=>opt(p.id,nameOf(p.id)+(p.role==='salesperson'?'':' ('+roleLabel(p.role)+')'),'')).join('')}</select></label>
+    <label class="f wide">Notes for the salesperson<textarea name="desc" style="min-height:140px">${esc(leadHistoryText())}</textarea></label>
+   </div>`;
+  openModal('Appointment Set!',body,{submit:'Send to salesperson',onSubmit:async fd=>{
+    const t=k=>String(fd.get(k)||'').trim();const lid=l.id,sid=fd.get('sales');
+    const patch={};for(const k of ['company','first_name','last_name','email'])if(t(k)!==(l[k]||''))patch[k]=t(k);
+    if(digits(t('phone'))!==digits(phone)){if(l.phone||!phone)patch.phone=t('phone');else if(l.mobile===phone)patch.mobile=t('phone');else patch.company_phone=t('phone')}
+    if(Object.keys(patch).length){const {error}=await sb.from('leads').update(patch).eq('id',lid);if(error)throw error;Object.assign(l,patch)}
+    const company=t('company');const known=Object.values(lookups.clients).some(n=>n.toLowerCase().trim()===company.toLowerCase());
+    const {error}=await sb.rpc('convert_lead',{p_lead:lid,p_sales:sid,p_deal:company+' - '+new Date().toLocaleDateString([],{month:'short',year:'numeric'}),p_client:company,
+      p_agency:'',p_type:known?'returning':'first_deal',p_stage:'prospecting',p_amount:null,p_follow_up:null,p_appt_at:l.appt_at||null,
+      p_description:t('desc'),p_products:[]});
+    if(error)throw error;
+    lookups.loaded=false;oppRows=null;refreshBoardRow(lid,{status:'converted',sales_owner_id:sid,...patch});await reloadLead(lid);
+    toast(`Appointment set and sent to ${nameOf(sid)}`,{undo:async()=>{const {error}=await sb.rpc('unconvert_lead',{p_lead:lid});if(error)throw error;oppRows=null;await reloadLead(lid);toast('Undone')}});
+  }});
 }
 async function reloadLead(id){if(tab==='lead')await selectLead(id)}
 
@@ -1413,6 +1488,7 @@ function renderOppNotes(){
   p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>setNoteDeleted('opp',+b.dataset.del,true));
   p.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>setNoteDeleted('opp',+b.dataset.restore,false));
   p.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>undoOppEdit(+b.dataset.undo));
+  p.querySelectorAll('[data-nedit]').forEach(b=>b.onclick=()=>{const n=c.notes.find(x=>x.id===+b.dataset.nedit);if(n)openNoteEdit('opp',n.id,n.body,()=>openOpp(c.o.id))});
   if(ed){const ta=$('#onbody');ta.oninput=()=>c.noteText=ta.value;ta.onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();addOppNote()}};$('#onadd').onclick=addOppNote}
 }
 async function addOppNote(){
@@ -1421,9 +1497,10 @@ async function addOppNote(){
   c.notes.unshift(data);c.noteText='';renderOppNotes();toast('Note added')}
 // Any change to a deal's fields can be put back from the history.
 const OPP_UNDO=new Set(['deal_name','client_id','agency_id','type','stage','probability','amount','follow_up_date','lead_source','description','products']);
-const canUndoOpp=h=>canEditOpp(opp.cur?.o)&&h.action==='update'&&Object.keys(h.changes||{}).length>0&&Object.keys(h.changes).every(k=>OPP_UNDO.has(k)||(k==='owner_id'&&isAdmin()));
+const canUndoOpp=h=>canUndoNote(h)||canEditOpp(opp.cur?.o)&&h.action==='update'&&Object.keys(h.changes||{}).length>0&&Object.keys(h.changes).every(k=>OPP_UNDO.has(k)||(k==='owner_id'&&isAdmin()));
 async function undoOppEdit(hid){
   const c=opp.cur;const h=c.hist.find(x=>x.id===hid);if(!h)return;const id=c.o.id;const back={},redo={};
+  if(isNoteEdit(h))return undoNoteEdit(h,'opp',()=>openOpp(id));
   for(const [k,[a]] of Object.entries(h.changes)){back[k]=k==='products'?(a||[]):k==='description'||k==='deal_name'||k==='lead_source'?(a??''):(a??null);redo[k]=c.o[k]??(k==='products'?[]:null)}
   const {error}=await sb.from('opportunities').update(back).eq('id',id);if(error)return toast(friendly(error));oppRows=null;await openOpp(id);
   toast('Change undone',{undo:async()=>{const {error}=await sb.from('opportunities').update(redo).eq('id',id);if(error)throw error;oppRows=null;openOpp(id);toast('Change put back')}})}
