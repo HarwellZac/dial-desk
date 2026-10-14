@@ -1,5 +1,5 @@
 -- =====================================================================
--- Dial Desk database setup  (version 3: salespeople, opportunities, reports, edit history)
+-- Dial Desk database setup  (version 4: follow-up dates, multiple contacts, kept history)
 -- Paste this whole file into Supabase > SQL Editor > New query > Run.
 -- Safe to run again: it creates what is missing and updates the rest.
 -- Your leads, calls and people are kept.
@@ -199,13 +199,13 @@ declare
 begin
   if tg_op = 'DELETE' then lid := old.lead_id; else lid := new.lead_id; end if;
   select body, author_id, created_at into n from public.lead_notes
-    where lead_id = lid order by created_at desc, id desc limit 1;
+    where lead_id = lid and deleted_at is null order by created_at desc, id desc limit 1;
   update public.leads set notes = coalesce(n.body, ''), notes_by = n.author_id, notes_at = n.created_at
     where id = lid and (notes, notes_by, notes_at) is distinct from (coalesce(n.body, ''), n.author_id, n.created_at);
   return null;
 end $$;
 drop trigger if exists lead_notes_latest on public.lead_notes;
-create trigger lead_notes_latest after insert or delete on public.lead_notes
+create trigger lead_notes_latest after insert or update or delete on public.lead_notes
   for each row execute function public.refresh_latest_note();
 
 -- Move notes written in version 1 into the dated notes timeline (runs once per lead).
@@ -516,7 +516,7 @@ create table if not exists public.opportunities (
   owner_id uuid references public.profiles(id) on delete set null,
   type text not null default 'first_deal' check (type in ('first_deal','returning')),
   stage text not null default 'prospecting'
-    check (stage in ('prospecting','proposal','negotiation','nurturing','closed_won','closed_lost')),
+    check (stage in ('prospecting','proposal','nurturing','closed_won','closed_lost')),
   probability int not null default 10 check (probability between 0 and 100),
   amount numeric(14,2),
   close_date date not null default (current_date + 30),
@@ -607,7 +607,7 @@ create trigger clients_history after update on public.clients for each row execu
 create or replace function public.stage_probability(p_stage text) returns int
 language sql immutable as $$
   select case p_stage when 'prospecting' then 10 when 'nurturing' then 25 when 'proposal' then 75
-    when 'negotiation' then 90 when 'closed_won' then 100 else 0 end
+    when 'closed_won' then 100 else 0 end
 $$;
 
 drop trigger if exists opps_touch on public.opportunities;
@@ -724,12 +724,13 @@ begin
   return aid;
 end $$;
 
--- Convert a lead into an opportunity owned by a salesperson.
+-- Convert a lead into an opportunity owned by a salesperson ("Appointment Set!" for callers).
 drop function if exists public.convert_lead(uuid, uuid, text, text, text, text, text, numeric, date, text, text, text[]);
+drop function if exists public.convert_lead(uuid, uuid, text, text, text, text, text, numeric, date, timestamptz, text, text[]);
 create function public.convert_lead(
   p_lead uuid, p_sales uuid, p_deal text, p_client text, p_agency text default '',
   p_type text default 'first_deal', p_stage text default 'prospecting', p_amount numeric default null,
-  p_close date default null, p_next_step text default '', p_description text default '', p_products text[] default '{}')
+  p_follow_up date default null, p_appt_at timestamptz default null, p_description text default '', p_products text[] default '{}')
 returns uuid language plpgsql security definer set search_path = public as $$
 declare
   l public.leads%rowtype; cid uuid; aid uuid; oid uuid;
@@ -748,17 +749,23 @@ begin
     'phone', coalesce(nullif(l.company_phone, ''), l.phone), 'website', l.website, 'industry', l.industry,
     'employees', l.employees, 'revenue', l.revenue, 'address', l.address, 'city', l.city, 'state', l.state, 'zip', l.zip));
   aid := public.ensure_agency(p_agency);
-  insert into public.opportunities (deal_name, client_id, agency_id, owner_id, type, stage, probability, amount, close_date,
-    lead_source, next_step, description, products, contact_name, contact_title, contact_email, contact_phone,
+  insert into public.opportunities (deal_name, client_id, agency_id, owner_id, type, stage, probability, amount,
+    follow_up_date, lead_source, description, products, contact_name, contact_title, contact_email, contact_phone,
     lead_id, converted_by, created_by)
   values (btrim(p_deal), cid, aid, p_sales, coalesce(p_type, 'first_deal'), coalesce(p_stage, 'prospecting'),
-    public.stage_probability(coalesce(p_stage, 'prospecting')), p_amount, coalesce(p_close, current_date + 30),
-    'Cold Calling', coalesce(p_next_step, ''), coalesce(p_description, ''), coalesce(p_products, '{}'),
+    public.stage_probability(coalesce(p_stage, 'prospecting')), p_amount,
+    coalesce(p_follow_up, (p_appt_at at time zone 'America/Chicago')::date),
+    'Cold Calling', coalesce(p_description, ''), coalesce(p_products, '{}'),
     btrim(l.first_name || ' ' || l.last_name), l.title, l.email, coalesce(nullif(l.phone, ''), l.mobile),
     l.id, auth.uid(), auth.uid())
   returning id into oid;
+  if btrim(l.first_name || l.last_name || l.email || l.phone || l.mobile) <> '' then
+    insert into public.opp_contacts (opp_id, name, title, email, phone, created_by)
+    values (oid, btrim(l.first_name || ' ' || l.last_name), l.title, l.email, coalesce(nullif(l.phone, ''), l.mobile), auth.uid());
+  end if;
   update public.leads set pre_convert_status = status, status = 'converted', sales_owner_id = p_sales,
-    opportunity_id = oid, converted_at = now(), converted_by = auth.uid(), callback_at = null
+    opportunity_id = oid, converted_at = now(), converted_by = auth.uid(), callback_at = null,
+    appt_at = coalesce(p_appt_at, appt_at), appt_booked_by = case when p_appt_at is not null then auth.uid() else appt_booked_by end
   where id = p_lead;
   perform set_config('dialdesk.bypass', 'off', true);
   return oid;
@@ -781,6 +788,108 @@ begin
   perform set_config('dialdesk.bypass', 'off', true);
 end $$;
 
+-- =====================================================================
+-- Version 4: follow-up dates, multiple contacts per deal, notes kept when deleted
+-- =====================================================================
+
+-- Stages: Negotiation/Review removed (existing deals move to Proposal/Price Quote).
+alter table public.opportunities drop constraint if exists opportunities_stage_check;
+update public.opportunities set stage = 'proposal' where stage = 'negotiation';
+alter table public.opportunities add constraint opportunities_stage_check
+  check (stage in ('prospecting','proposal','nurturing','closed_won','closed_lost'));
+alter table public.opportunities add column if not exists follow_up_date date;
+alter table public.opportunities alter column close_date drop not null;
+create index if not exists opps_follow_idx on public.opportunities (follow_up_date);
+drop trigger if exists opps_history on public.opportunities;
+create trigger opps_history after insert or update on public.opportunities for each row execute function public.log_changes(
+  'deal_name','client_id','agency_id','owner_id','type','stage','probability','amount','follow_up_date','lead_source',
+  'description','products','deleted_at');
+
+-- Notes are never erased: deleting hides them but keeps them in the history, and they can be restored.
+alter table public.lead_notes add column if not exists deleted_at timestamptz;
+alter table public.lead_notes add column if not exists deleted_by uuid references public.profiles(id) on delete set null;
+alter table public.opp_notes add column if not exists deleted_at timestamptz;
+alter table public.opp_notes add column if not exists deleted_by uuid references public.profiles(id) on delete set null;
+drop policy if exists "remove notes" on public.lead_notes;
+drop policy if exists "remove opp notes" on public.opp_notes;
+
+create or replace function public.set_note_deleted(p_kind text, p_id bigint, p_deleted boolean) returns void
+language plpgsql security definer set search_path = public as $$
+declare a uuid;
+begin
+  if not public.is_member() then raise exception 'Please sign in again.'; end if;
+  if p_kind = 'lead' then select author_id into a from public.lead_notes where id = p_id;
+  elsif p_kind = 'opp' then select author_id into a from public.opp_notes where id = p_id;
+  else raise exception 'Unknown note.'; end if;
+  if not found then raise exception 'That note no longer exists.'; end if;
+  if not (public.is_admin() or a = auth.uid()) then raise exception 'You can only delete your own notes.'; end if;
+  if p_kind = 'lead' then
+    update public.lead_notes set deleted_at = case when p_deleted then now() end, deleted_by = case when p_deleted then auth.uid() end where id = p_id;
+  else
+    update public.opp_notes set deleted_at = case when p_deleted then now() end, deleted_by = case when p_deleted then auth.uid() end where id = p_id;
+  end if;
+end $$;
+
+-- Contacts on a deal (any number).
+create table if not exists public.opp_contacts (
+  id uuid primary key default gen_random_uuid(),
+  opp_id uuid not null references public.opportunities(id) on delete cascade,
+  name text not null default '',
+  title text not null default '',
+  email text not null default '',
+  phone text not null default '',
+  created_by uuid references public.profiles(id) on delete set null default auth.uid(),
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  deleted_by uuid references public.profiles(id) on delete set null
+);
+create index if not exists opp_contacts_opp_idx on public.opp_contacts (opp_id, created_at);
+
+-- Bring each deal's original contact into the contacts list (runs once per deal).
+insert into public.opp_contacts (opp_id, name, title, email, phone, created_by, created_at)
+select o.id, o.contact_name, o.contact_title, o.contact_email, o.contact_phone, o.created_by, o.created_at
+from public.opportunities o
+where btrim(o.contact_name || o.contact_email || o.contact_phone) <> ''
+  and not exists (select 1 from public.opp_contacts c where c.opp_id = o.id);
+
+-- Contact changes show in the deal's history.
+create or replace function public.log_contact() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare act text; ch jsonb := '{}'::jsonb; k text;
+begin
+  if tg_op = 'INSERT' then act := 'contact_added'; ch := jsonb_build_object('name', jsonb_build_array(null, new.name));
+  elsif new.deleted_at is not null and old.deleted_at is null then act := 'contact_removed'; ch := jsonb_build_object('name', jsonb_build_array(old.name, null));
+  elsif new.deleted_at is null and old.deleted_at is not null then act := 'contact_restored'; ch := jsonb_build_object('name', jsonb_build_array(null, new.name));
+  else
+    act := 'contact_edited';
+    foreach k in array array['name','title','email','phone'] loop
+      if (to_jsonb(old) -> k) is distinct from (to_jsonb(new) -> k) then
+        ch := ch || jsonb_build_object(k, jsonb_build_array(to_jsonb(old) -> k, to_jsonb(new) -> k));
+      end if;
+    end loop;
+    if ch = '{}'::jsonb then return null; end if;
+    ch := ch || jsonb_build_object('contact', jsonb_build_array(null, new.name));
+  end if;
+  insert into public.change_log (table_name, row_id, action, changed_by, changes) values ('opportunities', new.opp_id, act, auth.uid(), ch);
+  return null;
+end $$;
+drop trigger if exists opp_contacts_history on public.opp_contacts;
+create trigger opp_contacts_history after insert or update on public.opp_contacts for each row execute function public.log_contact();
+
+alter table public.opp_contacts enable row level security;
+drop policy if exists "read contacts" on public.opp_contacts;
+create policy "read contacts" on public.opp_contacts for select to authenticated using (public.can_sell());
+drop policy if exists "add contacts" on public.opp_contacts;
+create policy "add contacts" on public.opp_contacts for insert to authenticated
+  with check (public.is_admin() or (public.is_sales() and exists (select 1 from public.opportunities o
+    where o.id = opp_contacts.opp_id and o.deleted_at is null and (o.owner_id = auth.uid() or o.created_by = auth.uid()))));
+drop policy if exists "edit contacts" on public.opp_contacts;
+create policy "edit contacts" on public.opp_contacts for update to authenticated
+  using (public.is_admin() or (public.is_sales() and exists (select 1 from public.opportunities o
+    where o.id = opp_contacts.opp_id and o.deleted_at is null and (o.owner_id = auth.uid() or o.created_by = auth.uid()))))
+  with check (public.is_admin() or (public.is_sales() and exists (select 1 from public.opportunities o
+    where o.id = opp_contacts.opp_id and (o.owner_id = auth.uid() or o.created_by = auth.uid()))));
+
 -- ---------- Access for signed-in users (row level security still applies) ----------
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
@@ -793,8 +902,9 @@ revoke execute on function public.import_leads(jsonb, uuid, text) from anon;
 revoke execute on function public.set_member(uuid, text, boolean) from anon;
 revoke execute on function public.set_my_name(text) from anon;
 revoke execute on function public.storage_used() from anon;
-revoke execute on function public.convert_lead(uuid, uuid, text, text, text, text, text, numeric, date, text, text, text[]) from anon;
+revoke execute on function public.convert_lead(uuid, uuid, text, text, text, text, text, numeric, date, timestamptz, text, text[]) from anon;
 revoke execute on function public.unconvert_lead(uuid) from anon;
+revoke execute on function public.set_note_deleted(text, bigint, boolean) from anon;
 revoke execute on function public.ensure_client(text, jsonb) from anon;
 revoke execute on function public.ensure_agency(text) from anon;
 

@@ -7,12 +7,12 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233563e9'/%3E%3Cpath d='M6 16h3l3-7 5 14 4-9 2 2h3' stroke='white' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
 <style>
 /* Layout: light app. White top bar (logo, tabs, search, person); full-width content below.
-   Calling screen reads left to right: queue list | lead header + quick facts | details · log call · notes. */
+   Lead page reads left to right: lead header + quick facts | details · log call · notes. */
 :root{
   --bg:#f5f7fb; --surface:#ffffff; --surface-2:#f6f8fc; --surface-3:#eef2f8;
   --fg:#1a2233; --muted:#667085; --faint:#98a2b3; --line:#e7ebf2; --line-2:#d9dfe9;
@@ -21,19 +21,20 @@
   --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.05);
   --shadow-lg:0 12px 32px rgba(16,24,40,.12);
   --sans:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --mono:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --r:12px; color-scheme:light;
 }
 /* Status colors: --c main, --t tint, --ink text */
-.s-new{--c:#3b82f6;--t:#eaf2ff;--ink:#1d4ed8}
-.s-call1{--c:#0ea5b7;--t:#e4f7f9;--ink:#0e7490}
-.s-call2{--c:#7c5cf0;--t:#f0ecfe;--ink:#5b3fd1}
-.s-call3{--c:#c04fd8;--t:#fbecfd;--ink:#9b2fb3}
-.s-gatekeeper{--c:#f59e0b;--t:#fff4e0;--ink:#b45309}
-.s-appointment{--c:#16a34a;--t:#e6f7ec;--ink:#15803d}
-.s-dead{--c:#98a2b3;--t:#f1f3f6;--ink:#475467}
-.s-bad_info{--c:#ef4444;--t:#feecec;--ink:#c0352a}
+.s-new{--c:#2563eb;--t:#e3ecff;--ink:#1d4ed8}
+.s-call1{--c:#0891b2;--t:#dcf3f8;--ink:#0e6f87}
+.s-call2{--c:#7c3aed;--t:#efe7ff;--ink:#6025d0}
+.s-call3{--c:#db2777;--t:#fde5f0;--ink:#b0185d}
+.s-gatekeeper{--c:#f59e0b;--t:#fff1d6;--ink:#92400e;--on:#3b2300}
+.s-appointment{--c:#16a34a;--t:#ddf5e5;--ink:#11803a}
+.s-dead{--c:#6b7280;--t:#eceef1;--ink:#4b5563}
+.s-bad_info{--c:#dc2626;--t:#fde4e4;--ink:#b91c1c}
 .s-none{--c:#98a2b3;--t:#f1f3f6;--ink:#475467}
+.s-converted{--c:#0f172a;--t:#e2e6ee;--ink:#0f172a}
 
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -67,9 +68,9 @@ label.f input,label.f select,label.f textarea{color:var(--fg);font-weight:400}
 .eyebrow{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
 .muted{color:var(--muted)}
 .stat{font-size:12.5px;color:var(--muted)}
-.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:99px;padding:3px 10px 3px 8px;white-space:nowrap;background:var(--t);color:var(--ink)}
-.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.mono{font-weight:600;letter-spacing:.01em}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;border-radius:99px;padding:3px 11px 3px 9px;white-space:nowrap;background:var(--c);color:var(--on,#fff);letter-spacing:.01em;box-shadow:0 1px 2px rgba(16,24,40,.12)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.75}
 .av{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-size:10.5px;font-weight:800;color:#fff;background:var(--avc,#98a2b3);flex:none;vertical-align:middle;letter-spacing:.02em}
 .person{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
 .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);min-width:0}
@@ -135,38 +136,25 @@ label.f input,label.f select,label.f textarea{color:var(--fg);font-weight:400}
 .mini span{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:6px 11px;font-size:12.5px;color:var(--muted);box-shadow:var(--shadow)}
 .mini b{color:var(--fg);font-size:14px;margin-right:4px;font-variant-numeric:tabular-nums}
 
-/* ---------- Calling workspace ---------- */
-.work{display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px;align-items:start}
-.work.listoff{grid-template-columns:minmax(0,1fr)}
-.work.listoff .qpanel{display:none}
-@media (max-width:980px){.work{grid-template-columns:minmax(0,1fr)}}
-.qpanel{position:sticky;top:76px}
-@media (max-width:980px){.qpanel{position:static}}
-.qitems{max-height:calc(100vh - 190px);min-height:200px;overflow:auto;padding-bottom:6px}
-.qgroup{padding:12px 14px 5px;display:flex;justify-content:space-between}
-.qitem{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;width:100%;text-align:left;background:none;border:0;border-left:3px solid var(--c);padding:9px 14px 9px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
-.qitem:hover{background:var(--surface-2)}
-.qitem[aria-current="true"]{background:var(--accent-soft)}
-.qitem b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.qitem .sub{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.qitem .when{font-size:11.5px;color:var(--muted);text-align:right;white-space:nowrap}
+/* ---------- Lead page ---------- */
 .lead{display:grid;gap:14px;min-width:0}
-.lh{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 18px;border-left:5px solid var(--c);border-radius:var(--r) var(--r) 0 0}
+.lh{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 18px;border-left:7px solid var(--c);border-radius:var(--r) var(--r) 0 0}
 .lh h2{font-size:23px;line-height:1.15}
-.lh .who{font-size:14.5px;margin-top:4px}
+.lh .who{font-size:15px;margin-top:4px}
+.lh .who b,td .cn,dd .cn{font-weight:800;color:var(--fg)}
 .lh .metas{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;font-size:12.5px;color:var(--muted)}
 .lh .metas b{color:var(--fg);font-weight:600}
 .strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line);overflow:hidden;border-radius:0 0 var(--r) var(--r)}
 .strip > div{padding:11px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 -1px -1px 0;min-width:0}
 .strip .k{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
 .strip .v{margin-top:2px;font-weight:600;overflow-wrap:anywhere;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.strip .v.num{font:500 15px/1.3 var(--mono);white-space:nowrap}
+.strip .v.num{font-size:15.5px;font-weight:700;letter-spacing:.01em;white-space:nowrap}
 @media (max-width:760px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .strip .v .none{color:var(--faint);font-weight:500;font-family:var(--sans);font-size:13.5px}
 .copy{border:1px solid var(--line-2);background:var(--surface);border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;font-family:var(--sans)}
 .copy:hover{color:var(--accent);border-color:var(--accent)}
-.cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"details log notes";gap:14px;align-items:start}
-@media (max-width:1320px){.cols{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"log notes" "details details"}}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr);grid-template-areas:"details log notes";gap:14px;align-items:start}
+@media (max-width:1320px){.cols{grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);grid-template-areas:"log notes" "details details"}}
 @media (max-width:760px){.cols{grid-template-columns:minmax(0,1fr);grid-template-areas:"log" "notes" "details"}}
 #pdetails{grid-area:details}#plog{grid-area:log}#pnotes{grid-area:notes}
 dl.kv{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 14px;font-size:13.5px}
@@ -177,15 +165,25 @@ dl.kv .sep{grid-column:1/-1;border-top:1px dashed var(--line);margin:3px 0}
 .editgrid .wide{grid-column:1/-1}
 .outcomes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .outcome{border:1px solid var(--line-2);background:var(--surface);border-radius:10px;padding:10px 11px;text-align:left;cursor:pointer;display:flex;align-items:center;gap:9px;font-weight:600;font-size:13.5px}
-.outcome i{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.outcome i{width:12px;height:12px;border-radius:50%;background:var(--c);flex:none}
 .outcome:hover{border-color:var(--c);background:var(--t)}
-.outcome[aria-pressed="true"]{border-color:var(--c);background:var(--t);color:var(--ink);box-shadow:inset 0 0 0 1px var(--c)}
+.outcome[aria-pressed="true"]{border-color:var(--c);background:var(--c);color:var(--on,#fff);box-shadow:inset 0 0 0 1px var(--c)}
+.outcome[aria-pressed="true"] i{background:currentColor}
+.outcome[aria-pressed="true"] em{color:inherit}
 .outcome em{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--ink);opacity:.75;margin-left:auto}
 .quick{display:flex;gap:6px;flex-wrap:wrap}
 .savebar{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--line);background:var(--surface-2);border-radius:0 0 var(--r) var(--r)}
 .composer{display:grid;gap:8px}
 .composer .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-.tl{list-style:none;margin:0;padding:0;display:grid;max-height:560px;overflow:auto}
+.tl{list-style:none;margin:0;padding:0;display:grid;max-height:calc(100vh - 160px);min-height:200px;overflow:auto}
+#pnotes textarea,#onotes textarea{min-height:130px;font-size:14px}
+.tl .body{font-size:14px}
+.tl li.gone .body{color:var(--faint);text-decoration:line-through}
+.tl li.gone .dot{opacity:.5}
+.tl .gonetag{font-size:11px;font-weight:700;color:var(--bad);background:#fdecec;border-radius:6px;padding:1px 7px}
+.tl .undo{border:1px solid var(--line-2);background:var(--surface);border-radius:6px;padding:1px 8px;font-size:11.5px;font-weight:700;color:var(--accent);cursor:pointer;margin-left:auto}
+.tl .undo:hover{border-color:var(--accent)}
+.tl .undo + .x{margin-left:6px}
 .tl li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:0 10px;padding:12px 0;border-top:1px solid var(--line)}
 .tl li:first-child{border-top:0}
 .tl .dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--surface-3);color:var(--muted)}
@@ -195,7 +193,7 @@ dl.kv .sep{grid-column:1/-1;border-top:1px dashed var(--line);margin:3px 0}
 .tl .head{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:12.5px;color:var(--muted)}
 .tl .head b{color:var(--fg);font-weight:700}
 .tl .date{font-weight:700;color:var(--fg)}
-.tl .body{margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13.5px}
+.tl .body{margin-top:4px;white-space:pre-wrap;overflow-wrap:anywhere}
 .tl .x{margin-left:auto;border:0;background:none;color:var(--faint);cursor:pointer;font-size:12px;padding:0 2px}
 .tl .x:hover{color:var(--bad)}
 
@@ -205,8 +203,10 @@ dl.kv .sep{grid-column:1/-1;border-top:1px dashed var(--line);margin:3px 0}
 .chip i{width:9px;height:9px;border-radius:50%;background:var(--c)}
 .chip b{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
 .chip:hover{border-color:var(--c)}
-.chip[aria-pressed="true"]{border-color:var(--c);background:var(--t);color:var(--ink)}
-.chip[aria-pressed="true"] b{color:var(--ink)}
+.chip[aria-pressed="true"]{border-color:var(--c);background:var(--c);color:var(--on,#fff)}
+.chip[aria-pressed="true"] b{color:inherit;opacity:.85}
+.chip[aria-pressed="true"] i{background:currentColor}
+.chip i{width:11px;height:11px}
 .chip.all{--c:#1a2233;--t:var(--surface-3);--ink:#1a2233}
 .chip.trash{--c:#667085;--t:#eef1f5;--ink:#344054}
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
@@ -221,7 +221,8 @@ th,td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line);whit
 th{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);background:var(--surface-2)}
 tbody tr.click{cursor:pointer}
 tbody tr.click:hover td{background:var(--surface-2)}
-tbody tr.lead-row td:first-child{box-shadow:inset 4px 0 0 var(--c)}
+tbody tr.lead-row td:first-child{box-shadow:inset 6px 0 0 var(--c)}
+tbody tr.lead-row td:first-child{padding-left:20px}
 tr.grp td{background:var(--surface-3);font-size:12px;font-weight:700;color:var(--muted);padding:7px 14px;letter-spacing:.02em}
 tr.grp td span{color:var(--faint);font-weight:600;margin-left:6px}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
@@ -251,14 +252,12 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
 
-.s-converted{--c:#1e3a8a;--t:#e3e9fb;--ink:#1e3a8a}
 /* Opportunity stages */
-.g-prospecting{--c:#3b82f6;--t:#eaf2ff;--ink:#1d4ed8}
-.g-proposal{--c:#7c5cf0;--t:#f0ecfe;--ink:#5b3fd1}
-.g-negotiation{--c:#f59e0b;--t:#fff4e0;--ink:#b45309}
-.g-nurturing{--c:#0ea5b7;--t:#e4f7f9;--ink:#0e7490}
-.g-closed_won{--c:#16a34a;--t:#e6f7ec;--ink:#15803d}
-.g-closed_lost{--c:#98a2b3;--t:#f1f3f6;--ink:#475467}
+.g-prospecting{--c:#2563eb;--t:#e3ecff;--ink:#1d4ed8}
+.g-proposal{--c:#7c3aed;--t:#efe7ff;--ink:#6025d0}
+.g-nurturing{--c:#0891b2;--t:#dcf3f8;--ink:#0e6f87}
+.g-closed_won{--c:#16a34a;--t:#ddf5e5;--ink:#11803a}
+.g-closed_lost{--c:#6b7280;--t:#eceef1;--ink:#4b5563}
 .role.salesperson{background:#e6f7ec;color:#15803d}
 .tag2{display:inline-flex;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;background:var(--surface-3);color:var(--muted);white-space:nowrap}
 
@@ -283,7 +282,7 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 /* Opportunity detail */
 .oh{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:16px 18px;border-left:5px solid var(--c);border-radius:var(--r) var(--r) 0 0}
 .oh h2{font-size:23px;line-height:1.15}
-.path{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;padding:12px 16px;border-top:1px solid var(--line)}
+.path{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;padding:12px 16px;border-top:1px solid var(--line)}
 @media (max-width:760px){.path{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .path button{border:0;background:var(--surface-3);color:var(--muted);font-weight:700;font-size:12.5px;padding:9px 6px;cursor:pointer;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%,10px 50%)}
 .path button:first-child{clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%);border-radius:8px 0 0 8px}
@@ -299,6 +298,17 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 .chg span b{font-weight:600}
 .chg s{color:var(--faint)}
 .linkbtn{border:0;background:none;color:var(--accent);font-weight:700;cursor:pointer;padding:0}
+.btn.apptbtn{padding:11px 20px;font-size:15px;font-weight:800;background:#16a34a;border-color:#16a34a;color:#fff}
+.btn.apptbtn:hover{background:#15803d;border-color:#15803d}
+.leadnav{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cts{display:grid;gap:8px}
+.ct{display:grid;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);font-size:13.5px}
+.ct .ctop{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.ct .ctop b{font-weight:800;font-size:14px}
+.ct .cl{overflow-wrap:anywhere}
+.ct.gone{opacity:.65}
+.ct.gone b{text-decoration:line-through}
+.overdue{color:var(--bad);font-weight:700}
 .convbox{display:grid;gap:8px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:14px;color:#1e3a8a;font-size:13.5px}
 
 /* Reports */
@@ -364,8 +374,7 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
   <header class="top"><div class="topin">
     <div class="logo"><span class="mark"><svg viewBox="0 0 24 24"><path d="M4 12h2l2-5 4 10 3-7 2 2h3"/></svg></span><div><b>Dial Desk</b><small>Outbound CRM</small></div></div>
     <nav class="tabs" role="tablist">
-      <button role="tab" data-tab="queue" aria-selected="true" data-call><svg class="ic" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>Calling<span class="count" id="navcount" hidden></span></button>
-      <button role="tab" data-tab="board" aria-selected="false"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>Lead board</button>
+      <button role="tab" data-tab="board" aria-selected="true"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>Leads</button>
       <button role="tab" data-tab="opps" aria-selected="false" data-sell hidden><svg class="ic" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Opportunities</button>
       <button role="tab" data-tab="reports" aria-selected="false" data-sell hidden><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
       <button role="tab" data-tab="import" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 15v4h14v-4"/></svg>Import</button>
@@ -384,26 +393,19 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
   <main class="page">
     <div id="banner"></div>
 
-    <!-- Calling -->
-    <section id="tab-queue" class="page">
+    <!-- One lead -->
+    <section id="tab-lead" class="page" hidden>
       <div class="pagehead">
-        <div><h1 id="qtitle">Calling</h1><p id="qsub">Callbacks due first, then new leads, then leads to call again.</p></div>
-        <button class="btn" id="backboard" hidden>← Lead board</button>
-        <div class="actions" data-call><div class="mini" id="mykpis"></div><button class="btn" id="togglelist"></button><button class="btn primary" id="pull"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Pull 25 leads</button></div>
+        <div class="leadnav"><button class="btn" id="backboard">← Leads</button><button class="btn small" id="prevlead" title="Previous lead">‹ Previous</button><button class="btn small" id="nextlead" title="Next lead">Next ›</button><span class="stat" id="leadpos"></span></div>
+        <div class="actions" id="leadacts"></div>
       </div>
-      <div class="work" id="work">
-        <aside class="panel qpanel">
-          <div class="panel-h"><h2>My queue</h2><span class="stat" id="qcount"></span></div>
-          <div class="qitems" id="qitems"><div class="empty">Loading your leads…</div></div>
-        </aside>
-        <div class="lead" id="lead"><div class="panel empty"><h3>No lead selected</h3>Pick a lead from your queue, search for one, or pull new leads.</div></div>
-      </div>
+      <div class="lead" id="lead"><div class="panel empty"><h3>No lead selected</h3>Pick a lead from Leads or search for one.</div></div>
     </section>
 
-    <!-- Lead board -->
-    <section id="tab-board" class="page" hidden>
-      <div class="pagehead"><div><h1>Lead board</h1><p id="boardsub">Every lead, color-coded by status.</p></div>
-        <div class="actions"><button class="btn" id="exportbtn" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
+    <!-- Leads -->
+    <section id="tab-board" class="page">
+      <div class="pagehead"><div><h1>Leads</h1><p id="boardsub">Every lead, color-coded by status.</p></div>
+        <div class="actions"><div class="mini" id="mykpis" data-call></div><button class="btn" id="exportbtn" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
       <div class="chips" id="chips"></div>
       <div class="panel">
         <div class="toolbar">
@@ -445,7 +447,7 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
             <select id="oowner" aria-label="Owner"></select>
             <select id="otype" aria-label="Type"><option value="">All types</option><option value="first_deal">1st Deal</option><option value="returning">Returning Client</option></select>
             <select id="osort" aria-label="Sort">
-              <option value="close">Sort: Close date, soonest</option>
+              <option value="follow">Sort: Follow up, soonest</option>
               <option value="amount">Sort: Amount, highest</option>
               <option value="updated">Sort: Recently edited</option>
               <option value="created">Sort: Newest</option>
@@ -453,7 +455,7 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
             </select>
           </div>
           <div class="tablebox"><table>
-            <thead><tr><th>Deal Name</th><th>Client Name</th><th>Agency</th><th>Stage</th><th class="num">Amount</th><th class="num">Prob.</th><th>Close Date</th><th>Owner</th><th>Type</th><th>Next Step</th><th>Last edited</th></tr></thead>
+            <thead><tr><th>Deal Name</th><th>Client Name</th><th>Agency</th><th>Stage</th><th class="num">Amount</th><th class="num">Prob.</th><th>Follow Up</th><th>Owner</th><th>Type</th><th>Last edited</th></tr></thead>
             <tbody id="obody"></tbody>
           </table></div>
           <div class="boardfoot"><span class="stat" id="ofoot"></span></div>
@@ -469,9 +471,9 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
       <div class="kpis" id="rkpis"></div>
       <div class="panel">
         <div class="filters">
-          <label class="f">Close date<select id="rdate">
+          <label class="f">Created<select id="rdate">
             <option value="all">All time</option><option value="this_month">This month</option><option value="last_month">Last month</option>
-            <option value="this_q">This quarter</option><option value="last_q">Last quarter</option><option value="this_year">This year</option><option value="next90">Next 90 days</option></select></label>
+            <option value="this_q">This quarter</option><option value="last_q">Last quarter</option><option value="this_year">This year</option><option value="last90">Last 90 days</option></select></label>
           <label class="f">Stage<select id="rstage"><option value="">All stages</option><option value="open">Open deals</option></select></label>
           <label class="f">Owner<select id="rowner"></select></label>
           <label class="f">Type<select id="rtype"><option value="">All types</option><option value="first_deal">1st Deal</option><option value="returning">Returning Client</option></select></label>
@@ -574,8 +576,7 @@ const PAGE=100;
 
 /* ===================== State ===================== */
 let me=null; const people={};
-let tab='queue', queue=[], pool=0, cur=null, curCalls=[], curNotes=[], curHist=[], draft=null, editing=false, period='today';
-let listOff=false; try{listOff=localStorage.getItem('dd.listoff')==='1'}catch{}
+let tab='board', cur=null, curCalls=[], curNotes=[], curHist=[], draft=null, editing=false, period='today';
 const board={status:'',owner:'',search:'',sort:'recent',page:0,rows:[],total:0,counts:{},trashN:0,trash:false,sel:new Set(),all:false};
 let imp=null;
 
@@ -587,7 +588,6 @@ const isAdmin=()=>me&&(me.role==='owner'||me.role==='admin');
 const isOwner=()=>me&&me.role==='owner';
 const isSales=()=>me&&me.role==='salesperson';
 const canSell=()=>!!me&&['owner','admin','salesperson'].includes(me.role);
-const showsQueue=()=>!isSales();
 const roleLabel=r=>({owner:'Owner',admin:'Admin',salesperson:'Salesperson',caller:'Caller'}[r]||r);
 const canEditLead=l=>!!l&&!l.deleted_at&&(isAdmin()||l.owner_id===me.id||(isSales()&&l.sales_owner_id===me.id));
 const canConvert=l=>!!l&&!l.deleted_at&&l.status!=='converted'&&(canSell()||l.owner_id===me.id);
@@ -665,7 +665,7 @@ async function enter(){
     $('#mename').textContent=p.full_name||p.email;
     const r=$('#merole');r.textContent=roleLabel(p.role);r.className='role '+p.role;
     $('#meav').innerHTML=avatar(p.id);
-    applyRole();setTab(isSales()&&tab==='queue'?'opps':tab);
+    applyRole();setTab(isSales()&&tab==='board'&&!cur?'opps':tab);
   } finally{entering=false}
 }
 sb.auth.onAuthStateChange((ev)=>{
@@ -677,16 +677,14 @@ sb.auth.onAuthStateChange((ev)=>{
 async function loadPeople(){const {data}=await sb.from('profiles').select('id,email,full_name,role,active,created_at').order('created_at');(data||[]).forEach(p=>people[p.id]=p)}
 
 /* ===================== Navigation ===================== */
-const TABS=['queue','board','opps','reports','import','team'];
-function allowed(t){if(t==='import'||t==='team')return isAdmin();if(t==='opps'||t==='reports')return canSell();if(t==='queue')return showsQueue();return true}
-function showTab(t){tab=t;document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===t));TABS.forEach(k=>$('#tab-'+k).hidden=k!==t)}
-function setTab(t){if(!allowed(t))t=isSales()?'opps':'queue';showTab(t);
-  if(t==='queue')loadQueue();else if(t==='board')loadBoard();else if(t==='team')loadTeam();else if(t==='opps')loadOpps();else if(t==='reports')loadReports()}
+const TABS=['lead','board','opps','reports','import','team'];
+function allowed(t){if(t==='import'||t==='team')return isAdmin();if(t==='opps'||t==='reports')return canSell();if(t==='lead')return !!cur;return true}
+function showTab(t){tab=t;const nav=t==='lead'?'board':t;document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===nav));TABS.forEach(k=>$('#tab-'+k).hidden=k!==t)}
+function setTab(t){if(!allowed(t))t=isSales()?'opps':'board';showTab(t);
+  if(t==='lead')selectLead(cur.id);else if(t==='board')loadBoard();else if(t==='team')loadTeam();else if(t==='opps')loadOpps();else if(t==='reports')loadReports()}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 function applyRole(){const a=isAdmin(),sl=canSell();document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=!a);
   document.querySelectorAll('[data-sell]').forEach(b=>b.hidden=!sl);document.querySelectorAll('[data-call]').forEach(b=>b.hidden=isSales());
-  $('#backboard').hidden=!isSales();$('#qtitle').textContent=isSales()?'Lead':'Calling';
-  $('#qsub').textContent=isSales()?'Lead details, notes and history.':'Callbacks due first, then new leads, then leads to call again.';
   $('#boardsub').textContent=sl?'Every lead, color-coded by status.':'Your leads, color-coded by status.';
   $('#invrole').querySelector('[value=admin]').hidden=!isOwner();}
 
@@ -716,69 +714,43 @@ function renderG(error){const box=$('#gres');box.hidden=false;
   box.querySelectorAll('button').forEach(b=>b.onmousedown=e=>{e.preventDefault();pickG(gRows[+b.dataset.i])})}
 function pickG(r){$('#gres').hidden=true;$('#gq').value='';$('#gq').blur();gRows=[];if(r.kind==='opp')openOpp(r.id);else openLead(r.id)}
 
-/* ===================== Calling: queue ===================== */
-function groups(){
-  const now=Date.now();const due=[],fresh=[],retry=[],later=[];
-  for(const l of queue){const cb=l.callback_at?new Date(l.callback_at).getTime():0;
-    if(cb&&cb>now)later.push(l);else if(cb)due.push(l);else if(l.status==='new')fresh.push(l);else retry.push(l)}
-  const by=k=>(a,b)=>(a[k]||'').localeCompare(b[k]||'');
-  due.sort(by('callback_at'));fresh.sort(by('created_at'));retry.sort(by('last_call_at'));later.sort(by('callback_at'));
-  return [['Callbacks due',due],['New leads',fresh],['Call again',retry],['Callbacks scheduled',later]];
-}
-const order=()=>groups().flatMap(g=>g[1]).map(l=>l.id);
-async function loadQueue(opts={}){
-  applyListToggle();if(!showsQueue())return;
-  const [q,pc,st]=await Promise.all([
-    sb.from('leads').select('id,company,first_name,last_name,title,status,callback_at,last_call_at,created_at').eq('owner_id',me.id).in('status',OPEN).is('deleted_at',null).order('created_at').limit(2000),
-    sb.rpc('unassigned_count'),
-    sb.rpc('team_stats',{p_since:new Date(new Date().setHours(0,0,0,0)).toISOString()})]);
-  if(q.error){$('#qitems').innerHTML=`<div class="empty"><h3>Couldn’t load your leads</h3>${esc(friendly(q.error))}</div>`;return}
-  queue=q.data||[];pool=pc.data||0;
-  const mine=(st.data||[]).find(r=>r.caller_id===me.id)||{calls:0,appointments:0};const g=groups();const total=queue.length;
-  $('#mykpis').innerHTML=[['Calls today',mine.calls],['Appts today',mine.appointments],['Callbacks due',g[0][1].length]].map(([k,v])=>`<span><b>${Number(v)||0}</b>${k}</span>`).join('');
-  $('#navcount').hidden=!total;$('#navcount').textContent=total;$('#qcount').textContent=total?`${total} lead${total>1?'s':''}`:'';
-  $('#pull').disabled=!pool;$('#pull').title=pool?`${pool.toLocaleString()} unassigned leads available`:'No unassigned leads right now';
-  renderQueue();
-  if(!opts.noAuto&&!cur&&queue.length)selectLead(order()[0]);
-}
-function renderQueue(){
-  const box=$('#qitems');const gs=groups().filter(g=>g[1].length);
-  if(!gs.length){box.innerHTML=`<div class="empty"><h3>Your queue is empty</h3>${pool?`${pool.toLocaleString()} unassigned lead${pool>1?'s are':' is'} waiting. Click <b>Pull 25 leads</b>.`:'No unassigned leads left. Ask an admin to import or assign more.'}</div>`;return}
-  box.innerHTML=gs.map(([label,ls])=>`<div class="qgroup"><span class="eyebrow">${label}</span><span class="eyebrow">${ls.length}</span></div>`+
-    ls.map(l=>{const when=l.callback_at?fmtWhen(l.callback_at):l.last_call_at?fmtWhen(l.last_call_at):'';
-      return `<button class="qitem ${sc(l.status)}" data-id="${l.id}" aria-current="${l.id===cur?.id}"><b>${esc(l.company||contactName(l)||'Unnamed lead')}</b><span class="when">${esc(when)}</span><span class="sub">${esc(contactName(l))}${l.title?' · '+esc(l.title):''}</span><span>${pill(l.status)}</span></button>`}).join('')).join('');
-  box.querySelectorAll('.qitem').forEach(b=>b.onclick=()=>selectLead(b.dataset.id));
-}
-function applyListToggle(){$('#work').classList.toggle('listoff',listOff||isSales());$('#togglelist').textContent=listOff?'Show queue':'Hide queue'}
-$('#togglelist').onclick=()=>{listOff=!listOff;try{localStorage.setItem('dd.listoff',listOff?'1':'0')}catch{};applyListToggle()};
-$('#pull').onclick=async()=>{$('#pull').disabled=true;const {data,error}=await sb.rpc('pull_leads',{p_n:25});
-  if(error)toast(friendly(error));else toast(data?`Pulled ${data} lead${data>1?'s':''} into your queue`:'No unassigned leads to pull');loadQueue()};
-
-/* ===================== Calling: lead workspace ===================== */
-function openLead(id){if(tab!=='queue'){showTab('queue');loadQueue({noAuto:true})}window.scrollTo({top:0});selectLead(id)}
+/* ===================== Lead page ===================== */
+function openLead(id){showTab('lead');window.scrollTo({top:0});selectLead(id)}
+// Previous / Next follow the order of the Leads list.
+const leadOrder=()=>board.trash?[]:board.rows.map(l=>l.id);
+function neighbor(id,step){const o=leadOrder();const i=o.indexOf(id);if(i<0)return null;return o[i+step]||null}
+function renderLeadNav(){const o=leadOrder();const i=cur?o.indexOf(cur.id):-1;
+  $('#prevlead').disabled=!cur||!neighbor(cur.id,-1);$('#nextlead').disabled=!cur||!neighbor(cur.id,1);
+  $('#leadpos').textContent=i>=0?`Lead ${(board.page*PAGE+i+1).toLocaleString()} of ${board.total.toLocaleString()}`:'';
+  const acts=$('#leadacts');const l=cur;
+  if(l&&canConvert(l)){const caller=!canSell();
+    acts.innerHTML=`<button class="btn primary ${caller?'apptbtn':''}" id="convbtn">${caller?'<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>Appointment Set!':'<svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Convert lead'}</button>`;
+    $('#convbtn').onclick=openConvert}
+  else acts.innerHTML=''}
+$('#prevlead').onclick=()=>{const id=cur&&neighbor(cur.id,-1);if(id){window.scrollTo({top:0});selectLead(id)}};
+$('#nextlead').onclick=()=>{const id=cur&&neighbor(cur.id,1);if(id){window.scrollTo({top:0});selectLead(id)}};
 let leadSeq=0;
 async function selectLead(id){
   const seq=++leadSeq;
   const [l,c,n,h]=await Promise.all([
     sb.from('leads').select('*').eq('id',id).maybeSingle(),
     sb.from('calls').select('id,lead_id,caller_id,status,note,created_at').eq('lead_id',id).order('created_at',{ascending:false}).limit(100),
-    sb.from('lead_notes').select('*').eq('lead_id',id).order('created_at',{ascending:false}).limit(200),
+    sb.from('lead_notes').select('*').eq('lead_id',id).order('created_at',{ascending:false}).limit(300),
     sb.from('change_log').select('*').eq('row_id',id).order('created_at',{ascending:false}).limit(200)]);
   if(seq!==leadSeq)return;
   if(!l.data){toast('That lead is no longer available');return}
   cur=l.data;curCalls=c.data||[];curNotes=n.data||[];curHist=h.data||[];editing=false;
   draft={status:suggest(cur),note:'',callbackAt:'',apptAt:'',apptRep:'',noteText:'',tl:draft&&draft.leadId===id?draft.tl:'all',leadId:id};
-  renderQueue();renderLead();
-  if(window.innerWidth<980)$('#lead').scrollIntoView({behavior:'smooth',block:'start'});
+  renderLead();
 }
 function renderLead(){
   const box=$('#lead');const l=cur;
-  if(!l){box.innerHTML=`<div class="panel empty"><h3>No lead selected</h3>Pick a lead from your queue, search for one, or pull new leads.</div>`;return}
+  if(!l){box.innerHTML=`<div class="panel empty"><h3>No lead selected</h3>Pick a lead from Leads or search for one.</div>`;renderLeadNav();return}
   box.innerHTML=`${l.deleted_at?`<div class="banner"><span>This lead is in the Trash (moved ${esc(fmtWhen(l.deleted_at))}${l.deleted_by?' by '+esc(who(l.deleted_by)):''}).</span>${isAdmin()?'<button class="btn small" id="restore1">Restore lead</button>':''}</div>`:''}
     <div class="panel" id="lhead"></div>
     <div class="cols"><div class="panel" id="pdetails"></div><div class="panel" id="plog"></div><div class="panel" id="pnotes"></div></div>`;
   if(l.deleted_at&&isAdmin())$('#restore1').onclick=async()=>{const {error}=await sb.from('leads').update({deleted_at:null,deleted_by:null}).eq('id',l.id);if(error)return toast(friendly(error));toast('Lead restored');selectLead(l.id)};
-  renderHead();renderDetails();renderLog();renderNotes();
+  renderHead();renderDetails();renderLog();renderNotes();renderLeadNav();
 }
 function renderHead(){
   const l=cur;const loc=[l.city,l.state].filter(Boolean).join(', ');const wu=webUrl(l.website);
@@ -789,14 +761,13 @@ function renderHead(){
   $('#lhead').className='panel '+sc(l.status);
   $('#lhead').innerHTML=`<div class="lh">
       <div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(l.company||'Unnamed company')}</h2>${pill(l.status)}</div>
-        <div class="who">${esc(contactName(l)||'No contact name')}${l.title?` <span class="muted">· ${esc(l.title)}</span>`:''}</div></div>
+        <div class="who">${contactName(l)?`<b>${esc(contactName(l))}</b>`:'<span class="muted">No contact name</span>'}${l.title?` <span class="muted">· ${esc(l.title)}</span>`:''}</div></div>
       <div class="metas">
         <span>Last contact <b>${l.last_call_at?esc(fmtFull(l.last_call_at)):'Never'}</b>${lastCall&&l.last_call_at?' by '+esc(who(lastCall.caller_id)):''}</span>
         <span>Calls <b>${l.attempts||0}</b></span>
         ${l.status==='appointment'&&l.appt_at?`<span>Appointment <b>${esc(fmtFull(l.appt_at))}</b>${l.appt_rep?' with '+esc(l.appt_rep):''}</span>`:l.callback_at?`<span>Callback <b>${esc(fmtFull(l.callback_at))}</b></span>`:''}
-        <span>${l.owner_id?personCell(l.owner_id):'<span class="muted">Unassigned</span>'}</span>
+        ${canSell()?`<span>${l.owner_id?personCell(l.owner_id):'<span class="muted">Unassigned</span>'}</span>`:''}
         ${l.updated_by?`<span>Last edited <b>${esc(fmtWhen(l.updated_at))}</b> by ${esc(nameOf(l.updated_by))}</span>`:''}
-        ${canConvert(l)?'<button class="btn primary small" id="convbtn"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Convert lead</button>':''}
       </div></div>
     <div class="strip">
       ${cell('Direct phone',ph(l.phone),'num')}
@@ -809,7 +780,6 @@ function renderHead(){
       ${cell('Industry',esc(l.industry))}
     </div>`;
   $('#lhead').querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(b.dataset.copy,b));
-  if($('#convbtn'))$('#convbtn').onclick=openConvert;
 }
 function renderDetails(){
   const p=$('#pdetails');const l=cur;const canEdit=canEditLead(l);
@@ -827,7 +797,7 @@ function renderDetails(){
       ${row('Website',wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(l.website)}</a>`:esc(l.website))}
       ${row('Address',esc([l.address,[l.city,[l.state,l.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')].filter(Boolean).join(', ')))}
       <div class="sep"></div>
-      ${row('Contact',esc(contactName(l)))}${row('Title',esc(l.title))}
+      ${row('Contact',contactName(l)?`<span class="cn">${esc(contactName(l))}</span>`:'')}${row('Title',esc(l.title))}
       ${row('Direct phone',l.phone?`<span class="mono">${esc(fmtPhone(l.phone))}</span>`:'')}${row('Mobile',l.mobile?`<span class="mono">${esc(fmtPhone(l.mobile))}</span>`:'')}${row('Company phone',l.company_phone?`<span class="mono">${esc(fmtPhone(l.company_phone))}</span>`:'')}
       ${row('Email',esc(l.email))}${row('LinkedIn',li?`<a href="${esc(li)}" target="_blank" rel="noopener">Profile</a>`:esc(l.linkedin))}
       <div class="sep"></div>
@@ -841,12 +811,13 @@ async function saveEdit(e){
   for(const [k] of EDIT_FIELDS){const v=String(fd.get(k)||'').trim();if(v!==(cur[k]||'')){patch[k]=v;prev[k]=cur[k]||''}}
   if(!Object.keys(patch).length){editing=false;renderDetails();return}
   const {error}=await sb.from('leads').update(patch).eq('id',id);if(error)return toast(friendly(error));
-  Object.assign(cur,patch);editing=false;renderHead();renderDetails();refreshQueueRow(id,patch);
+  Object.assign(cur,patch);editing=false;renderHead();renderDetails();refreshBoardRow(id,patch);
   const n=Object.keys(patch).length;
   toast(`Saved ${n} change${n>1?'s':''}`,{undo:async()=>{const {error}=await sb.from('leads').update(prev).eq('id',id);if(error)throw error;
-    if(cur?.id===id){Object.assign(cur,prev);renderHead();renderDetails()}refreshQueueRow(id,prev);toast('Changes undone')}});
+    await afterLeadUndo(id,prev);toast('Changes undone')}});
 }
-function refreshQueueRow(id,patch){const q=queue.find(x=>x.id===id);if(q){Object.assign(q,patch);renderQueue()}}
+function refreshBoardRow(id,patch){const q=board.rows.find(x=>x.id===id);if(q)Object.assign(q,patch)}
+async function afterLeadUndo(id,prev){refreshBoardRow(id,prev);if(cur?.id===id)await selectLead(id)}
 function renderLog(){
   const p=$('#plog');const d=draft;const l=cur;const sug=suggest(l);const locked=!!l.deleted_at;
   if(l.status==='converted'||!(isAdmin()||l.owner_id===me.id)){
@@ -871,43 +842,40 @@ function renderLog(){
     if(v==='t'){t.setDate(t.getDate()+1);t.setHours(10,0,0,0)}else t=new Date(Date.now()+(+v)*36e5);draft.callbackAt=toLocalInput(t);renderLog()});
   $('#save').onclick=saveCall;$('#skip').onclick=()=>goNext(cur.id);
 }
-function goNext(afterId){const o=order();const i=o.indexOf(afterId);
-  const next=(i>=0?o.slice(i+1):o).find(id=>id!==afterId)||o.find(id=>id!==afterId);
-  if(next)selectLead(next);else{cur=null;renderLead();renderQueue()}}
+function goNext(afterId){const next=neighbor(afterId,1);window.scrollTo({top:0});
+  if(next)selectLead(next);else{toast('That was the last lead on this page of Leads');setTab('board')}}
 let saving=false;
 async function saveCall(){
   if(saving)return;const d=draft;
   if(d.status==='appointment'&&!d.apptAt)return toast('Set the appointment date and time');
   saving=true;$('#save').disabled=true;
   try{
-    const leadId=cur.id;const o=order();const i=o.indexOf(leadId);const nextId=(i>=0?o.slice(i+1):o).find(id=>id!==leadId)||null;
+    const leadId=cur.id;
     const {data:cid,error}=await sb.rpc('log_call',{p_lead:leadId,p_status:d.status,p_note:d.note.trim(),
       p_callback:OPEN.includes(d.status)&&d.callbackAt?new Date(d.callbackAt).toISOString():null,
       p_appt_at:d.status==='appointment'?new Date(d.apptAt).toISOString():null,p_appt_rep:d.apptRep.trim()});
     if(error){toast(friendly(error));return}
     const label=d.status==='appointment'?'Appointment booked':`Saved as ${STATUSES[d.status]}`;
-    cur=null;await loadQueue({noAuto:true});
-    if(nextId&&queue.some(l=>l.id===nextId))selectLead(nextId);else goNext(null);
-    toast(label,{undo:async()=>{const {error}=await sb.rpc('undo_call',{p_call:cid});if(error)throw error;cur=null;await loadQueue({noAuto:true});selectLead(leadId);toast('Call undone')}});
+    refreshBoardRow(leadId,{status:d.status,last_call_at:new Date().toISOString()});goNext(leadId);
+    toast(label,{undo:async()=>{const {error}=await sb.rpc('undo_call',{p_call:cid});if(error)throw error;openLead(leadId);toast('Call undone')}});
   } finally{saving=false;const s=$('#save');if(s)s.disabled=false}
 }
 function renderNotes(){
-  const p=$('#pnotes');const l=cur;const canAdd=canEditLead(l);
-  const f=draft.tl||'all';const callT=curCalls.map(c=>[c.caller_id,new Date(c.created_at).getTime()]);
-  const quiet=h=>Object.keys(h.changes||{}).every(k=>['status','callback_at','appt_at','appt_rep','owner_id'].includes(k))&&callT.some(([u,t])=>u===h.changed_by&&Math.abs(t-new Date(h.created_at).getTime())<15000);
-  const items=[...curNotes.map(n=>({k:'note',at:n.created_at,n})),...curCalls.map(c=>({k:'call',at:c.created_at,c})),...curHist.filter(h=>f==='edits'||!quiet(h)).map(h=>({k:'edit',at:h.created_at,h}))]
+  const p=$('#pnotes');const l=cur;const canAdd=canEditLead(l);const f=draft.tl||'all';
+  const items=[...curNotes.map(n=>({k:'note',at:n.created_at,n})),...curCalls.map(c=>({k:'call',at:c.created_at,c})),...curHist.map(h=>({k:'edit',at:h.created_at,h}))]
     .filter(it=>f==='all'||(f==='notes'&&it.k==='note')||(f==='calls'&&it.k==='call')||(f==='edits'&&it.k==='edit')).sort((a,b)=>b.at.localeCompare(a.at));
   p.innerHTML=`<div class="panel-h"><h3>Notes &amp; history</h3><div class="tlfilter">${[['all','All'],['notes','Notes'],['calls','Calls'],['edits','Edits']].map(([k,t])=>`<button type="button" data-f="${k}" aria-pressed="${f===k}">${t}</button>`).join('')}</div></div>
     <div class="panel-b">
       ${canAdd?`<div class="composer"><textarea id="nbody" placeholder="Add a note: who you spoke with, objections, best time to reach them…">${esc(draft.noteText)}</textarea>
         <div class="row"><span class="stat">Stamped with the date and your name · Ctrl+Enter to add</span><button class="btn primary small" id="nadd">Add note</button></div></div>`:''}
-      ${items.length?`<ul class="tl">${items.map(it=>it.k==='edit'?histItem(it.h,LEAD_LABELS,'lead'):it.k==='note'?
-        `<li><span class="dot note">${ICON.note}</span><div><div class="head"><span class="date">${esc(fmtFull(it.at))}</span><span>${esc(ago(it.at))}</span><b>${esc(nameOf(it.n.author_id))}</b>${(isAdmin()||it.n.author_id===me.id)?`<button class="x" data-del="${it.n.id}" title="Delete note">Delete</button>`:''}</div><div class="body">${esc(it.n.body)}</div></div></li>`:
+      ${items.length?`<ul class="tl">${items.map(it=>it.k==='edit'?histItem(it.h,LEAD_LABELS,'lead',canUndoLead(it.h)):it.k==='note'?noteItem(it.n):
         `<li><span class="dot call ${sc(it.c.status)}">${ICON.call}</span><div><div class="head"><span class="date">${esc(fmtFull(it.at))}</span>${pill(it.c.status)}<b>${esc(nameOf(it.c.caller_id))}</b></div>${it.c.note?`<div class="body">${esc(it.c.note)}</div>`:''}</div></li>`).join('')}</ul>`
         :'<p class="stat" style="margin:0">Nothing here yet.</p>'}
     </div>`;
   if(canAdd){const ta=$('#nbody');ta.oninput=()=>draft.noteText=ta.value;ta.onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();addNote()}};$('#nadd').onclick=addNote}
-  p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delNote(+b.dataset.del));
+  p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>setNoteDeleted('lead',+b.dataset.del,true));
+  p.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>setNoteDeleted('lead',+b.dataset.restore,false));
+  p.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>undoLeadEdit(+b.dataset.undo));
   p.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{draft.tl=b.dataset.f;renderNotes()});
 }
 async function addNote(){
@@ -915,13 +883,24 @@ async function addNote(){
   const {data,error}=await sb.from('lead_notes').insert({lead_id:id,author_id:me.id,body}).select().single();
   if(error){$('#nadd').disabled=false;return toast(friendly(error))}
   if(cur?.id===id){curNotes.unshift(data);draft.noteText='';renderNotes()}toast('Note added')}
-async function delNote(nid){
-  const n=curNotes.find(x=>x.id===nid);if(!n)return;const {error}=await sb.from('lead_notes').delete().eq('id',nid);if(error)return toast(friendly(error));
-  curNotes=curNotes.filter(x=>x.id!==nid);renderNotes();
-  toast('Note deleted',{undo:async()=>{const {data,error}=await sb.from('lead_notes').insert({lead_id:n.lead_id,author_id:n.author_id,body:n.body,created_at:n.created_at}).select().single();if(error)throw error;
-    if(cur?.id===n.lead_id){curNotes.push(data);curNotes.sort((a,b)=>b.created_at.localeCompare(a.created_at));renderNotes()}toast('Note restored')}})}
+// Notes are never erased: "Delete" hides the note but keeps it in the history, and it can be restored.
+async function setNoteDeleted(kind,nid,del){
+  const {error}=await sb.rpc('set_note_deleted',{p_kind:kind,p_id:nid,p_deleted:del});if(error)return toast(friendly(error));
+  const list=kind==='lead'?curNotes:(opp.cur?.notes||[]);const n=list.find(x=>x.id===nid);
+  if(n){n.deleted_at=del?new Date().toISOString():null;n.deleted_by=del?me.id:null}
+  kind==='lead'?renderNotes():renderOppNotes();
+  toast(del?'Note deleted. It stays in the history.':'Note restored',del?{undo:()=>setNoteDeleted(kind,nid,false)}:{})}
+// Any edit to a lead's details can be put back from the history.
+const LEAD_UNDO=new Set(EDIT_FIELDS.map(f=>f[0]));
+const canUndoLead=h=>canEditLead(cur)&&h.action!=='created'&&Object.keys(h.changes||{}).length>0&&Object.keys(h.changes).every(k=>LEAD_UNDO.has(k));
+async function undoLeadEdit(hid){
+  const h=curHist.find(x=>x.id===hid);if(!h)return;const id=cur.id;const back={},redo={};
+  for(const [k,[a,b]] of Object.entries(h.changes)){back[k]=a??'';redo[k]=cur[k]??''}
+  const {error}=await sb.from('leads').update(back).eq('id',id);if(error)return toast(friendly(error));
+  await afterLeadUndo(id,back);
+  toast('Change undone',{undo:async()=>{const {error}=await sb.from('leads').update(redo).eq('id',id);if(error)throw error;await afterLeadUndo(id,redo);toast('Change put back')}})}
 
-/* ===================== Lead board ===================== */
+/* ===================== Leads ===================== */
 function ownerFilter(){if(!canSell())return me.id;const o=board.owner;return o==='__me'?me.id:(o&&o!=='__none'?o:null)}
 function filtered(q,withStatus=true){const o=ownerFilter();if(o)q=q.eq('owner_id',o);else if(canSell()&&board.owner==='__none')q=q.is('owner_id',null);
   q=board.trash?q.not('deleted_at','is',null):q.is('deleted_at',null);
@@ -945,9 +924,15 @@ async function loadBoard(){
     isAdmin()?sb.rpc('trash_count'):Promise.resolve({data:0})]);
   if(seq!==boardSeq)return;
   if(r.error){$('#ltbody').innerHTML=`<tr><td colspan="10"><div class="empty">${esc(friendly(r.error))}</div></td></tr>`;return}
+  if(!isSales())loadMyKpis();
   board.rows=r.data||[];board.total=r.count||0;board.counts={};(c.data||[]).forEach(x=>board.counts[x.status]=Number(x.n));board.trashN=Number(t.data)||0;
   renderBoard();
 }
+async function loadMyKpis(){
+  try{const [st,cb]=await Promise.all([sb.rpc('team_stats',{p_since:new Date(new Date().setHours(0,0,0,0)).toISOString()}),
+      sb.from('leads').select('id',{count:'exact',head:true}).eq('owner_id',me.id).in('status',OPEN).is('deleted_at',null).lte('callback_at',new Date().toISOString())]);
+    const mine=(st.data||[]).find(r=>r.caller_id===me.id)||{calls:0,appointments:0};
+    $('#mykpis').innerHTML=[['Calls today',mine.calls],['Appts today',mine.appointments],['Callbacks due',cb.count]].map(([k,v])=>`<span><b>${Number(v)||0}</b>${k}</span>`).join('')}catch{}}
 function renderBoardControls(){
   const ow=$('#lowner'),as=$('#assignto'),ss=$('#setstatus');const ids=Object.values(people).filter(p=>p.active).map(p=>p.id);const av=as.value,sv=ss.value;
   ow.innerHTML=`<option value="">All callers</option><option value="__me">My leads</option><option value="__none">Unassigned</option>`+ids.map(id=>`<option value="${id}">${esc(who(id))}</option>`).join('');
@@ -956,13 +941,13 @@ function renderBoardControls(){
   ow.value=board.owner;as.value=av||me.id;ss.value=sv||'dead';$('#lsort').value=board.sort;$('#lsort').disabled=board.trash;
 }
 function renderBoard(){
-  const a=isAdmin();const all=Object.values(board.counts).reduce((x,y)=>x+y,0);
+  const a=isAdmin(),sc2=canSell();const all=Object.values(board.counts).reduce((x,y)=>x+y,0);
   $('#chips').innerHTML=`<button class="chip all" data-s="" aria-pressed="${!board.status&&!board.trash}"><i></i>All leads${board.trash?'':` <b>${all.toLocaleString()}</b>`}</button>`+
     STATUS_ORDER.map(k=>`<button class="chip ${sc(k)}" data-s="${k}" aria-pressed="${!board.trash&&board.status===k}"><i></i>${STATUSES[k]}${board.trash?'':` <b>${(board.counts[k]||0).toLocaleString()}</b>`}</button>`).join('')+
     (a?`<button class="chip trash" data-trash="1" aria-pressed="${board.trash}"><i></i>Trash <b>${board.trashN.toLocaleString()}</b></button>`:'');
   $('#chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{board.trash=!!c.dataset.trash;board.status=c.dataset.s||'';board.page=0;clearSel();loadBoard()});
-  $('#lthead').innerHTML=`<tr>${a?'<th><input type="checkbox" id="selpage" aria-label="Select this page"></th>':''}<th>Company</th><th>Contact</th><th>Phone</th><th>Status</th><th>Caller</th>${board.trash?'<th>Moved to Trash</th>':'<th>Last contact</th><th>Next step</th>'}<th>Latest note</th></tr>`;
-  const cols=(a?1:0)+(board.trash?7:8);
+  $('#lthead').innerHTML=`<tr>${a?'<th><input type="checkbox" id="selpage" aria-label="Select this page"></th>':''}<th>Company</th><th>Contact</th><th>Phone</th><th>Status</th>${sc2?'<th>Caller</th>':''}${board.trash?'<th>Moved to Trash</th>':'<th>Last contact</th><th>Next step</th>'}<th>Latest note</th></tr>`;
+  const cols=(a?1:0)+(sc2?1:0)+(board.trash?6:7);
   const grouping=!board.trash&&['recent','oldest','status'].includes(board.sort);let lastG=null;const gCount={};
   const gOf=l=>board.sort==='status'?STATUSES[l.status]:dayGroup(l.last_call_at);
   if(grouping)board.rows.forEach(l=>{const g=gOf(l);gCount[g]=(gCount[g]||0)+1});
@@ -972,8 +957,8 @@ function renderBoard(){
     const next=l.status==='converted'?'Converted → '+who(l.sales_owner_id):l.status==='appointment'&&l.appt_at?'Appt '+fmtWhen(l.appt_at):l.callback_at&&OPEN.includes(l.status)?'Callback '+fmtWhen(l.callback_at):'';
     const note=l.notes||'';
     html+=`<tr class="click lead-row ${sc(l.status)}" data-id="${l.id}">${a?`<td><input type="checkbox" data-sel="${l.id}" ${board.all||board.sel.has(l.id)?'checked':''} aria-label="Select lead"></td>`:''}
-      <td class="wrap"><span class="co">${esc(l.company||'—')}</span></td><td class="wrap">${esc(contactName(l))}<div class="sub">${esc(l.title||'')}</div></td>
-      <td class="mono">${esc(fmtPhone(l.phone||l.mobile||l.company_phone))}</td><td>${pill(l.status)}</td><td>${personCell(l.owner_id)}</td>
+      <td class="wrap"><span class="co">${esc(l.company||'—')}</span></td><td class="wrap"><span class="cn">${esc(contactName(l))}</span><div class="sub">${esc(l.title||'')}</div></td>
+      <td class="mono">${esc(fmtPhone(l.phone||l.mobile||l.company_phone))}</td><td>${pill(l.status)}</td>${sc2?`<td>${personCell(l.owner_id)}</td>`:''}
       ${board.trash?`<td class="stat">${esc(fmtWhen(l.deleted_at))}${l.deleted_by?' · '+esc(nameOf(l.deleted_by)):''}</td>`:`<td>${l.last_call_at?`${esc(fmtWhen(l.last_call_at))}<div class="sub">${l.attempts} call${l.attempts===1?'':'s'}</div>`:'<span class="muted">Never</span>'}</td><td class="stat">${esc(next)}</td>`}
       <td class="notecell">${note?`<span class="nd">${esc(fmtWhen(l.notes_at))}</span> ${esc(note.length>90?note.slice(0,90)+'…':note)}`:''}</td></tr>`}
   $('#ltbody').innerHTML=html||`<tr><td colspan="${cols}"><div class="empty">${board.trash?'The Trash is empty.':'No leads match these filters.'}</div></td></tr>`;
@@ -1090,7 +1075,7 @@ function renderImport(){
    </tbody></table></div>
    <div class="panel-b">
    ${unmapped?`<p class="stat" style="margin:0">${unmapped} other column${unmapped>1?'s':''} will be kept on each lead under "Company &amp; contact".</p>`:''}
-   <label class="f">Assign imported leads to<select id="impassign"><option value="__none">Unassigned (callers pull them)</option>${ids.map(id=>`<option value="${id}" ${imp.assign===id?'selected':''}>${esc(who(id))}</option>`).join('')}</select></label>
+   <label class="f">Assign imported leads to<select id="impassign"><option value="__none">Unassigned (assign them later on Leads)</option>${ids.map(id=>`<option value="${id}" ${imp.assign===id?'selected':''}>${esc(who(id))}</option>`).join('')}</select></label>
    <p style="margin:0"><b>${out.length.toLocaleString()}</b> lead${out.length===1?'':'s'} ready${dupInFile?` · <span class="muted">${dupInFile} repeated in this file</span>`:''}${blank?` · <span class="muted">${blank} empty row${blank>1?'s':''} skipped</span>`:''}. Leads already in Dial Desk are skipped during import.</p>
    <div class="progress" id="impprog" hidden><i></i></div>
    <div class="actions"><button class="btn primary" id="impgo" ${!out.length||imp.running?'disabled':''}>Import ${out.length.toLocaleString()} lead${out.length===1?'':'s'}</button><button class="btn" id="impclear">Start over</button></div></div>`;
@@ -1104,7 +1089,7 @@ function renderImport(){
         const {data,error}=await sb.rpc('import_leads',{p_rows:out.slice(i,i+200),p_owner:owner,p_source:imp.fileName});
         if(error)throw error;inserted+=data.inserted;dups+=data.duplicates;bar.firstElementChild.style.width=(100*Math.min(i+200,out.length)/out.length)+'%'}
       imp=null;$('#file').value='';
-      p.innerHTML=`<div class="panel-h"><h2>Import complete</h2></div><div class="empty"><h3>${inserted.toLocaleString()} lead${inserted===1?'':'s'} imported</h3>${dups?`${dups.toLocaleString()} already in Dial Desk were skipped. `:''}${owner?'They’re in '+esc(who(owner))+'’s queue.':'Callers can pull them from the Calling page.'}</div>`}
+      p.innerHTML=`<div class="panel-h"><h2>Import complete</h2></div><div class="empty"><h3>${inserted.toLocaleString()} lead${inserted===1?'':'s'} imported</h3>${dups?`${dups.toLocaleString()} already in Dial Desk were skipped. `:''}${owner?'They’re assigned to '+esc(who(owner))+'.':'Assign them to callers from Leads: tick the leads, pick a caller, click Assign.'}</div>`}
     catch(e){imp.running=false;toast(`Import stopped after ${inserted} leads: ${friendly(e)}. Import the same file again to add the rest.`);renderImport()}
   };
 }
@@ -1151,18 +1136,21 @@ $('#inviteform').onsubmit=async e=>{e.preventDefault();const email=$('#invemail'
   $('#invemail').value='';toast(`Invited ${email}. Send them this site's address.`);loadTeam()};
 
 /* ===================== Sales: shared ===================== */
-const STAGES={prospecting:'Prospecting',proposal:'Proposal/Price Quote',negotiation:'Negotiation/Review',nurturing:'Nurturing',closed_won:'Closed Won',closed_lost:'Closed Lost'};
-const STAGE_ORDER=['prospecting','proposal','negotiation','nurturing','closed_won','closed_lost'];
-const STAGE_PROB={prospecting:10,nurturing:25,proposal:75,negotiation:90,closed_won:100,closed_lost:0};
+const STAGES={prospecting:'Prospecting',proposal:'Proposal/Price Quote',nurturing:'Nurturing',closed_won:'Closed Won',closed_lost:'Closed Lost',negotiation:'Negotiation/Review'};
+const STAGE_ORDER=['prospecting','proposal','nurturing','closed_won','closed_lost'];
+const STAGE_PROB={prospecting:10,nurturing:25,proposal:75,closed_won:100,closed_lost:0};
 const CLOSED=['closed_won','closed_lost'];
 const TYPES={first_deal:'1st Deal',returning:'Returning Client'};
 const LEAD_SOURCES=['Cold Calling','Self-Generated','Returning Client','Referral','Agency','Inbound','Other'];
-const DEFAULT_PRODUCTS=['TBN Linear','TBN+','TBN Israel','Inspire','Enlace','Watchman','YouTube','Interview','Podcast','Social Media'];
+const DEFAULT_PRODUCTS=['TBN Linear','TBN+','TBN Israel','Inspire','Enlace','YouTube','Interview','Podcast','Social Media'];
+const RETIRED_PRODUCTS=['Watchman'];
 const stagePill=s=>`<span class="pill g-${s}">${esc(STAGES[s]||s)}</span>`;
 const money=v=>{if(v==null||v===''||!isFinite(Number(v)))return'';const n=Number(v);return '$'+n.toLocaleString(undefined,n%1?{minimumFractionDigits:2,maximumFractionDigits:2}:{maximumFractionDigits:0})};
 const pad2=n=>String(n).padStart(2,'0');
 const ymd=t=>`${t.getFullYear()}-${pad2(t.getMonth()+1)}-${pad2(t.getDate())}`;
 const fmtDate=d=>{if(!d)return'';const x=new Date(String(d).length===10?d+'T12:00:00':d);return isNaN(x)?'':x.toLocaleDateString([],{month:'numeric',day:'numeric',year:'numeric'})};
+const todayYmd=()=>ymd(new Date());
+const followCell=o=>o.follow_up_date?`<span class="${o.follow_up_date<todayYmd()&&!CLOSED.includes(o.stage)?'overdue':''}">${esc(fmtDate(o.follow_up_date))}${o.follow_up_date<todayYmd()&&!CLOSED.includes(o.stage)?' · overdue':''}</span>`:'';
 const ageDays=o=>Math.max(0,Math.floor(((o.closed_at?new Date(o.closed_at):new Date())-new Date(o.created_at))/864e5));
 const opt=(v,l,sel)=>`<option value="${esc(v)}" ${v===sel?'selected':''}>${esc(l)}</option>`;
 const sellers=()=>Object.values(people).filter(p=>p.active&&['salesperson','admin','owner'].includes(p.role))
@@ -1180,7 +1168,7 @@ async function loadLookups(force){
   $('#dl-agencies').innerHTML=a.map(x=>`<option value="${esc(x.name)}"></option>`).join('');
 }
 function productsField(sel=[]){
-  const opts=[...new Set([...DEFAULT_PRODUCTS,...(oppRows||[]).flatMap(o=>o.products||[]),...sel])];
+  const opts=[...new Set([...DEFAULT_PRODUCTS,...(oppRows||[]).flatMap(o=>o.products||[]).filter(p=>!RETIRED_PRODUCTS.includes(p)),...sel])];
   return `<div class="f wide">Products<div class="checks">${opts.map(p=>`<label><input type="checkbox" name="products" value="${esc(p)}" ${sel.includes(p)?'checked':''}>${esc(p)}</label>`).join('')}</div>
     <input type="text" name="product_other" placeholder="Other products, separated by commas"></div>`}
 function readProducts(fd){return [...new Set([...fd.getAll('products'),...String(fd.get('product_other')||'').split(',').map(s=>s.trim()).filter(Boolean)])]}
@@ -1203,61 +1191,77 @@ $('#modal').addEventListener('mousedown',e=>{if(e.target.id==='modal')closeModal
 
 /* ===================== Edit history ===================== */
 const LEAD_LABELS={first_name:'First name',last_name:'Last name',title:'Title',company:'Company',phone:'Direct phone',mobile:'Mobile',company_phone:'Company phone',email:'Email',address:'Address',city:'City',state:'State',zip:'ZIP',industry:'Industry',website:'Website',employees:'Employees',revenue:'Revenue',linkedin:'LinkedIn',status:'Status',owner_id:'Caller',sales_owner_id:'Salesperson',callback_at:'Callback',appt_at:'Appointment',appt_rep:'Sales rep',deleted_at:'Trash'};
-const OPP_LABELS={deal_name:'Deal Name',client_id:'Client Name',agency_id:'Agency',owner_id:'Owner',type:'Type',stage:'Stage',probability:'Probability',amount:'Amount',close_date:'Close Date',lead_source:'Lead Source',next_step:'Next Step',description:'Description',products:'Products',contact_name:'Contact',contact_title:'Contact title',contact_email:'Contact email',contact_phone:'Contact phone',deleted_at:'Deleted'};
+const OPP_LABELS={deal_name:'Deal Name',client_id:'Client Name',agency_id:'Agency',owner_id:'Owner',type:'Type',stage:'Stage',probability:'Probability',amount:'Amount',follow_up_date:'Follow Up',close_date:'Close Date',lead_source:'Lead Source',next_step:'Next Step',description:'Description',products:'Products',contact_name:'Contact',contact_title:'Contact title',contact_email:'Contact email',contact_phone:'Contact phone',deleted_at:'Deleted'};
 function fmtVal(k,v){
   if(v==null||v===''||(Array.isArray(v)&&!v.length))return'blank';
   switch(k){
     case 'status':return STATUSES[v]||v;case 'stage':return STAGES[v]||v;case 'type':return TYPES[v]||v;
     case 'owner_id':case 'sales_owner_id':return nameOf(v);
     case 'client_id':return lookups.clients[v]||'another client';case 'agency_id':return lookups.agencies[v]||'another agency';
-    case 'amount':return money(v);case 'probability':return v+'%';case 'close_date':return fmtDate(v);
+    case 'amount':return money(v);case 'probability':return v+'%';case 'close_date':case 'follow_up_date':return fmtDate(v);
     case 'callback_at':case 'appt_at':return fmtFull(v);case 'products':return v.join(', ');
     default:{const s=String(v);return s.length>90?s.slice(0,90)+'…':s}}
 }
-function histItem(h,labels,kind){
-  const verb=h.action==='converted'?'converted a lead into this deal':h.action==='created'?(kind==='deal'?'created this deal':'created this lead'):'made changes';
-  const lines=Object.entries(h.changes||{}).map(([k,[a,b]])=>k==='deleted_at'?`<span><b>${b?'Moved to Trash':'Restored from Trash'}</b></span>`
-    :`<span><b>${esc(labels[k]||k)}:</b> <s>${esc(fmtVal(k,a))}</s> → ${esc(fmtVal(k,b))}</span>`).join('');
-  return `<li><span class="dot edit">${ICON.edit}</span><div><div class="head"><span class="date">${esc(fmtFull(h.created_at))}</span><b>${esc(h.changed_by?nameOf(h.changed_by):'System')}</b><span>${verb}</span></div>${lines?`<div class="chg">${lines}</div>`:''}</div></li>`}
-function noteItem(n){return `<li><span class="dot note">${ICON.note}</span><div><div class="head"><span class="date">${esc(fmtFull(n.created_at))}</span><span>${esc(ago(n.created_at))}</span><b>${esc(nameOf(n.author_id))}</b>${(isAdmin()||n.author_id===me.id)?`<button class="x" data-del="${n.id}" title="Delete note">Delete</button>`:''}</div><div class="body">${esc(n.body)}</div></div></li>`}
+const CONTACT_LABELS={name:'Name',title:'Title',email:'Email',phone:'Phone'};
+function histItem(h,labels,kind,undo){
+  const ch=h.changes||{};let verb,lines;
+  if(String(h.action).startsWith('contact_')){
+    const nm=h.action==='contact_removed'?ch.name?.[0]:(ch.contact?.[1]??ch.name?.[1]);
+    verb={contact_added:'added a contact',contact_removed:'removed a contact',contact_restored:'restored a contact',contact_edited:'edited a contact'}[h.action];
+    lines=h.action==='contact_edited'?Object.entries(ch).filter(([k])=>k!=='contact').map(([k,[a,b]])=>`<span><b>${esc(CONTACT_LABELS[k]||k)}:</b> <s>${esc(fmtVal(k,a))}</s> → ${esc(fmtVal(k,b))}</span>`).join(''):'';
+    lines=`<span><b>${esc(nm||'Unnamed contact')}</b></span>`+lines;
+  }else{
+    verb=h.action==='converted'?'converted a lead into this deal':h.action==='created'?(kind==='deal'?'created this deal':'created this lead'):'made changes';
+    lines=Object.entries(ch).map(([k,[a,b]])=>k==='deleted_at'?`<span><b>${b?(kind==='deal'?'Deleted':'Moved to Trash'):(kind==='deal'?'Restored':'Restored from Trash')}</b></span>`
+      :`<span><b>${esc(labels[k]||k)}:</b> <s>${esc(fmtVal(k,a))}</s> → ${esc(fmtVal(k,b))}</span>`).join('');
+  }
+  return `<li><span class="dot edit">${ICON.edit}</span><div><div class="head"><span class="date">${esc(fmtFull(h.created_at))}</span><b>${esc(h.changed_by?nameOf(h.changed_by):'System')}</b><span>${verb}</span>${undo?`<button class="undo" data-undo="${h.id}" title="Put the old values back">Undo</button>`:''}</div>${lines?`<div class="chg">${lines}</div>`:''}</div></li>`}
+function noteItem(n){const mine=isAdmin()||n.author_id===me.id;const gone=!!n.deleted_at;
+  return `<li class="${gone?'gone':''}"><span class="dot note">${ICON.note}</span><div><div class="head"><span class="date">${esc(fmtFull(n.created_at))}</span><span>${esc(ago(n.created_at))}</span><b>${esc(nameOf(n.author_id))}</b>
+    ${gone?`<span class="gonetag">Deleted${n.deleted_by?' by '+esc(nameOf(n.deleted_by)):''} ${esc(fmtWhen(n.deleted_at))}</span>${mine?`<button class="undo" data-restore="${n.id}">Restore</button>`:''}`
+      :mine?`<button class="x" data-del="${n.id}" title="Delete note (it stays in the history)">Delete</button>`:''}</div><div class="body">${esc(n.body)}</div></div></li>`}
 
 /* ===================== Convert lead ===================== */
 async function openConvert(){
   const l=cur;try{await loadLookups()}catch(e){return toast(friendly(e))}
   const s=sellers();if(!s.length)return toast('Add a salesperson on the Team page first');
-  const nextStep=l.status==='appointment'&&l.appt_at?`Meeting ${fmtFull(l.appt_at)}${l.appt_rep?' with '+l.appt_rep:''}`:'';
+  const caller=!canSell();
   const client=(l.company||contactName(l)).trim();
   const known=Object.values(lookups.clients).some(n=>n.toLowerCase().trim()===client.toLowerCase());
-  const body=`<p class="stat" style="margin:0">This creates an opportunity owned by the salesperson you choose and marks the lead <b>Converted</b>. The lead's contact and company details carry over.</p>
+  const appt=l.appt_at?toLocalInput(new Date(l.appt_at)):'';
+  const body=`<p class="stat" style="margin:0">${caller?'Great work! This books the appointment and hands the lead to the salesperson you choose as a new opportunity.':'This creates an opportunity owned by the salesperson you choose and marks the lead <b>Converted</b>.'} The lead's contact and company details carry over.</p>
    <div class="fgrid">
     <label class="f wide">Assign to salesperson <span class="req">*</span><select name="sales" required><option value="">Choose a salesperson</option>${s.map(p=>opt(p.id,nameOf(p.id)+(p.role==='salesperson'?'':' ('+roleLabel(p.role)+')'),'')).join('')}</select></label>
+    <label class="f">Appointment date and time ${caller?'<span class="req">*</span>':'<span class="hint">optional</span>'}<input type="datetime-local" name="appt" id="cappt" ${caller?'required':''} value="${esc(appt)}"></label>
+    <label class="f">Follow Up date <span class="hint">defaults to the appointment day</span><input type="date" name="follow" id="cfollow" value="${esc(appt?appt.slice(0,10):'')}"></label>
     <label class="f wide">Deal Name <span class="req">*</span><input type="text" name="deal" required value="${esc(client+' - '+new Date().toLocaleDateString([],{month:'short',year:'numeric'}))}"></label>
     <label class="f">Client Name <span class="req">*</span><input type="text" name="client" required list="dl-clients" value="${esc(client)}"></label>
     <label class="f">Agency <span class="hint">pick one, type a new one, or leave blank</span><input type="text" name="agency" list="dl-agencies" placeholder="No agency"></label>
     <label class="f">Type <span class="req">*</span><select name="type">${opt('first_deal','1st Deal',known?'':'first_deal')}${opt('returning','Returning Client',known?'returning':'')}</select></label>
     <label class="f">Stage<select name="stage">${STAGE_ORDER.map(k=>opt(k,STAGES[k],'prospecting')).join('')}</select></label>
     <label class="f">Amount<input type="text" name="amount" inputmode="decimal" placeholder="$0"></label>
-    <label class="f">Close Date <span class="req">*</span><input type="date" name="close" required value="${ymd(new Date(Date.now()+30*864e5))}"></label>
-    <label class="f wide">Next Step<input type="text" name="next" value="${esc(nextStep)}"></label>
     ${productsField([])}
-    <label class="f wide">Description<textarea name="desc">${esc(curNotes[0]?.body||'')}</textarea></label>
+    <label class="f wide">Description<textarea name="desc">${esc(curNotes.find(n=>!n.deleted_at)?.body||'')}</textarea></label>
    </div>`;
-  openModal('Convert lead to opportunity',body,{submit:'Convert & assign',wide:true,onSubmit:async fd=>{
+  openModal(caller?'Appointment Set!':'Convert lead to opportunity',body,{submit:caller?'Book appointment & assign':'Convert & assign',wide:true,onSubmit:async fd=>{
     const amt=parseAmount(fd.get('amount'));if(amt===undefined){toast('Enter the amount as a number, like 5000');return false}
+    const ap=String(fd.get('appt')||'');const apAt=ap?new Date(ap):null;if(apAt&&isNaN(apAt)){toast('Check the appointment date and time');return false}
     const sid=fd.get('sales'),lid=l.id;
     const {error}=await sb.rpc('convert_lead',{p_lead:lid,p_sales:sid,p_deal:String(fd.get('deal')).trim(),p_client:String(fd.get('client')).trim(),
-      p_agency:String(fd.get('agency')||'').trim(),p_type:fd.get('type'),p_stage:fd.get('stage'),p_amount:amt,p_close:fd.get('close')||null,
-      p_next_step:String(fd.get('next')||'').trim(),p_description:String(fd.get('desc')||'').trim(),p_products:readProducts(fd)});
+      p_agency:String(fd.get('agency')||'').trim(),p_type:fd.get('type'),p_stage:fd.get('stage'),p_amount:amt,
+      p_follow_up:fd.get('follow')||(ap?ap.slice(0,10):null),p_appt_at:apAt?apAt.toISOString():null,
+      p_description:String(fd.get('desc')||'').trim(),p_products:readProducts(fd)});
     if(error)throw error;
-    lookups.loaded=false;oppRows=null;await reloadLead(lid);
-    toast(`Converted and assigned to ${nameOf(sid)}`,{undo:async()=>{const {error}=await sb.rpc('unconvert_lead',{p_lead:lid});if(error)throw error;oppRows=null;await reloadLead(lid);toast('Conversion undone')}});
+    lookups.loaded=false;oppRows=null;refreshBoardRow(lid,{status:'converted',sales_owner_id:sid});await reloadLead(lid);
+    toast(caller?`Appointment booked and sent to ${nameOf(sid)}`:`Converted and assigned to ${nameOf(sid)}`,{undo:async()=>{const {error}=await sb.rpc('unconvert_lead',{p_lead:lid});if(error)throw error;oppRows=null;await reloadLead(lid);toast('Undone')}});
   }});
+  const ca=$('#cappt'),cf=$('#cfollow');let touched=false;cf.oninput=()=>touched=true;ca.oninput=()=>{if(!touched)cf.value=ca.value.slice(0,10)};
 }
-async function reloadLead(id){if(showsQueue())await loadQueue({noAuto:true});await selectLead(id)}
+async function reloadLead(id){if(tab==='lead')await selectLead(id)}
 
 /* ===================== Opportunities ===================== */
 let oppRows=null;
-const opp={stage:'',owner:'',type:'',search:'',sort:'close',cur:null};
+const opp={stage:'',owner:'',type:'',search:'',sort:'follow',cur:null};
 async function loadOppRows(force){
   if(oppRows&&!force)return oppRows;
   oppRows=await pageAll(()=>sb.from('opportunities').select('*, client:clients(id,name), agency:agencies(id,name)').is('deleted_at',null).order('id'));
@@ -1271,19 +1275,19 @@ function ownerOptions(sel,allLabel){return opt('',allLabel,sel)+opt('__me','Mine
 function oppFiltered(withStage=true){
   const q=opp.search.trim().toLowerCase();const ow=opp.owner==='__me'?me.id:opp.owner;
   return (oppRows||[]).filter(o=>(!withStage||!opp.stage||o.stage===opp.stage)&&(!ow||o.owner_id===ow)&&(!opp.type||o.type===opp.type)&&
-    (!q||[o.deal_name,o.client?.name,o.agency?.name,o.next_step].join(' ').toLowerCase().includes(q)))}
+    (!q||[o.deal_name,o.client?.name,o.agency?.name].join(' ').toLowerCase().includes(q)))}
 function renderOpps(){
   const base=oppFiltered(false);const cnt={},sum={};base.forEach(o=>{cnt[o.stage]=(cnt[o.stage]||0)+1;sum[o.stage]=(sum[o.stage]||0)+(+o.amount||0)});
   const tot=base.reduce((n,o)=>n+(+o.amount||0),0);
   $('#ochips').innerHTML=`<button class="chip all" data-s="" aria-pressed="${!opp.stage}"><i></i>All deals <b>${base.length} · ${shortMoney(tot)}</b></button>`+
     STAGE_ORDER.map(k=>`<button class="chip g-${k}" data-s="${k}" aria-pressed="${opp.stage===k}"><i></i>${STAGES[k]} <b>${cnt[k]||0} · ${shortMoney(sum[k]||0)}</b></button>`).join('');
   $('#ochips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{opp.stage=c.dataset.s;renderOpps()});
-  const by={close:(a,b)=>(a.close_date||'').localeCompare(b.close_date||''),amount:(a,b)=>(+b.amount||0)-(+a.amount||0),updated:(a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''),created:(a,b)=>b.created_at.localeCompare(a.created_at),deal:(a,b)=>a.deal_name.localeCompare(b.deal_name)};
-  const rows=oppFiltered().sort(by[opp.sort]||by.close);
+  const by={follow:(a,b)=>(a.follow_up_date||'9999').localeCompare(b.follow_up_date||'9999'),amount:(a,b)=>(+b.amount||0)-(+a.amount||0),updated:(a,b)=>(b.updated_at||'').localeCompare(a.updated_at||''),created:(a,b)=>b.created_at.localeCompare(a.created_at),deal:(a,b)=>a.deal_name.localeCompare(b.deal_name)};
+  const rows=oppFiltered().sort(by[opp.sort]||by.follow);
   $('#obody').innerHTML=rows.length?rows.map(o=>`<tr class="click lead-row g-${o.stage}" data-id="${o.id}"><td class="wrap"><span class="co">${esc(o.deal_name)}</span></td><td class="wrap">${esc(o.client?.name||'')}</td><td class="wrap">${esc(o.agency?.name||'')}</td>
-      <td>${stagePill(o.stage)}</td><td class="num">${esc(money(o.amount))}</td><td class="num">${o.probability}%</td><td>${esc(fmtDate(o.close_date))}</td><td>${o.owner_id?personCell(o.owner_id):''}</td>
-      <td><span class="tag2">${esc(TYPES[o.type]||'')}</span></td><td class="notecell">${esc(o.next_step||'')}</td><td class="stat">${esc(fmtWhen(o.updated_at))}${o.updated_by?'<div class="sub">'+esc(nameOf(o.updated_by))+'</div>':''}</td></tr>`).join('')
-    :`<tr><td colspan="11"><div class="empty">${(oppRows||[]).length?'No deals match these filters.':'No opportunities yet. Convert a lead, or click New opportunity.'}</div></td></tr>`;
+      <td>${stagePill(o.stage)}</td><td class="num">${esc(money(o.amount))}</td><td class="num">${o.probability}%</td><td>${followCell(o)}</td><td>${o.owner_id?personCell(o.owner_id):''}</td>
+      <td><span class="tag2">${esc(TYPES[o.type]||'')}</span></td><td class="stat">${esc(fmtWhen(o.updated_at))}${o.updated_by?'<div class="sub">'+esc(nameOf(o.updated_by))+'</div>':''}</td></tr>`).join('')
+    :`<tr><td colspan="10"><div class="empty">${(oppRows||[]).length?'No deals match these filters.':'No opportunities yet. Convert a lead, or click New opportunity.'}</div></td></tr>`;
   const amt=rows.reduce((n,o)=>n+(+o.amount||0),0);$('#ofoot').textContent=`${rows.length} deal${rows.length===1?'':'s'} · ${money(amt)||'$0'} total`;
   $('#obody').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>openOpp(tr.dataset.id));
 }
@@ -1299,19 +1303,21 @@ async function openOpp(id){
   $('#opp-list').hidden=true;const box=$('#opp-detail');box.hidden=false;
   if(opp.cur?.o?.id!==id)box.innerHTML='<div class="panel empty">Loading…</div>';
   try{await loadLookups()}catch{}
-  const [o,n,h]=await Promise.all([
+  const [o,n,h,ct]=await Promise.all([
     sb.from('opportunities').select('*, client:clients(*), agency:agencies(*)').eq('id',id).maybeSingle(),
     sb.from('opp_notes').select('*').eq('opp_id',id).order('created_at',{ascending:false}),
-    sb.from('change_log').select('*').eq('row_id',id).order('created_at',{ascending:false}).limit(300)]);
+    sb.from('change_log').select('*').eq('row_id',id).order('created_at',{ascending:false}).limit(300),
+    sb.from('opp_contacts').select('*').eq('opp_id',id).order('created_at')]);
   if(o.error||!o.data){box.innerHTML=`<div class="panel empty"><h3>That opportunity isn’t available</h3><button class="btn" id="oback">Back to opportunities</button></div>`;$('#oback').onclick=()=>loadOpps();return}
   let lead=null;if(o.data.lead_id){const r=await sb.from('leads').select('id,company,first_name,last_name,converted_at').eq('id',o.data.lead_id).maybeSingle();lead=r.data}
   const filter=opp.cur?.o?.id===id?opp.cur.filter:'all';
-  opp.cur={o:o.data,notes:n.data||[],hist:h.data||[],lead,filter,noteText:''};
+  opp.cur={o:o.data,notes:n.data||[],hist:h.data||[],contacts:ct.data||[],lead,filter,noteText:''};
   renderOppDetail();window.scrollTo({top:0});
 }
 const cellS=(k,v)=>`<div><div class="k">${k}</div><div class="v">${v||'<span class="none">—</span>'}</div></div>`;
 function renderOppDetail(){
-  const {o,lead}=opp.cur;const ed=canEditOpp(o);const c=o.client||{};const box=$('#opp-detail');
+  const {o,lead,contacts}=opp.cur;const ed=canEditOpp(o);const c=o.client||{};const box=$('#opp-detail');
+  const liveCts=contacts.filter(x=>!x.deleted_at),goneCts=contacts.filter(x=>x.deleted_at);
   const row=(k,v)=>`<dt>${k}</dt><dd>${v||'<span class="muted">—</span>'}</dd>`;const wu=webUrl(c.website);const si=STAGE_ORDER.indexOf(o.stage);
   box.innerHTML=`<div class="actions"><button class="btn ghost" id="oback">← All opportunities</button></div>
    ${o.deleted_at?`<div class="banner"><span>This opportunity was deleted ${esc(fmtWhen(o.deleted_at))}.</span>${isAdmin()?'<button class="btn small" id="orestore">Restore</button>':''}</div>`:''}
@@ -1320,7 +1326,7 @@ function renderOppDetail(){
        <div style="margin-top:4px;font-size:14.5px">Client: <b>${esc(c.name||'')}</b>${o.agency?` · Agency: <b>${esc(o.agency.name)}</b>`:''}</div></div>
        <div class="actions">${ed?'<button class="btn soft" id="oedit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit deal</button>':''}${isAdmin()&&!o.deleted_at?'<button class="btn danger" id="odel">Delete</button>':''}</div></div>
      <div class="strip">
-       ${cellS('Amount',esc(money(o.amount)))}${cellS('Probability',o.probability+'%')}${cellS('Close Date',esc(fmtDate(o.close_date)))}${cellS('Age',ageDays(o)+' day'+(ageDays(o)===1?'':'s'))}
+       ${cellS('Amount',esc(money(o.amount)))}${cellS('Probability',o.probability+'%')}${cellS('Follow Up',followCell(o))}${cellS('Age',ageDays(o)+' day'+(ageDays(o)===1?'':'s'))}
        ${cellS('Owner',o.owner_id?personCell(o.owner_id):'')}${cellS('Lead Source',esc(o.lead_source))}${cellS('Created',esc(fmtWhen(o.created_at))+(o.created_by?' by '+esc(nameOf(o.created_by)):''))}
        ${cellS('Last edited',o.updated_by?esc(fmtWhen(o.updated_at))+' by '+esc(nameOf(o.updated_by)):'Not edited yet')}
      </div>
@@ -1330,20 +1336,22 @@ function renderOppDetail(){
    <div class="ocols">
     <div class="panel"><div class="panel-h"><h3>Deal details</h3>${ed?'<button class="btn small soft" id="oedit2">Edit</button>':''}</div><div class="panel-b"><dl class="kv">
       ${row('Deal Name',esc(o.deal_name))}${row('Client Name',esc(c.name))}${row('Agency',esc(o.agency?.name||''))}${row('Type',esc(TYPES[o.type]))}${row('Stage',stagePill(o.stage))}${row('Probability',o.probability+'%')}
-      ${row('Amount',esc(money(o.amount)))}${row('Close Date',esc(fmtDate(o.close_date)))}${row('Lead Source',esc(o.lead_source))}${row('Next Step',esc(o.next_step))}
+      ${row('Amount',esc(money(o.amount)))}${row('Follow Up',followCell(o))}${row('Lead Source',esc(o.lead_source))}
       ${row('Products',(o.products||[]).map(p=>`<span class="tag2">${esc(p)}</span>`).join(' '))}${row('Owner',o.owner_id?personCell(o.owner_id):'')}
       <div class="sep"></div>${row('Description',o.description?`<span style="white-space:pre-wrap">${esc(o.description)}</span>`:'')}
     </dl></div></div>
-    <div class="panel"><div class="panel-h"><h3>Client &amp; contact</h3>${canSell()?'<div class="actions"><button class="btn small soft" id="cedit">Edit client</button>'+(o.agency?'<button class="btn small soft" id="aedit">Edit agency</button>':'')+'</div>':''}</div><div class="panel-b"><dl class="kv">
+    <div class="panel"><div class="panel-h"><h3>Client &amp; contacts</h3>${canSell()?'<div class="actions"><button class="btn small soft" id="cedit">Edit client</button>'+(o.agency?'<button class="btn small soft" id="aedit">Edit agency</button>':'')+'</div>':''}</div><div class="panel-b"><dl class="kv">
       ${row('Client Name',esc(c.name))}${row('Phone',c.phone?`<span class="mono">${esc(fmtPhone(c.phone))}</span>`:'')}${row('Website',wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(c.website)}</a>`:'')}
       ${row('Industry',esc(c.industry))}${row('Employees',esc(c.employees))}${row('Annual Revenue',esc(fmtMoney(c.revenue)))}
       ${row('Address',esc([c.address,[c.city,[c.state,c.zip].filter(Boolean).join(' ')].filter(Boolean).join(', '),c.country].filter(Boolean).join(', ')))}
       ${c.description?row('About',`<span style="white-space:pre-wrap">${esc(c.description)}</span>`):''}
-      <div class="sep"></div>${row('Contact',esc(o.contact_name))}${row('Title',esc(o.contact_title))}
-      ${row('Email',o.contact_email?`${esc(o.contact_email)} <button class="copy" data-copy="${esc(o.contact_email)}">Copy</button>`:'')}
-      ${row('Phone',o.contact_phone?`<span class="mono">${esc(fmtPhone(o.contact_phone))}</span> <button class="copy" data-copy="${esc(digits(o.contact_phone))}">Copy</button>`:'')}
       ${o.agency?'<div class="sep"></div>'+row('Agency',esc(o.agency.name))+row('Agency contact',esc(o.agency.contact_name))+row('Agency phone',o.agency.phone?`<span class="mono">${esc(fmtPhone(o.agency.phone))}</span>`:'')+row('Agency email',esc(o.agency.email)):''}
-    </dl></div></div>
+    </dl>
+      <div class="sep" style="border-top:1px dashed var(--line)"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="eyebrow">Contacts${liveCts.length?' · '+liveCts.length:''}</span>${ed?'<button class="btn small soft" id="ctadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add contact</button>':''}</div>
+      <div class="cts">${liveCts.length?liveCts.map(ct=>contactCard(ct,ed)).join(''):'<p class="stat" style="margin:0">No contacts yet.</p>'}</div>
+      ${goneCts.length?`<details><summary class="stat" style="cursor:pointer">Removed contacts (${goneCts.length})</summary><div class="cts" style="margin-top:8px">${goneCts.map(ct=>contactCard(ct,ed)).join('')}</div></details>`:''}
+    </div></div>
     <div class="panel" id="onotes"></div>
    </div>`;
   $('#oback').onclick=()=>{showOppList();if(oppRows)renderOpps();else loadOpps()};
@@ -1354,8 +1362,37 @@ function renderOppDetail(){
   if(lead)$('#olead').onclick=()=>openLead(lead.id);
   if(canSell()){$('#cedit').onclick=()=>openClientForm(c);if(o.agency)$('#aedit').onclick=()=>openAgencyForm(o.agency)}
   box.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(b.dataset.copy,b));
+  if(ed){$('#ctadd').onclick=()=>openContactForm(null);
+    box.querySelectorAll('[data-ctedit]').forEach(b=>b.onclick=()=>openContactForm(contacts.find(x=>x.id===b.dataset.ctedit)));
+    box.querySelectorAll('[data-ctdel]').forEach(b=>b.onclick=()=>setContactRemoved(b.dataset.ctdel,true));
+    box.querySelectorAll('[data-ctrestore]').forEach(b=>b.onclick=()=>setContactRemoved(b.dataset.ctrestore,false))}
   renderOppNotes();
 }
+function contactCard(ct,ed){const gone=!!ct.deleted_at;
+  return `<div class="ct ${gone?'gone':''}"><div class="ctop"><span><b>${esc(ct.name||'Unnamed contact')}</b>${ct.title?` <span class="muted">· ${esc(ct.title)}</span>`:''}</span>
+    ${ed?(gone?`<button class="btn small" data-ctrestore="${ct.id}">Restore</button>`:`<span class="actions"><button class="btn small ghost" data-ctedit="${ct.id}">Edit</button><button class="btn small ghost danger" data-ctdel="${ct.id}">Remove</button></span>`):''}</div>
+    ${ct.phone?`<span class="cl"><span class="mono">${esc(fmtPhone(ct.phone))}</span> <button class="copy" data-copy="${esc(digits(ct.phone))}">Copy</button></span>`:''}
+    ${ct.email?`<span class="cl">${esc(ct.email)} <button class="copy" data-copy="${esc(ct.email)}">Copy</button></span>`:''}
+    ${gone?`<span class="stat">Removed${ct.deleted_by?' by '+esc(nameOf(ct.deleted_by)):''} ${esc(fmtWhen(ct.deleted_at))}</span>`:''}</div>`}
+const CT_FIELDS=[['name','Name'],['title','Title'],['email','Email'],['phone','Phone']];
+function openContactForm(ct){
+  const oid=opp.cur.o.id;
+  const body=`<div class="fgrid">${CT_FIELDS.map(([k,l])=>`<label class="f">${l}${k==='name'?' <span class="req">*</span>':''}<input type="${k==='email'?'email':'text'}" name="${k}" value="${esc(ct?.[k]||'')}" ${k==='name'?'required':''}></label>`).join('')}</div>`;
+  openModal(ct?'Edit contact':'Add contact',body,{submit:ct?'Save contact':'Add contact',onSubmit:async fd=>{
+    const rec={};CT_FIELDS.forEach(([k])=>rec[k]=String(fd.get(k)||'').trim());
+    if(!ct){const {data,error}=await sb.from('opp_contacts').insert({...rec,opp_id:oid,created_by:me.id}).select('id').single();if(error)throw error;
+      toast('Contact added',{undo:async()=>{await setContactRemoved(data.id,true,true)}});setTimeout(()=>openOpp(oid),0);return}
+    const patch={},prev={};CT_FIELDS.forEach(([k])=>{if(rec[k]!==(ct[k]||'')){patch[k]=rec[k];prev[k]=ct[k]||''}});if(!Object.keys(patch).length)return;
+    const {error}=await sb.from('opp_contacts').update(patch).eq('id',ct.id);if(error)throw error;
+    toast('Contact saved',{undo:async()=>{const {error}=await sb.from('opp_contacts').update(prev).eq('id',ct.id);if(error)throw error;openOpp(oid);toast('Changes undone')}});
+    setTimeout(()=>openOpp(oid),0)}});
+}
+async function setContactRemoved(id,del,quiet){
+  const oid=opp.cur.o.id;
+  const {error}=await sb.from('opp_contacts').update(del?{deleted_at:new Date().toISOString(),deleted_by:me.id}:{deleted_at:null,deleted_by:null}).eq('id',id);
+  if(error)return toast(friendly(error));await openOpp(oid);
+  if(quiet)return toast('Contact removed');
+  toast(del?'Contact removed. Restore it any time from Removed contacts.':'Contact restored',del?{undo:()=>setContactRemoved(id,false)}:{})}
 async function setStage(o,k){
   const patch={stage:k,probability:STAGE_PROB[k]},prev={stage:o.stage,probability:o.probability};
   const {error}=await sb.from('opportunities').update(patch).eq('id',o.id);if(error)return toast(friendly(error));oppRows=null;
@@ -1371,21 +1408,25 @@ function renderOppNotes(){
     .filter(it=>c.filter==='all'||(c.filter==='notes'?it.k==='note':it.k==='edit')).sort((a,b)=>b.at.localeCompare(a.at));
   p.innerHTML=`<div class="panel-h"><h3>Notes &amp; history</h3><div class="tlfilter">${[['all','All'],['notes','Notes'],['edits','Edits']].map(([k,l])=>`<button type="button" data-f="${k}" aria-pressed="${c.filter===k}">${l}</button>`).join('')}</div></div>
    <div class="panel-b">${ed?`<div class="composer"><textarea id="onbody" placeholder="Add a note about this deal…">${esc(c.noteText)}</textarea><div class="row"><span class="stat">Stamped with the date and your name · Ctrl+Enter to add</span><button class="btn primary small" id="onadd">Add note</button></div></div>`:''}
-   ${items.length?`<ul class="tl">${items.map(it=>it.k==='note'?noteItem(it.n):histItem(it.h,OPP_LABELS,'deal')).join('')}</ul>`:'<p class="stat" style="margin:0">Nothing here yet.</p>'}</div>`;
+   ${items.length?`<ul class="tl">${items.map(it=>it.k==='note'?noteItem(it.n):histItem(it.h,OPP_LABELS,'deal',canUndoOpp(it.h))).join('')}</ul>`:'<p class="stat" style="margin:0">Nothing here yet.</p>'}</div>`;
   p.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{c.filter=b.dataset.f;renderOppNotes()});
-  p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delOppNote(+b.dataset.del));
+  p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>setNoteDeleted('opp',+b.dataset.del,true));
+  p.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>setNoteDeleted('opp',+b.dataset.restore,false));
+  p.querySelectorAll('[data-undo]').forEach(b=>b.onclick=()=>undoOppEdit(+b.dataset.undo));
   if(ed){const ta=$('#onbody');ta.oninput=()=>c.noteText=ta.value;ta.onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();addOppNote()}};$('#onadd').onclick=addOppNote}
 }
 async function addOppNote(){
   const c=opp.cur;const body=c.noteText.trim();if(!body)return toast('Type a note first');
   const {data,error}=await sb.from('opp_notes').insert({opp_id:c.o.id,author_id:me.id,body}).select().single();if(error)return toast(friendly(error));
   c.notes.unshift(data);c.noteText='';renderOppNotes();toast('Note added')}
-async function delOppNote(id){
-  const c=opp.cur;const n=c.notes.find(x=>x.id===id);if(!n)return;
-  const {error}=await sb.from('opp_notes').delete().eq('id',id);if(error)return toast(friendly(error));
-  c.notes=c.notes.filter(x=>x.id!==id);renderOppNotes();
-  toast('Note deleted',{undo:async()=>{const {data,error}=await sb.from('opp_notes').insert({opp_id:n.opp_id,author_id:n.author_id,body:n.body,created_at:n.created_at}).select().single();if(error)throw error;
-    if(opp.cur?.o.id===n.opp_id){opp.cur.notes.push(data);opp.cur.notes.sort((a,b)=>b.created_at.localeCompare(a.created_at));renderOppNotes()}toast('Note restored')}})}
+// Any change to a deal's fields can be put back from the history.
+const OPP_UNDO=new Set(['deal_name','client_id','agency_id','type','stage','probability','amount','follow_up_date','lead_source','description','products']);
+const canUndoOpp=h=>canEditOpp(opp.cur?.o)&&h.action==='update'&&Object.keys(h.changes||{}).length>0&&Object.keys(h.changes).every(k=>OPP_UNDO.has(k)||(k==='owner_id'&&isAdmin()));
+async function undoOppEdit(hid){
+  const c=opp.cur;const h=c.hist.find(x=>x.id===hid);if(!h)return;const id=c.o.id;const back={},redo={};
+  for(const [k,[a]] of Object.entries(h.changes)){back[k]=k==='products'?(a||[]):k==='description'||k==='deal_name'||k==='lead_source'?(a??''):(a??null);redo[k]=c.o[k]??(k==='products'?[]:null)}
+  const {error}=await sb.from('opportunities').update(back).eq('id',id);if(error)return toast(friendly(error));oppRows=null;await openOpp(id);
+  toast('Change undone',{undo:async()=>{const {error}=await sb.from('opportunities').update(redo).eq('id',id);if(error)throw error;oppRows=null;openOpp(id);toast('Change put back')}})}
 
 async function openOppForm(o){
   try{await loadLookups();if(!oppRows)await loadOppRows()}catch(e){return toast(friendly(e))}
@@ -1399,16 +1440,12 @@ async function openOppForm(o){
    <label class="f">Stage <span class="req">*</span><select name="stage" id="fstage">${STAGE_ORDER.map(k=>opt(k,STAGES[k],o?.stage||'prospecting')).join('')}</select></label>
    <label class="f">Probability (%) <span class="req">*</span><input type="number" name="probability" id="fprob" min="0" max="100" required value="${o?.probability??10}"></label>
    <label class="f">Amount<input type="text" name="amount" inputmode="decimal" value="${o?.amount??''}" placeholder="$0"></label>
-   <label class="f">Close Date <span class="req">*</span><input type="date" name="close_date" required value="${o?.close_date||ymd(new Date(Date.now()+30*864e5))}"></label>
+   <label class="f">Follow Up <span class="hint">date to check back</span><input type="date" name="follow_up_date" value="${esc(o?.follow_up_date||'')}"></label>
    <label class="f">Lead Source<select name="lead_source">${opt('','None',o?.lead_source||'')}${[...new Set([...LEAD_SOURCES,o?.lead_source].filter(Boolean))].map(v=>opt(v,v,o?.lead_source||'')).join('')}</select></label>
-   <label class="f">Next Step<input type="text" name="next_step" value="${esc(o?.next_step||'')}"></label>
    ${productsField(o?.products||[])}
    <label class="f wide">Description<textarea name="description">${esc(o?.description||'')}</textarea></label>
-   <div class="fsec">Primary contact</div>
-   <label class="f">Name<input type="text" name="contact_name" value="${esc(o?.contact_name||'')}"></label>
-   <label class="f">Title<input type="text" name="contact_title" value="${esc(o?.contact_title||'')}"></label>
-   <label class="f">Email<input type="email" name="contact_email" value="${esc(o?.contact_email||'')}"></label>
-   <label class="f">Phone<input type="text" name="contact_phone" value="${esc(o?.contact_phone||'')}"></label>
+   ${isNew?`<div class="fsec">First contact <span class="hint" style="text-transform:none;letter-spacing:0">optional · add more contacts on the deal page</span></div>
+   ${CT_FIELDS.map(([k,l])=>`<label class="f">${l}<input type="${k==='email'?'email':'text'}" name="ct_${k}"></label>`).join('')}`:''}
   </div>`;
   openModal(isNew?'New opportunity':'Edit deal',body,{submit:isNew?'Create opportunity':'Save changes',wide:true,onSubmit:async fd=>{
     const amt=parseAmount(fd.get('amount'));if(amt===undefined){toast('Enter the amount as a number, like 5000');return false}
@@ -1416,13 +1453,14 @@ async function openOppForm(o){
     const {data:cid,error:ce}=await sb.rpc('ensure_client',{p_name:String(fd.get('client')).trim(),p_fields:{}});if(ce)throw ce;
     let aid=null;const an=String(fd.get('agency')||'').trim();if(an){const {data,error}=await sb.rpc('ensure_agency',{p_name:an});if(error)throw error;aid=data}
     const t=k=>String(fd.get(k)||'').trim();
-    const rec={deal_name:t('deal_name'),client_id:cid,agency_id:aid,type:fd.get('type'),stage:fd.get('stage'),probability:Math.round(prob),amount:amt,close_date:fd.get('close_date'),
-      lead_source:fd.get('lead_source')||'',next_step:t('next_step'),products:readProducts(fd),description:t('description'),
-      contact_name:t('contact_name'),contact_title:t('contact_title'),contact_email:t('contact_email'),contact_phone:t('contact_phone')};
+    const rec={deal_name:t('deal_name'),client_id:cid,agency_id:aid,type:fd.get('type'),stage:fd.get('stage'),probability:Math.round(prob),amount:amt,follow_up_date:fd.get('follow_up_date')||null,
+      lead_source:fd.get('lead_source')||'',products:readProducts(fd),description:t('description')};
     if(isAdmin())rec.owner_id=fd.get('owner_id');
     lookups.loaded=false;
     if(isNew){rec.owner_id=rec.owner_id||me.id;rec.created_by=me.id;
       const {data,error}=await sb.from('opportunities').insert(rec).select('id').single();if(error)throw error;
+      const ct={};CT_FIELDS.forEach(([k])=>ct[k]=t('ct_'+k));
+      if(Object.values(ct).some(Boolean)){const {error:e2}=await sb.from('opp_contacts').insert({...ct,opp_id:data.id,created_by:me.id});if(e2)toast('Deal created, but the contact wasn’t saved: '+friendly(e2))}
       oppRows=null;toast('Opportunity created');setTimeout(()=>openOpp(data.id),0);return}
     const same=(k,a,b)=>k==='amount'?(a==null?null:Number(a))===(b==null?null:Number(b)):JSON.stringify(a??null)===JSON.stringify(b??null);
     const patch={},prev={};for(const [k,v] of Object.entries(rec)){if(!same(k,o[k],v)){patch[k]=v;prev[k]=o[k]??null}}
@@ -1457,14 +1495,14 @@ function openAgencyForm(a){
 }
 
 /* ===================== Reports ===================== */
-const rep={date:'all',stage:'',owner:'',type:'',source:'',group:'',search:'',sort:'close_date',dir:1};
-const RCOLS=[['owner','Opportunity Owner'],['client','Client Name'],['agency','Agency'],['deal','Deal Name'],['stage','Stage'],['amount','Amount'],['probability','Probability (%)'],['age','Age'],['close_date','Close Date'],['created','Created Date'],['next_step','Next Step'],['source','Lead Source'],['type','Type'],['converted','Converted By']];
+const rep={date:'all',stage:'',owner:'',type:'',source:'',group:'',search:'',sort:'follow_up',dir:1};
+const RCOLS=[['owner','Opportunity Owner'],['client','Client Name'],['agency','Agency'],['deal','Deal Name'],['stage','Stage'],['amount','Amount'],['probability','Probability (%)'],['age','Age'],['follow_up','Follow Up'],['created','Created Date'],['source','Lead Source'],['type','Type'],['converted','Converted By']];
 function repVal(o,k){switch(k){case'owner':return o.owner_id?nameOf(o.owner_id):'';case'client':return o.client?.name||'';case'agency':return o.agency?.name||'';case'deal':return o.deal_name;
-  case'stage':return STAGES[o.stage];case'amount':return +o.amount||0;case'probability':return o.probability;case'age':return ageDays(o);case'close_date':return o.close_date||'';
-  case'created':return o.created_at;case'next_step':return o.next_step||'';case'source':return o.lead_source||'';case'type':return TYPES[o.type]||'';case'converted':return o.converted_by?nameOf(o.converted_by):''}}
+  case'stage':return STAGES[o.stage];case'amount':return +o.amount||0;case'probability':return o.probability;case'age':return ageDays(o);case'follow_up':return o.follow_up_date||'';
+  case'created':return o.created_at;case'source':return o.lead_source||'';case'type':return TYPES[o.type]||'';case'converted':return o.converted_by?nameOf(o.converted_by):''}}
 function dateRange(k){const n=new Date(),y=n.getFullYear(),m=n.getMonth(),q=Math.floor(m/3);const d=(Y,M,D)=>ymd(new Date(Y,M,D));
   switch(k){case'this_month':return[d(y,m,1),d(y,m+1,0)];case'last_month':return[d(y,m-1,1),d(y,m,0)];case'this_q':return[d(y,q*3,1),d(y,q*3+3,0)];
-    case'last_q':return[d(y,q*3-3,1),d(y,q*3,0)];case'this_year':return[d(y,0,1),d(y,11,31)];case'next90':return[d(y,m,n.getDate()),d(y,m,n.getDate()+90)];default:return null}}
+    case'last_q':return[d(y,q*3-3,1),d(y,q*3,0)];case'this_year':return[d(y,0,1),d(y,11,31)];case'last90':return[d(y,m,n.getDate()-90),d(y,m,n.getDate())];default:return null}}
 async function loadReports(){
   try{await Promise.all([loadOppRows(true),loadLookups()])}catch(e){$('#rtable').innerHTML=`<tbody><tr><td><div class="empty">${esc(friendly(e))}</div></td></tr></tbody>`;return}
   $('#rowner').innerHTML=ownerOptions(rep.owner,'All owners');
@@ -1473,7 +1511,7 @@ async function loadReports(){
   $('#rsource').innerHTML=opt('','All sources',rep.source)+srcs.map(s=>opt(s,s,rep.source)).join('');
   renderReport()}
 function repRows(){const r=dateRange(rep.date);const ow=rep.owner==='__me'?me.id:rep.owner;const q=rep.search.trim().toLowerCase();
-  return (oppRows||[]).filter(o=>(!r||(o.close_date>=r[0]&&o.close_date<=r[1]))&&(!rep.stage||(rep.stage==='open'?!CLOSED.includes(o.stage):o.stage===rep.stage))&&
+  return (oppRows||[]).filter(o=>(!r||(ymd(new Date(o.created_at))>=r[0]&&ymd(new Date(o.created_at))<=r[1]))&&(!rep.stage||(rep.stage==='open'?!CLOSED.includes(o.stage):o.stage===rep.stage))&&
     (!ow||o.owner_id===ow)&&(!rep.type||o.type===rep.type)&&(!rep.source||o.lead_source===rep.source)&&(!q||[o.deal_name,o.client?.name,o.agency?.name].join(' ').toLowerCase().includes(q)))}
 function renderReport(){
   const rows=repRows();const sum=a=>a.reduce((n,o)=>n+(+o.amount||0),0);
@@ -1492,7 +1530,7 @@ function renderReport(){
     if(gk)html+=`<tr class="grp"><td colspan="${RCOLS.length+1}">${esc(g)}<span>${list.length} deal${list.length===1?'':'s'} · ${money(sum(list))||'$0'}</span></td></tr>`;
     for(const o of list){n++;html+=`<tr class="click lead-row g-${o.stage}" data-id="${o.id}"><td class="rn">${n}</td><td>${o.owner_id?personCell(o.owner_id):'—'}</td><td class="wrap">${esc(o.client?.name||'')}</td><td class="wrap">${esc(o.agency?.name||'—')}</td>
       <td class="wrap"><span class="co">${esc(o.deal_name)}</span></td><td>${stagePill(o.stage)}</td><td class="num">${esc(money(o.amount))||'—'}</td><td class="num">${o.probability}%</td><td class="num">${ageDays(o)}</td>
-      <td>${esc(fmtDate(o.close_date))}</td><td>${esc(fmtDate(o.created_at))}</td><td class="notecell">${esc(o.next_step||'—')}</td><td>${esc(o.lead_source||'—')}</td><td>${esc(TYPES[o.type]||'')}</td><td>${o.converted_by?esc(nameOf(o.converted_by)):'—'}</td></tr>`}
+      <td>${followCell(o)||'—'}</td><td>${esc(fmtDate(o.created_at))}</td><td>${esc(o.lead_source||'—')}</td><td>${esc(TYPES[o.type]||'')}</td><td>${o.converted_by?esc(nameOf(o.converted_by)):'—'}</td></tr>`}
   }
   html+=rows.length?`<tr class="total"><td></td><td colspan="5">Total · ${rows.length} deal${rows.length===1?'':'s'}</td><td class="num">${money(sum(rows))||'$0'}</td><td colspan="${RCOLS.length-6}"></td></tr>`
     :`<tr><td colspan="${RCOLS.length+1}"><div class="empty">${(oppRows||[]).length?'No deals match these filters.':'No opportunities yet.'}</div></td></tr>`;
@@ -1509,14 +1547,12 @@ function renderReport(){
 $('#rsearch').addEventListener('input',e=>{rep.search=e.target.value;renderReport()});
 $('#rexport').onclick=()=>{const rows=repRows();if(!rows.length)return toast('No deals to export');
   const lines=[RCOLS.map(c=>csvCell(c[1])).join(',')];
-  rows.forEach(o=>lines.push(RCOLS.map(([c])=>csvCell(c==='created'?fmtDate(o.created_at):c==='amount'?(o.amount??''):c==='close_date'?fmtDate(o.close_date):repVal(o,c))).join(',')));
+  rows.forEach(o=>lines.push(RCOLS.map(([c])=>csvCell(c==='created'?fmtDate(o.created_at):c==='amount'?(o.amount??''):c==='follow_up'?fmtDate(o.follow_up_date):repVal(o,c))).join(',')));
   download(`dial-desk-opportunities-${ymd(new Date())}.csv`,lines)};
 function download(name,lines){const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast(`Exported ${lines.length-1} rows`)}
 
 $('#backboard').onclick=()=>setTab('board');
 
-/* Keep the queue fresh while the page is open. */
-setInterval(()=>{if(me&&document.visibilityState==='visible'&&tab==='queue'&&!saving)loadQueue()},60000);
 </script>
 </body>
 </html>
