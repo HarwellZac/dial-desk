@@ -1,5 +1,5 @@
 -- =====================================================================
--- Dial Desk database setup  (version 5: editable notes, On Ice status, follow-up dates, multiple contacts)
+-- Dial Desk database setup  (version 6: call volume report, editable notes, On Ice status, follow-up dates, multiple contacts)
 -- Paste this whole file into Supabase > SQL Editor > New query > Run.
 -- Safe to run again: it creates what is missing and updates the rest.
 -- Your leads, calls and people are kept.
@@ -936,6 +936,49 @@ begin
   end if;
 end $$;
 
+-- =====================================================================
+-- Version 6: call volume report (calls per caller per day) and hours worked
+-- =====================================================================
+-- Calls and appointments per caller per day (Central time). Admins see everyone; others only themselves.
+create or replace function public.call_report(p_from timestamptz, p_to timestamptz)
+returns table (caller_id uuid, day date, calls bigint, appts bigint)
+language sql stable security definer set search_path = public as $$
+  with c as (
+    select k.caller_id, (k.created_at at time zone 'America/Chicago')::date as d, count(*) as n,
+      count(*) filter (where k.status = 'appointment') as a
+    from public.calls k
+    where public.is_member() and k.created_at >= p_from and k.created_at < p_to and k.caller_id is not null
+      and (public.is_admin() or k.caller_id = auth.uid())
+    group by 1, 2),
+  v as (
+    select l.converted_by as caller_id, (l.converted_at at time zone 'America/Chicago')::date as d, count(*) as a
+    from public.leads l
+    where public.is_member() and l.converted_at >= p_from and l.converted_at < p_to and l.converted_by is not null
+      and (public.is_admin() or l.converted_by = auth.uid())
+    group by 1, 2)
+  select coalesce(c.caller_id, v.caller_id), coalesce(c.d, v.d), coalesce(c.n, 0), coalesce(c.a, 0) + coalesce(v.a, 0)
+  from c full join v on c.caller_id = v.caller_id and c.d = v.d
+$$;
+
+-- Hours worked per caller per month, typed in by admins on the Reports page.
+create table if not exists public.caller_hours (
+  caller_id uuid not null references public.profiles(id) on delete cascade,
+  month date not null,
+  hours numeric(7,2) not null check (hours >= 0),
+  updated_by uuid references public.profiles(id) on delete set null default auth.uid(),
+  updated_at timestamptz not null default now(),
+  primary key (caller_id, month)
+);
+alter table public.caller_hours enable row level security;
+drop policy if exists "admins read hours" on public.caller_hours;
+create policy "admins read hours" on public.caller_hours for select to authenticated using (public.is_admin());
+drop policy if exists "admins add hours" on public.caller_hours;
+create policy "admins add hours" on public.caller_hours for insert to authenticated with check (public.is_admin());
+drop policy if exists "admins edit hours" on public.caller_hours;
+create policy "admins edit hours" on public.caller_hours for update to authenticated using (public.is_admin()) with check (public.is_admin());
+drop policy if exists "admins remove hours" on public.caller_hours;
+create policy "admins remove hours" on public.caller_hours for delete to authenticated using (public.is_admin());
+
 -- ---------- Access for signed-in users (row level security still applies) ----------
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on all tables in schema public to authenticated;
@@ -952,6 +995,7 @@ revoke execute on function public.convert_lead(uuid, uuid, text, text, text, tex
 revoke execute on function public.unconvert_lead(uuid) from anon;
 revoke execute on function public.set_note_deleted(text, bigint, boolean) from anon;
 revoke execute on function public.edit_note(text, bigint, text) from anon;
+revoke execute on function public.call_report(timestamptz, timestamptz) from anon;
 revoke execute on function public.ensure_client(text, jsonb) from anon;
 revoke execute on function public.ensure_agency(text) from anon;
 

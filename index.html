@@ -299,6 +299,15 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 .chg span b{font-weight:600}
 .chg s{color:var(--faint)}
 .linkbtn{border:0;background:none;color:var(--accent);font-weight:700;cursor:pointer;padding:0}
+.cvcharts{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:1100px){.cvcharts{grid-template-columns:minmax(0,1fr)}}
+.chartbox{position:relative;padding:12px 16px 14px;min-height:300px}
+.chartbox svg{display:block;width:100%;height:auto;overflow:visible}
+.chartbox .tip{position:absolute;pointer-events:none;background:#1a2233;color:#fff;border-radius:9px;padding:8px 11px;font-size:12.5px;box-shadow:var(--shadow-lg);white-space:nowrap;z-index:5;display:grid;gap:3px}
+.chartbox .tip b{font-weight:700}
+.chartbox .tip i,.vlegend i,.sw{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--sc);margin-right:6px;vertical-align:-1px}
+.vlegend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted);font-weight:600}
+.hrs{width:90px!important;text-align:right;padding:5px 8px!important}
 .savedmsg{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;background:#e8f8ef;border:1px solid #b7e9cb;color:#067647;border-radius:10px;padding:8px 12px;font-size:13.5px}
 .cbbox{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px}
 .tl .edited{font-size:11.5px;color:var(--faint);font-weight:600}
@@ -472,8 +481,24 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
 
     <!-- Reports -->
     <section id="tab-reports" class="page" hidden>
-      <div class="pagehead"><div><h1>Reports</h1><p>Opportunity report. Filter, group and export.</p></div>
-        <div class="actions"><button class="btn" id="rexport"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
+      <div class="pagehead"><div><h1>Reports</h1><p id="rsub">Opportunity report. Filter, group and export.</p></div>
+        <div class="actions"><div class="seg" id="rview" data-admin hidden><button type="button" data-v="opps" aria-pressed="true">Opportunities</button><button type="button" data-v="calls" aria-pressed="false">Call volume</button></div>
+          <button class="btn" id="rexport"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
+      <div id="rep-calls" class="page" hidden>
+        <div class="panel"><div class="filters">
+          <label class="f">Month<select id="cvmonth"></select></label>
+          <label class="f">Caller<select id="cvcaller"></select></label>
+          <span class="stat" style="flex:1 1 260px;align-self:center">Months run from the 1st to the last day. Type each caller's hours worked in the table below.</span>
+        </div></div>
+        <div class="kpis" id="cvkpis"></div>
+        <div class="panel"><div class="panel-h"><div><h2 id="cvtabletitle">Callers side by side</h2><p class="stat" style="margin:2px 0 0">Avg / day counts only the days a caller logged calls. Calls / hour uses the hours you enter.</p></div></div><div class="tablebox"><table id="cvtable"></table></div></div>
+        <div class="cvcharts">
+          <div class="panel"><div class="panel-h"><div><h2>Calls by month</h2><p class="stat" style="margin:2px 0 0" id="cvmonthlysub">Last 6 months · hover for exact numbers</p></div><div class="vlegend" id="cvlegend"></div></div><div class="chartbox" id="cvmonthly"></div></div>
+          <div class="panel"><div class="panel-h"><div><h2 id="cvdailytitle">Calls per day</h2><p class="stat" style="margin:2px 0 0" id="cvdailysub"></p></div></div><div class="chartbox" id="cvdaily"></div></div>
+        </div>
+        <div class="panel"><div class="panel-h"><h2>Month by month</h2><span class="stat">Total calls</span></div><div class="tablebox"><table id="cvmtable"></table></div></div>
+      </div>
+      <div id="rep-opps" class="page">
       <div class="kpis" id="rkpis"></div>
       <div class="panel">
         <div class="filters">
@@ -490,6 +515,7 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
         <div class="tablebox"><table id="rtable"></table></div>
       </div>
       <div class="panel"><div class="panel-h"><div><h2>Lead conversions by caller</h2><p class="stat" style="margin:2px 0 0">Deals that started as a lead, credited to the person who converted it. Uses the filters above.</p></div></div><div class="tablebox"><table id="rconv"></table></div></div>
+      </div>
     </section>
 
     <!-- Import -->
@@ -954,10 +980,12 @@ async function loadBoard(){
   renderBoard();
 }
 async function loadMyKpis(){
-  try{const [st,cb]=await Promise.all([sb.rpc('team_stats',{p_since:new Date(new Date().setHours(0,0,0,0)).toISOString()}),
-      sb.from('leads').select('id',{count:'exact',head:true}).eq('owner_id',me.id).in('status',OPEN).is('deleted_at',null).lte('callback_at',new Date().toISOString())]);
-    const mine=(st.data||[]).find(r=>r.caller_id===me.id)||{calls:0,appointments:0};
-    $('#mykpis').innerHTML=[['Calls today',mine.calls],['Appts today',mine.appointments],['Callbacks due',cb.count]].map(([k,v])=>`<span><b>${Number(v)||0}</b>${k}</span>`).join('')}catch{}}
+  try{const n=new Date();const from=new Date(n.getFullYear(),n.getMonth(),1),to=new Date(n.getFullYear(),n.getMonth()+1,1);
+    const [st,cb]=await Promise.all([sb.rpc('call_report',{p_from:from.toISOString(),p_to:to.toISOString()}),
+      sb.from('leads').select('id',{count:'exact',head:true}).eq('owner_id',me.id).in('status',OPEN).is('deleted_at',null).lte('callback_at',n.toISOString())]);
+    const mine=(st.data||[]).filter(r=>r.caller_id===me.id);const today=ymd(n);const tot=(rows,k)=>rows.reduce((x,r)=>x+(Number(r[k])||0),0);
+    $('#mykpis').innerHTML=[['Calls today',tot(mine.filter(r=>r.day===today),'calls')],['Appts this month',tot(mine,'appts')],['Calls this month',tot(mine,'calls')],['Callbacks due',cb.count]]
+      .map(([k,v])=>`<span><b>${(Number(v)||0).toLocaleString()}</b>${k}</span>`).join('')}catch{}}
 function renderBoardControls(){
   const ow=$('#lowner'),as=$('#assignto'),ss=$('#setstatus');const ids=Object.values(people).filter(p=>p.active).map(p=>p.id);const av=as.value,sv=ss.value;
   ow.innerHTML=`<option value="">All callers</option><option value="__me">My leads</option><option value="__none">Unassigned</option>`+ids.map(id=>`<option value="${id}">${esc(who(id))}</option>`).join('');
@@ -1581,6 +1609,7 @@ function dateRange(k){const n=new Date(),y=n.getFullYear(),m=n.getMonth(),q=Math
   switch(k){case'this_month':return[d(y,m,1),d(y,m+1,0)];case'last_month':return[d(y,m-1,1),d(y,m,0)];case'this_q':return[d(y,q*3,1),d(y,q*3+3,0)];
     case'last_q':return[d(y,q*3-3,1),d(y,q*3,0)];case'this_year':return[d(y,0,1),d(y,11,31)];case'last90':return[d(y,m,n.getDate()-90),d(y,m,n.getDate())];default:return null}}
 async function loadReports(){
+  showRepView();if(repView==='calls'&&isAdmin())return loadCallVolume();
   try{await Promise.all([loadOppRows(true),loadLookups()])}catch(e){$('#rtable').innerHTML=`<tbody><tr><td><div class="empty">${esc(friendly(e))}</div></td></tr></tbody>`;return}
   $('#rowner').innerHTML=ownerOptions(rep.owner,'All owners');
   $('#rstage').innerHTML=opt('','All stages',rep.stage)+opt('open','Open deals',rep.stage)+STAGE_ORDER.map(k=>opt(k,STAGES[k],rep.stage)).join('');
@@ -1622,10 +1651,145 @@ function renderReport(){
 }
 [['rdate','date'],['rstage','stage'],['rowner','owner'],['rtype','type'],['rsource','source'],['rgroup','group']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{rep[k]=e.target.value;renderReport()}));
 $('#rsearch').addEventListener('input',e=>{rep.search=e.target.value;renderReport()});
-$('#rexport').onclick=()=>{const rows=repRows();if(!rows.length)return toast('No deals to export');
+$('#rexport').onclick=()=>{if(repView==='calls'&&isAdmin())return exportCalls();const rows=repRows();if(!rows.length)return toast('No deals to export');
   const lines=[RCOLS.map(c=>csvCell(c[1])).join(',')];
   rows.forEach(o=>lines.push(RCOLS.map(([c])=>csvCell(c==='created'?fmtDate(o.created_at):c==='amount'?(o.amount??''):c==='follow_up'?fmtDate(o.follow_up_date):repVal(o,c))).join(',')));
   download(`dial-desk-opportunities-${ymd(new Date())}.csv`,lines)};
+/* ===================== Reports: call volume (admins) ===================== */
+let repView='opps';
+const cv={month:'',caller:'',rows:[],hours:{},months:[],people:[]};
+const SERIES=['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#6250d6','#e34948'];
+const TEAM_INK='#475467';
+function showRepView(){const calls=repView==='calls'&&isAdmin();
+  $('#rep-calls').hidden=!calls;$('#rep-opps').hidden=calls;
+  $('#rview').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===(calls?'calls':'opps')));
+  $('#rsub').textContent=calls?'Call volume by caller, month by month. Only admins see this.':'Opportunity report. Filter, group and export.'}
+$('#rview').querySelectorAll('button').forEach(b=>b.onclick=()=>{repView=b.dataset.v;loadReports()});
+const monthKey=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+const monthOf=k=>{const [y,m]=k.split('-').map(Number);return new Date(y,m-1,1)};
+const monthName=(d,long=true)=>d.toLocaleDateString([],{month:long?'long':'short',...(long?{year:'numeric'}:{})});
+const fmtN=(v,dp=0)=>v==null||!isFinite(v)?'—':Number(v).toLocaleString(undefined,{maximumFractionDigits:dp,minimumFractionDigits:dp});
+async function loadCallVolume(){
+  const now=new Date();if(!cv.month)cv.month=monthKey(now);
+  $('#cvmonth').innerHTML=Array.from({length:13},(_,i)=>new Date(now.getFullYear(),now.getMonth()-i,1)).map(d=>opt(monthKey(d),monthName(d),cv.month)).join('');
+  const sel=monthOf(cv.month);const from=new Date(sel.getFullYear(),sel.getMonth()-5,1),to=new Date(sel.getFullYear(),sel.getMonth()+1,1);
+  cv.months=Array.from({length:6},(_,i)=>new Date(sel.getFullYear(),sel.getMonth()-5+i,1));
+  $('#cvkpis').innerHTML='<div class="kpi"><span>Loading…</span></div>';
+  const [r,h]=await Promise.all([sb.rpc('call_report',{p_from:from.toISOString(),p_to:to.toISOString()}),
+    sb.from('caller_hours').select('*').eq('month',ymd(sel))]);
+  if(r.error){$('#cvkpis').innerHTML=`<div class="kpi"><span>${esc(friendly(r.error))}</span></div>`;return}
+  cv.rows=(r.data||[]).map(x=>({...x,calls:Number(x.calls)||0,appts:Number(x.appts)||0}));
+  cv.hours={};(h.data||[]).forEach(x=>cv.hours[x.caller_id]=Number(x.hours));
+  // Everyone who is a caller, plus anyone else who logged calls in this window. Order (and so color) follows when they joined.
+  const ids=new Set(cv.rows.map(x=>x.caller_id));
+  cv.people=Object.values(people).filter(p=>(p.role==='caller'&&p.active)||ids.has(p.id)).map(p=>p.id);
+  ids.forEach(id=>{if(!cv.people.includes(id))cv.people.push(id)});
+  if(cv.caller&&!cv.people.includes(cv.caller))cv.caller='';
+  $('#cvcaller').innerHTML=opt('','All callers',cv.caller)+cv.people.map(id=>opt(id,nameOf(id),cv.caller)).join('');
+  renderCallVolume()}
+$('#cvmonth').addEventListener('input',e=>{cv.month=e.target.value;loadCallVolume()});
+$('#cvcaller').addEventListener('input',e=>{cv.caller=e.target.value;renderCallVolume()});
+const colorOf=id=>{const i=cv.people.indexOf(id);return i>=0&&i<SERIES.length?SERIES[i]:'#98a2b3'};
+function cvStats(id){const sel=monthOf(cv.month);const k=monthKey(sel);
+  const rows=cv.rows.filter(x=>x.caller_id===id&&x.day.slice(0,7)===k);
+  const calls=rows.reduce((n,x)=>n+x.calls,0),appts=rows.reduce((n,x)=>n+x.appts,0),days=rows.filter(x=>x.calls>0).length,hours=cv.hours[id];
+  return {id,calls,appts,days,hours,avg:days?calls/days:null,cph:hours>0?calls/hours:null}}
+function renderCallVolume(){
+  const sel=monthOf(cv.month);const list=cv.caller?[cv.caller]:cv.people;const st=list.map(cvStats);
+  const isNow=monthKey(sel)===monthKey(new Date());
+  const T=st.reduce((a,x)=>({calls:a.calls+x.calls,appts:a.appts+x.appts,days:a.days+x.days,hours:a.hours+(x.hours||0),hcalls:a.hcalls+(x.hours>0?x.calls:0)}),{calls:0,appts:0,days:0,hours:0,hcalls:0});
+  const who1=cv.caller?nameOf(cv.caller):'All callers';
+  $('#cvkpis').innerHTML=[[fmtN(T.calls),`Total calls · ${monthName(sel)}${isNow?' so far':''}`],
+    [fmtN(T.days?T.calls/T.days:null,1),cv.caller?'Avg calls per day worked':'Avg calls per caller, per day worked'],
+    [T.hours?fmtN(T.hours,1):'—',T.hours?'Hours worked':'Hours worked · not entered yet'],
+    [T.hours?fmtN(T.hcalls/T.hours,1):'—','Calls per hour'],
+    [fmtN(T.appts),'Appointments set']].map(([v,k])=>`<div class="kpi"><b>${v}</b><span>${esc(k)}</span></div>`).join('');
+  $('#cvtabletitle').textContent=`${cv.caller?who1:'Callers side by side'} · ${monthName(sel)}`;
+  const focusId=document.activeElement?.dataset?.hrs;
+  $('#cvtable').innerHTML=`<thead><tr><th>Caller</th><th class="num">Calls</th><th class="num">Days worked</th><th class="num">Avg / day</th><th class="num">Hours worked</th><th class="num">Calls / hour</th><th class="num">Appts</th></tr></thead><tbody>`+
+    (st.length?st.map(x=>`<tr><td><span class="person"><i class="sw" style="--sc:${colorOf(x.id)}"></i>${avatar(x.id)}${esc(nameOf(x.id))}</span></td><td class="num"><b>${fmtN(x.calls)}</b></td><td class="num">${fmtN(x.days)}</td><td class="num">${fmtN(x.avg,1)}</td>
+      <td class="num"><input type="text" inputmode="decimal" class="hrs" data-hrs="${x.id}" value="${x.hours!=null?x.hours:''}" placeholder="Enter hours" aria-label="Hours worked by ${esc(nameOf(x.id))}"></td><td class="num">${fmtN(x.cph,1)}</td><td class="num">${fmtN(x.appts)}</td></tr>`).join('')
+      +(st.length>1?`<tr class="total"><td>Team total</td><td class="num">${fmtN(T.calls)}</td><td class="num">${fmtN(T.days)}</td><td class="num">${fmtN(T.days?T.calls/T.days:null,1)}</td><td class="num">${T.hours?fmtN(T.hours,1):'—'}</td><td class="num">${T.hours?fmtN(T.hcalls/T.hours,1):'—'}</td><td class="num">${fmtN(T.appts)}</td></tr>`:'')
+      :`<tr><td colspan="7"><div class="empty">No callers yet.</div></td></tr>`)+'</tbody>';
+  $('#cvtable').querySelectorAll('[data-hrs]').forEach(inp=>inp.onchange=()=>saveHours(inp.dataset.hrs,inp.value));
+  if(focusId){const f=$(`#cvtable [data-hrs="${focusId}"]`);if(f)f.focus()}
+  // Month by month table
+  const mk=cv.months.map(monthKey);
+  const per=id=>mk.map(k=>cv.rows.filter(x=>x.caller_id===id&&x.day.slice(0,7)===k).reduce((n,x)=>n+x.calls,0));
+  $('#cvmtable').innerHTML=`<thead><tr><th>Caller</th>${cv.months.map(d=>`<th class="num">${esc(d.toLocaleDateString([],{month:'short',year:'2-digit'}))}</th>`).join('')}<th class="num">6-month total</th></tr></thead><tbody>`+
+    list.map(id=>{const v=per(id);return `<tr><td><span class="person"><i class="sw" style="--sc:${colorOf(id)}"></i>${esc(nameOf(id))}</span></td>${v.map(n=>`<td class="num">${fmtN(n)}</td>`).join('')}<td class="num"><b>${fmtN(v.reduce((a,b)=>a+b,0))}</b></td></tr>`}).join('')+
+    (list.length>1?`<tr class="total"><td>Team total</td>${mk.map((k,i)=>`<td class="num">${fmtN(list.reduce((n,id)=>n+per(id)[i],0))}</td>`).join('')}<td class="num">${fmtN(list.reduce((n,id)=>n+per(id).reduce((a,b)=>a+b,0),0))}</td></tr>`:'')+'</tbody>';
+  // Charts
+  const series=list.map(id=>({id,name:nameOf(id),color:colorOf(id),values:per(id)}));
+  $('#cvmonthlysub').textContent=(cv.caller?nameOf(cv.caller)+' · ':'')+'Last 6 months · hover for exact numbers';
+  $('#cvlegend').innerHTML=series.length>1?series.map(x=>`<span><i style="--sc:${x.color}"></i>${esc(x.name)}</span>`).join(''):'';
+  const nowK=monthKey(new Date());lineChart($('#cvmonthly'),cv.months.map(d=>d.toLocaleDateString([],{month:'short'})+(monthKey(d)===nowK?' (so far)':'')),series,cv.months.map(d=>monthName(d)+(monthKey(d)===nowK?' (so far)':'')));
+  const nDays=new Date(sel.getFullYear(),sel.getMonth()+1,0).getDate();const k=monthKey(sel);
+  const days=Array.from({length:nDays},(_,i)=>new Date(sel.getFullYear(),sel.getMonth(),i+1));
+  const dayRows=days.map(d=>{const y=ymd(d);const parts=list.map(id=>({id,n:cv.rows.filter(x=>x.caller_id===id&&x.day===y).reduce((a,x)=>a+x.calls,0)})).filter(p=>p.n);return {d,total:parts.reduce((a,p)=>a+p.n,0),parts}});
+  $('#cvdailytitle').textContent=`Calls per day · ${monthName(sel)}`;
+  $('#cvdailysub').textContent=cv.caller?nameOf(cv.caller):'All callers combined · hover a bar for the split';
+  barChart($('#cvdaily'),dayRows,cv.caller?colorOf(cv.caller):TEAM_INK);
+}
+async function saveHours(id,raw){
+  const month=ymd(monthOf(cv.month));const txt=String(raw).trim().replace(/,/g,'');
+  if(txt===''){const {error}=await sb.from('caller_hours').delete().eq('caller_id',id).eq('month',month);if(error)return toast(friendly(error));delete cv.hours[id];renderCallVolume();return toast('Hours cleared')}
+  const n=Number(txt);if(!isFinite(n)||n<0||n>744){toast('Enter hours as a number, like 152.5');renderCallVolume();return}
+  const {error}=await sb.from('caller_hours').upsert({caller_id:id,month,hours:n,updated_by:me.id,updated_at:new Date().toISOString()},{onConflict:'caller_id,month'});
+  if(error)return toast(friendly(error));cv.hours[id]=n;renderCallVolume();toast(`Saved ${fmtN(n,1)} hours for ${nameOf(id)}`)}
+function exportCalls(){const list=cv.caller?[cv.caller]:cv.people;const sel=monthOf(cv.month);
+  const lines=[['Month','Caller','Calls','Days worked','Avg calls per day','Hours worked','Calls per hour','Appointments'].map(csvCell).join(',')];
+  list.map(cvStats).forEach(x=>lines.push([monthName(sel),nameOf(x.id),x.calls,x.days,x.avg==null?'':x.avg.toFixed(1),x.hours??'',x.cph==null?'':x.cph.toFixed(1),x.appts].map(csvCell).join(',')));
+  download(`dial-desk-call-volume-${cv.month}.csv`,lines)}
+
+/* Simple SVG charts: thin marks, recessive grid, hover tooltips. */
+function niceMax(v){if(v<=0)return 10;const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*p}
+function chartFrame(box,W,H){box.innerHTML='';const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('role','img');box.appendChild(svg);
+  const tip=document.createElement('div');tip.className='tip';tip.hidden=true;box.appendChild(tip);
+  const el=(tag,attrs,parent=svg)=>{const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);parent.appendChild(e);return e};
+  const showTip=(html,x,y)=>{tip.innerHTML=html;tip.hidden=false;const bw=box.clientWidth,scale=box.querySelector('svg').getBoundingClientRect().width/W;const px=x*scale+16,py=y*scale+12;
+    const tw=tip.offsetWidth;tip.style.left=Math.max(4,Math.min(px+12,bw-tw-4))+'px';tip.style.top=Math.max(4,py-tip.offsetHeight-8)+'px'};
+  return {svg,el,tip,showTip,hideTip:()=>tip.hidden=true}}
+function yAxis(el,m,W,H,max){const ticks=4;for(let i=0;i<=ticks;i++){const v=max*i/ticks;const y=m.t+(H-m.t-m.b)*(1-i/ticks);
+  el('line',{x1:m.l,x2:W-m.r,y1:y,y2:y,stroke:i?'#eef2f8':'#d9dfe9','stroke-width':1});
+  const t=el('text',{x:m.l-8,y:y+4,'text-anchor':'end','font-size':11,fill:'#98a2b3'});t.textContent=fmtN(v)}}
+function lineChart(box,labels,series,full){
+  const W=Math.max(340,box.clientWidth-32),H=270,m={l:46,r:series.length>1&&series.length<=6?104:20,t:14,b:30};
+  const {svg,el,showTip,hideTip}=chartFrame(box,W,H);
+  const all=series.flatMap(s=>s.values);if(!series.length||!all.some(v=>v>0)){box.innerHTML='<div class="empty">No calls logged in these months yet.</div>';return}
+  const max=niceMax(Math.max(...all));yAxis(el,m,W,H,max);
+  const n=labels.length,pw=W-m.l-m.r,ph=H-m.t-m.b;const X=i=>m.l+(n<=1?pw/2:pw*i/(n-1)),Y=v=>m.t+ph*(1-v/max);
+  labels.forEach((l,i)=>{const t=el('text',{x:X(i),y:H-8,'text-anchor':'middle','font-size':11.5,fill:'#667085'});t.textContent=l});
+  series.forEach(s=>{el('path',{d:s.values.map((v,i)=>`${i?'L':'M'}${X(i)},${Y(v)}`).join(''),fill:'none',stroke:s.color,'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'});
+    s.values.forEach((v,i)=>el('circle',{cx:X(i),cy:Y(v),r:4,fill:s.color,stroke:'#fff','stroke-width':2}))});
+  // Direct labels at the line ends, nudged apart so they never overlap.
+  if(m.r>20){const ends=series.map(s=>({s,y:Y(s.values[n-1])})).sort((a,b)=>a.y-b.y);for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<14)ends[i].y=ends[i-1].y+14;
+    ends.forEach(e=>{const t=el('text',{x:X(n-1)+10,y:e.y+4,'font-size':11.5,'font-weight':600,fill:'#344054'});t.textContent=e.s.name.split(' ')[0]+' · '+fmtN(e.s.values[n-1])})}
+  const cross=el('line',{x1:0,x2:0,y1:m.t,y2:H-m.b,stroke:'#98a2b3','stroke-width':1,'stroke-dasharray':'3 3',visibility:'hidden'});
+  const hit=el('rect',{x:m.l-10,y:0,width:pw+20,height:H,fill:'transparent'});
+  hit.addEventListener('mousemove',e=>{const r=svg.getBoundingClientRect();const x=(e.clientX-r.left)*W/r.width;const i=Math.max(0,Math.min(n-1,Math.round((x-m.l)/(pw/(Math.max(1,n-1))))));
+    cross.setAttribute('x1',X(i));cross.setAttribute('x2',X(i));cross.setAttribute('visibility','visible');
+    const rows=[...series].sort((a,b)=>b.values[i]-a.values[i]).map(s=>`<span><i style="--sc:${s.color}"></i>${esc(s.name)}: <b>${fmtN(s.values[i])}</b></span>`).join('');
+    showTip(`<b>${esc(full[i])}</b>${rows}${series.length>1?`<span>Team: <b>${fmtN(series.reduce((a,s)=>a+s.values[i],0))}</b></span>`:''}`,X(i),Math.min(...series.map(s=>Y(s.values[i]))))});
+  hit.addEventListener('mouseleave',()=>{cross.setAttribute('visibility','hidden');hideTip()})}
+function barChart(box,rows,color){
+  const W=Math.max(340,box.clientWidth-32),H=270,m={l:46,r:16,t:14,b:30};
+  const {svg,el,showTip,hideTip}=chartFrame(box,W,H);
+  if(!rows.some(r=>r.total>0)){box.innerHTML='<div class="empty">No calls logged this month yet.</div>';return}
+  const max=niceMax(Math.max(...rows.map(r=>r.total)));yAxis(el,m,W,H,max);
+  const n=rows.length,pw=W-m.l-m.r,ph=H-m.t-m.b,slot=pw/n,bw=Math.max(2,slot-2);
+  const worked=rows.filter(r=>r.total>0);const avg=worked.reduce((a,r)=>a+r.total,0)/worked.length;
+  rows.forEach((r,i)=>{const x=m.l+i*slot+1,h=ph*r.total/max,y=m.t+ph-h;const we=[0,6].includes(r.d.getDay());
+    if(r.total>0){const rr=Math.min(4,bw/2,h);el('path',{d:`M${x},${m.t+ph}V${y+rr}Q${x},${y} ${x+rr},${y}H${x+bw-rr}Q${x+bw},${y} ${x+bw},${y+rr}V${m.t+ph}Z`,fill:color})}
+    const d=r.d.getDate();if(d===1||d%5===0){const t=el('text',{x:x+bw/2,y:H-8,'text-anchor':'middle','font-size':11.5,fill:we?'#c0c7d2':'#667085'});t.textContent=d}
+    if(r.d>new Date())return;
+    const hit=el('rect',{x:m.l+i*slot,y:m.t,width:slot,height:ph,fill:'transparent'});
+    hit.addEventListener('mouseenter',()=>showTip(`<b>${esc(r.d.toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'}))}</b><span>${fmtN(r.total)} call${r.total===1?'':'s'}</span>${r.parts.length>1?r.parts.sort((a,b)=>b.n-a.n).map(p=>`<span><i style="--sc:${colorOf(p.id)}"></i>${esc(nameOf(p.id))}: <b>${fmtN(p.n)}</b></span>`).join(''):''}`,x+bw/2,y));
+    hit.addEventListener('mouseleave',hideTip)});
+  const ay=m.t+ph*(1-avg/max);el('line',{x1:m.l,x2:W-m.r,y1:ay,y2:ay,stroke:'#1a2233','stroke-width':1,'stroke-dasharray':'4 4',opacity:.55,'pointer-events':'none'});
+  const t=el('text',{x:W-m.r,y:ay-6,'text-anchor':'end','font-size':11.5,'font-weight':600,fill:'#344054','pointer-events':'none'});t.textContent=`Avg ${fmtN(avg,1)} on days called`}
+let cvResize;window.addEventListener('resize',()=>{clearTimeout(cvResize);cvResize=setTimeout(()=>{if(tab==='reports'&&repView==='calls'&&isAdmin()&&cv.rows)renderCallVolume()},200)});
+
 function download(name,lines){const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast(`Exported ${lines.length-1} rows`)}
 
 $('#backboard').onclick=()=>setTab('board');

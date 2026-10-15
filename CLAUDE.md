@@ -23,6 +23,8 @@ Dial Desk is the outbound calling CRM for an appointment-setting team. Callers w
 - `opp_contacts`: any number of contacts per deal (name, title, email, phone); soft-removed with `deleted_at` and restorable. The `log_contact()` trigger writes contact_added/removed/restored/edited rows into `change_log` (row_id = opp id).
 - `opp_notes`: dated notes on deals; soft-deleted like lead notes via `set_note_deleted('opp', ...)`.
 - Editing notes: `edit_note(kind 'lead'|'opp'|'call', id, body)` (author or admin) updates the text, sets `edited_at/edited_by`, and writes a `note_edited` / `call_note_edited` row to `change_log` (changes.body = [old, new], changes.note_id = [null, id]) so old wording stays in history and can be undone.
+- `call_report(p_from, p_to)`: calls and appointments (calls with status appointment + leads converted_by) per caller per day in Central time; admins get everyone, others only themselves. Feeds the callers' Leads boxes (Calls today, Appts this month, Calls this month, Callbacks due) and the admin-only Reports > Call volume view.
+- `caller_hours`: hours worked per caller per month (caller_id, month = 1st of month, hours), admin-only, typed in on Reports > Call volume.
 - `change_log`: edit history written by the `log_changes()` trigger on leads, opportunities and clients (field -> [old, new], who, when). `updated_by` on leads/opportunities/clients is set by `touch_updated_at()`.
 - Lead statuses: `new`, `call1` (1st Call), `call2`, `call3`, `on_ice` (On Ice), `gatekeeper`, `appointment` (Appointment Set), `converted`, `dead`, `bad_info` (Bad Information).
 
