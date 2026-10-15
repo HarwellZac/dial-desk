@@ -340,6 +340,18 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
 @media (max-width:1320px){.ocols{grid-template-columns:repeat(2,minmax(0,1fr))}.ocols>#onotes{grid-column:1/-1}}
 @media (max-width:760px){.ocols{grid-template-columns:minmax(0,1fr)}}
 
+/* Time clock and timesheets */
+.clockbar{display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;padding:12px 16px}
+.clockbar .clk{display:flex;align-items:center;gap:12px;min-width:0}
+.clockbar .clk b{font-size:14.5px}
+.clockbar .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.clockbar .brkf{flex-wrap:nowrap;align-items:center;gap:8px}
+.clockbar .brkf>input{flex:0 0 72px;width:72px;text-align:right;padding:6px 8px}
+.cdot{width:12px;height:12px;border-radius:50%;background:#98a2b3;flex:none;box-shadow:0 0 0 4px #eef0f3}
+.cdot.on{background:var(--ok);box-shadow:0 0 0 4px #dcfae6}
+.cdot.brk{background:var(--warn);box-shadow:0 0 0 4px #fef0c7}
+.clockbar .warnline{flex:1 1 100%;color:var(--bad);font-size:12.5px;font-weight:600}
+
 /* ---------- Toast ---------- */
 .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1a2233;color:#fff;padding:10px 12px 10px 16px;border-radius:11px;font-size:13.5px;z-index:50;max-width:calc(100% - 32px);box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:14px}
 .toast button{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:7px;padding:5px 11px;font-weight:700;cursor:pointer}
@@ -391,7 +403,7 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="board" aria-selected="true"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>Leads</button>
       <button role="tab" data-tab="opps" aria-selected="false" data-sell hidden><svg class="ic" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Opportunities</button>
-      <button role="tab" data-tab="reports" aria-selected="false" data-sell hidden><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
+      <button role="tab" data-tab="reports" aria-selected="false" data-rep hidden><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
       <button role="tab" data-tab="import" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 15v4h14v-4"/></svg>Import</button>
       <button role="tab" data-tab="team" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M16 5a3 3 0 0 1 0 6M18 14c2 .5 3 2 3 5"/></svg>Team</button>
     </nav>
@@ -421,6 +433,7 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
     <section id="tab-board" class="page">
       <div class="pagehead"><div><h1>Leads</h1><p id="boardsub">Every lead, color-coded by status.</p></div>
         <div class="actions"><div class="mini" id="mykpis" data-call></div><button class="btn" id="exportbtn" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
+      <div class="panel clockbar" id="clock" hidden></div>
       <div class="chips" id="chips"></div>
       <div class="panel">
         <div class="toolbar">
@@ -482,7 +495,7 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
     <!-- Reports -->
     <section id="tab-reports" class="page" hidden>
       <div class="pagehead"><div><h1>Reports</h1><p id="rsub">Opportunity report. Filter, group and export.</p></div>
-        <div class="actions"><div class="seg" id="rview" data-admin hidden><button type="button" data-v="opps" aria-pressed="true">Opportunities</button><button type="button" data-v="calls" aria-pressed="false">Call volume</button></div>
+        <div class="actions"><div class="seg" id="rview" hidden><button type="button" data-v="opps" aria-pressed="true">Opportunities</button><button type="button" data-v="calls" aria-pressed="false">Call volume</button><button type="button" data-v="time" aria-pressed="false">Timesheets</button></div>
           <button class="btn" id="rexport"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
       <div id="rep-calls" class="page" hidden>
         <div class="panel"><div class="filters">
@@ -497,6 +510,17 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
           <div class="panel"><div class="panel-h"><div><h2 id="cvdailytitle">Calls per day</h2><p class="stat" style="margin:2px 0 0" id="cvdailysub"></p></div></div><div class="chartbox" id="cvdaily"></div></div>
         </div>
         <div class="panel"><div class="panel-h"><h2>Month by month</h2><span class="stat">Total calls</span></div><div class="tablebox"><table id="cvmtable"></table></div></div>
+      </div>
+      <div id="rep-time" class="page" hidden>
+        <div class="panel"><div class="filters">
+          <label class="f">Month<select id="tsmonth"></select></label>
+          <label class="f">Pay period<select id="tsperiod"><option value="1">1st – 15th</option><option value="2">16th – end of month</option><option value="m">Whole month</option></select></label>
+          <label class="f" data-admin hidden>Caller<select id="tscaller"></select></label>
+          <span class="stat" style="flex:1 1 260px;align-self:center" id="tsnote"></span>
+        </div></div>
+        <div class="kpis" id="tskpis"></div>
+        <div class="panel" id="tssumpanel" hidden><div class="panel-h"><div><h2 id="tssumtitle">Pay summary</h2><p class="stat" style="margin:2px 0 0">Export CSV downloads this table. Shifts still clocked in aren’t counted until they’re clocked out.</p></div></div><div class="tablebox"><table id="tssum"></table></div></div>
+        <div class="panel"><div class="panel-h"><div><h2 id="tstitle">Time entries</h2><p class="stat" style="margin:2px 0 0" id="tssub"></p></div><div class="actions"><button class="btn small primary" id="tsadd" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add entry</button></div></div><div class="tablebox"><table id="tstable"></table></div></div>
       </div>
       <div id="rep-opps" class="page">
       <div class="kpis" id="rkpis"></div>
@@ -620,6 +644,8 @@ const isAdmin=()=>me&&(me.role==='owner'||me.role==='admin');
 const isOwner=()=>me&&me.role==='owner';
 const isSales=()=>me&&me.role==='salesperson';
 const canSell=()=>!!me&&['owner','admin','salesperson'].includes(me.role);
+const isCaller=()=>!!me&&me.role==='caller';
+const canSeeReports=()=>canSell()||isCaller();
 const roleLabel=r=>({owner:'Owner',admin:'Admin',salesperson:'Salesperson',caller:'Caller'}[r]||r);
 const canEditLead=l=>!!l&&!l.deleted_at&&(isAdmin()||l.owner_id===me.id||(isSales()&&l.sales_owner_id===me.id));
 const canConvert=l=>!!l&&!l.deleted_at&&l.status!=='converted'&&(canSell()||l.owner_id===me.id);
@@ -710,13 +736,14 @@ async function loadPeople(){const {data}=await sb.from('profiles').select('id,em
 
 /* ===================== Navigation ===================== */
 const TABS=['lead','board','opps','reports','import','team'];
-function allowed(t){if(t==='import'||t==='team')return isAdmin();if(t==='opps'||t==='reports')return canSell();if(t==='lead')return !!cur;return true}
+function allowed(t){if(t==='import'||t==='team')return isAdmin();if(t==='opps')return canSell();if(t==='reports')return canSeeReports();if(t==='lead')return !!cur;return true}
 function showTab(t){tab=t;const nav=t==='lead'?'board':t;document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===nav));TABS.forEach(k=>$('#tab-'+k).hidden=k!==t)}
 function setTab(t){if(!allowed(t))t=isSales()?'opps':'board';showTab(t);
   if(t==='lead')selectLead(cur.id);else if(t==='board')loadBoard();else if(t==='team')loadTeam();else if(t==='opps')loadOpps();else if(t==='reports')loadReports()}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 function applyRole(){const a=isAdmin(),sl=canSell();document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=!a);
-  document.querySelectorAll('[data-sell]').forEach(b=>b.hidden=!sl);document.querySelectorAll('[data-call]').forEach(b=>b.hidden=isSales());
+  document.querySelectorAll('[data-sell]').forEach(b=>b.hidden=!sl);document.querySelectorAll('[data-rep]').forEach(b=>b.hidden=!canSeeReports());
+  $('#clock').hidden=!isCaller();document.querySelectorAll('[data-call]').forEach(b=>b.hidden=isSales());
   $('#boardsub').textContent=sl?'Every lead, color-coded by status.':'Your leads, color-coded by status.';
   $('#invrole').querySelector('[value=admin]').hidden=!isOwner();}
 
@@ -976,6 +1003,7 @@ async function loadBoard(){
   if(seq!==boardSeq)return;
   if(r.error){$('#ltbody').innerHTML=`<tr><td colspan="10"><div class="empty">${esc(friendly(r.error))}</div></td></tr>`;return}
   if(!isSales())loadMyKpis();
+  if(isCaller())loadClock();
   board.rows=r.data||[];board.total=r.count||0;board.counts={};(c.data||[]).forEach(x=>board.counts[x.status]=Number(x.n));board.trashN=Number(t.data)||0;
   renderBoard();
 }
@@ -1609,7 +1637,7 @@ function dateRange(k){const n=new Date(),y=n.getFullYear(),m=n.getMonth(),q=Math
   switch(k){case'this_month':return[d(y,m,1),d(y,m+1,0)];case'last_month':return[d(y,m-1,1),d(y,m,0)];case'this_q':return[d(y,q*3,1),d(y,q*3+3,0)];
     case'last_q':return[d(y,q*3-3,1),d(y,q*3,0)];case'this_year':return[d(y,0,1),d(y,11,31)];case'last90':return[d(y,m,n.getDate()-90),d(y,m,n.getDate())];default:return null}}
 async function loadReports(){
-  showRepView();if(repView==='calls'&&isAdmin())return loadCallVolume();
+  showRepView();const rv=effView();if(rv==='calls')return loadCallVolume();if(rv==='time')return loadTimesheet();
   try{await Promise.all([loadOppRows(true),loadLookups()])}catch(e){$('#rtable').innerHTML=`<tbody><tr><td><div class="empty">${esc(friendly(e))}</div></td></tr></tbody>`;return}
   $('#rowner').innerHTML=ownerOptions(rep.owner,'All owners');
   $('#rstage').innerHTML=opt('','All stages',rep.stage)+opt('open','Open deals',rep.stage)+STAGE_ORDER.map(k=>opt(k,STAGES[k],rep.stage)).join('');
@@ -1651,7 +1679,7 @@ function renderReport(){
 }
 [['rdate','date'],['rstage','stage'],['rowner','owner'],['rtype','type'],['rsource','source'],['rgroup','group']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{rep[k]=e.target.value;renderReport()}));
 $('#rsearch').addEventListener('input',e=>{rep.search=e.target.value;renderReport()});
-$('#rexport').onclick=()=>{if(repView==='calls'&&isAdmin())return exportCalls();const rows=repRows();if(!rows.length)return toast('No deals to export');
+$('#rexport').onclick=()=>{const rv=effView();if(rv==='calls')return exportCalls();if(rv==='time')return exportTimesheet();const rows=repRows();if(!rows.length)return toast('No deals to export');
   const lines=[RCOLS.map(c=>csvCell(c[1])).join(',')];
   rows.forEach(o=>lines.push(RCOLS.map(([c])=>csvCell(c==='created'?fmtDate(o.created_at):c==='amount'?(o.amount??''):c==='follow_up'?fmtDate(o.follow_up_date):repVal(o,c))).join(',')));
   download(`dial-desk-opportunities-${ymd(new Date())}.csv`,lines)};
@@ -1660,10 +1688,17 @@ let repView='opps';
 const cv={month:'',caller:'',rows:[],hours:{},months:[],people:[]};
 const SERIES=['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#6250d6','#e34948'];
 const TEAM_INK='#475467';
-function showRepView(){const calls=repView==='calls'&&isAdmin();
-  $('#rep-calls').hidden=!calls;$('#rep-opps').hidden=calls;
-  $('#rview').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===(calls?'calls':'opps')));
-  $('#rsub').textContent=calls?'Call volume by caller, month by month. Only admins see this.':'Opportunity report. Filter, group and export.'}
+// Which report this person is looking at: callers only ever get their own timesheet.
+function effView(){if(repView==='calls'&&isAdmin())return'calls';if(repView==='time'&&(isAdmin()||isCaller()))return'time';return canSell()?'opps':'time'}
+function showRepView(){const v=effView();
+  $('#rep-calls').hidden=v!=='calls';$('#rep-opps').hidden=v!=='opps';$('#rep-time').hidden=v!=='time';
+  const can={opps:canSell(),calls:isAdmin(),time:isAdmin()||isCaller()};
+  $('#rview').querySelectorAll('button').forEach(b=>{b.hidden=!can[b.dataset.v];b.setAttribute('aria-pressed',b.dataset.v===v)});
+  $('#rview').hidden=Object.values(can).filter(Boolean).length<2;
+  $('#rexport').hidden=v==='time'&&!isAdmin();
+  $('#rsub').textContent=v==='calls'?'Call volume by caller, month by month. Only admins see this.'
+    :v==='time'?(isAdmin()?'Clocked hours, appointments and pay for every caller. Admins and the owner can fix any entry.':'Your clocked hours, appointments and pay. Only you and the admins can see this.')
+    :'Opportunity report. Filter, group and export.'}
 $('#rview').querySelectorAll('button').forEach(b=>b.onclick=()=>{repView=b.dataset.v;loadReports()});
 const monthKey=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
 const monthOf=k=>{const [y,m]=k.split('-').map(Number);return new Date(y,m-1,1)};
@@ -1789,6 +1824,175 @@ function barChart(box,rows,color){
   const ay=m.t+ph*(1-avg/max);el('line',{x1:m.l,x2:W-m.r,y1:ay,y2:ay,stroke:'#1a2233','stroke-width':1,'stroke-dasharray':'4 4',opacity:.55,'pointer-events':'none'});
   const t=el('text',{x:W-m.r,y:ay-6,'text-anchor':'end','font-size':11.5,'font-weight':600,fill:'#344054','pointer-events':'none'});t.textContent=`Avg ${fmtN(avg,1)} on days called`}
 let cvResize;window.addEventListener('resize',()=>{clearTimeout(cvResize);cvResize=setTimeout(()=>{if(tab==='reports'&&repView==='calls'&&isAdmin()&&cv.rows)renderCallVolume()},200)});
+
+/* ===================== Time clock (callers, on the Leads page) ===================== */
+const PAY_RATE=18, APPT_BONUS=50; // $ per hour worked, $ per appointment set
+const CTF=new Intl.DateTimeFormat('en-US',{timeZone:'America/Chicago',year:'numeric',month:'2-digit',day:'2-digit'});
+// The Central-time date (YYYY-MM-DD) a moment falls on. Shifts count toward the day they started.
+function ctDay(iso){const p={};CTF.formatToParts(new Date(iso)).forEach(x=>p[x.type]=x.value);return `${p.year}-${p.month}-${p.day}`}
+const shiftMins=e=>e.clock_out?Math.max(0,Math.round((new Date(e.clock_out)-new Date(e.clock_in))/60000)-(e.break_minutes||0)):null;
+const fmtHM=m=>m==null?'—':`${Math.floor(m/60)}h ${pad2(Math.round(m%60))}m`;
+const fmtTime=iso=>new Date(iso).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+const usd=v=>'$'+Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const parseBreak=v=>{const s=String(v??'').trim();if(s==='')return 0;if(!/^\d+$/.test(s))return null;const n=Number(s);return n<=1440?n:null};
+const timeErr=e=>{const m=String(e?.message||e||'');
+  if(/time_entries_one_open/.test(m))return'That caller already has a shift that isn’t clocked out. Fix that one first.';
+  if(/time_entries_out_after_in/.test(m))return'Clock out has to be after clock in.';
+  if(/time_entries_break/.test(m))return'The break is longer than the shift. Lower the break minutes.';
+  if(/time_entries|clock_in|clock_out/.test(m)&&/does not exist|schema cache/i.test(m))return'The time clock isn’t set up in the database yet. Ask whoever runs Dial Desk to run the time clock SQL in Supabase.';
+  return friendly(e)};
+const clock={entry:null,doneToday:0,timer:null,busy:false};
+function liveMins(e){const now=Date.now();const total=Math.max(0,Math.round((now-new Date(e.clock_in))/60000));let brk=e.break_minutes||0;
+  if(e.break_started_at)brk+=Math.max(0,Math.round((now-new Date(e.break_started_at))/60000));return {total,brk,worked:Math.max(0,total-brk)}}
+async function loadClock(){
+  const box=$('#clock');if(!isCaller()){box.hidden=true;return}box.hidden=false;
+  const since=new Date();since.setHours(0,0,0,0);since.setDate(since.getDate()-1);
+  const {data,error}=await sb.from('time_entries').select('*').eq('caller_id',me.id).or(`clock_out.is.null,clock_in.gte."${since.toISOString()}"`).order('clock_in',{ascending:false}).limit(30);
+  if(error){box.innerHTML=`<span class="stat">${esc(timeErr(error))}</span>`;return}
+  const today=ctDay(new Date());clock.entry=(data||[]).find(e=>!e.clock_out)||null;
+  clock.doneToday=(data||[]).filter(e=>e.clock_out&&ctDay(e.clock_in)===today).reduce((n,e)=>n+shiftMins(e),0);
+  renderClock()}
+function renderClock(){
+  const box=$('#clock'),e=clock.entry;clearInterval(clock.timer);
+  if(!e){box.innerHTML=`<div class="clk"><span class="cdot"></span><div><b>You’re clocked out</b><div class="stat">${clock.doneToday?'Worked today: '+fmtHM(clock.doneToday):'Clock in when you start calling.'}</div></div></div>
+      <div class="actions"><button class="btn primary" id="clkin">Clock in</button></div>`;
+    $('#clkin').onclick=()=>clockAct('clock_in',{},'Clocked in. Have a good shift!');return}
+  const L=liveMins(e),onBreak=!!e.break_started_at,sameDay=ctDay(e.clock_in)===ctDay(new Date());
+  const stale=Date.now()-new Date(e.clock_in)>16*3600e3;
+  box.innerHTML=`<div class="clk"><span class="cdot ${onBreak?'brk':'on'}"></span><div>
+      <b>${onBreak?'On break since '+esc(fmtTime(e.break_started_at)):'Clocked in since '+esc(sameDay?fmtTime(e.clock_in):fmtFull(e.clock_in))}</b>
+      <div class="stat">Worked ${fmtHM(L.worked)} · Break ${L.brk} min${clock.doneToday?' · Earlier today '+fmtHM(clock.doneToday):''}</div></div></div>
+    <div class="actions"><label class="f brkf">Break minutes<input type="text" inputmode="numeric" id="clkbrk" value="${L.brk}" ${onBreak?'disabled':''} aria-label="Break minutes"></label>
+      <button class="btn" id="clkbreak">${onBreak?'End break':'Start break'}</button><button class="btn primary" id="clkout">Clock out</button></div>
+    ${stale?'<div class="warnline">You’ve been clocked in for more than 16 hours. If you forgot to clock out, clock out now and ask an admin to fix the time.</div>':''}`;
+  $('#clkbreak').onclick=()=>onBreak?clockAct('end_break',{},'Break ended'):clockAct('start_break',{},'Break started. Tap End break when you’re back.');
+  $('#clkout').onclick=clockOutForm;
+  $('#clkbrk').onchange=ev=>{const n=parseBreak(ev.target.value);if(n==null){toast('Enter break minutes as a whole number, like 30');return renderClock()}
+    clockAct('set_break',{p_minutes:n},`Break set to ${n} min`)};
+  clock.timer=setInterval(()=>{if(clock.entry&&document.activeElement?.id!=='clkbrk')renderClock()},30000)}
+async function clockAct(fn,args,msg){if(clock.busy)return;clock.busy=true;
+  try{const {error}=await sb.rpc(fn,args);if(error)return toast(timeErr(error));toast(msg)}finally{clock.busy=false;loadClock()}}
+function clockOutForm(){const e=clock.entry;if(!e)return;const L=liveMins(e);
+  openModal('Clock out',`<p class="stat" style="margin:0">Shift started ${esc(fmtFull(e.clock_in))} · ${fmtHM(L.total)} on the clock.</p>
+    <label class="f">Break minutes (enter 0 if you didn’t take a break)<input type="text" inputmode="numeric" name="brk" value="${L.brk}"></label>
+    <p class="stat" id="coworked" style="margin:0"></p>`,{submit:'Clock out',onSubmit:async fd=>{
+      const n=parseBreak(fd.get('brk'));if(n==null){toast('Enter break minutes as a whole number, like 30');return false}
+      const {data,error}=await sb.rpc('clock_out',{p_break:n});if(error){toast(timeErr(error));return false}
+      toast(`Clocked out · ${fmtHM(shiftMins(data)??Math.max(0,L.total-n))} worked`);loadClock()}});
+  const inp=$('#mform [name=brk]');const upd=()=>{const n=parseBreak(inp.value);$('#coworked').innerHTML=n==null?'Enter a whole number of minutes.':`Hours worked this shift: <b>${fmtHM(Math.max(0,L.total-n))}</b>`};
+  inp.oninput=upd;upd()}
+
+/* ===================== Reports: timesheets ===================== */
+const ts={month:'',period:'',caller:'',entries:[],appts:[],people:[]};
+function tsRange(){const [y,m]=ts.month.split('-').map(Number);const last=pad2(new Date(y,m,0).getDate());const k=ts.month;
+  return ts.period==='1'?[`${k}-01`,`${k}-15`]:ts.period==='2'?[`${k}-16`,`${k}-${last}`]:[`${k}-01`,`${k}-${last}`]}
+function tsPeriodLabel(){const [a,b]=tsRange();const d=x=>new Date(x+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric'});return `${d(a)} – ${d(b)}, ${ts.month.slice(0,4)}`}
+async function loadTimesheet(){
+  const now=new Date();if(!ts.month)ts.month=monthKey(now);if(!ts.period)ts.period=now.getDate()<=15?'1':'2';
+  $('#tsmonth').innerHTML=Array.from({length:13},(_,i)=>new Date(now.getFullYear(),now.getMonth()-i,1)).map(d=>opt(monthKey(d),monthName(d),ts.month)).join('');
+  $('#tsperiod').value=ts.period;
+  $('#tsnote').textContent=`Pay: $${PAY_RATE}/hour + $${APPT_BONUS} per appointment. Hours = clock out − clock in − break. Shifts count on the day they start (Central time).`;
+  const sel=monthOf(ts.month);
+  // A day of slack on each side; everything is then sorted into days by Central time.
+  const from=new Date(sel.getFullYear(),sel.getMonth(),0),to=new Date(sel.getFullYear(),sel.getMonth()+1,2);
+  $('#tskpis').innerHTML='<div class="kpi"><span>Loading…</span></div>';
+  let q=sb.from('time_entries').select('*').gte('clock_in',from.toISOString()).lt('clock_in',to.toISOString()).order('clock_in');
+  if(!isAdmin())q=q.eq('caller_id',me.id);
+  const [e,r]=await Promise.all([q,sb.rpc('call_report',{p_from:from.toISOString(),p_to:to.toISOString()})]);
+  const err=e.error||r.error;
+  if(err){$('#tskpis').innerHTML=`<div class="kpi"><span>${esc(timeErr(err))}</span></div>`;$('#tstable').innerHTML='';$('#tssum').innerHTML='';$('#tssumpanel').hidden=true;return}
+  const k=ts.month;
+  ts.entries=(e.data||[]).filter(x=>ctDay(x.clock_in).slice(0,7)===k);
+  ts.appts=(r.data||[]).filter(x=>String(x.day).slice(0,7)===k&&(isAdmin()||x.caller_id===me.id)).map(x=>({caller_id:x.caller_id,day:String(x.day).slice(0,10),n:Number(x.appts)||0})).filter(x=>x.n);
+  if(isAdmin()){
+    // Active callers, plus anyone with time on the clock this month, plus former callers who set appointments.
+    const ids=new Set(ts.entries.map(x=>x.caller_id));ts.appts.forEach(x=>{if(people[x.caller_id]?.role==='caller')ids.add(x.caller_id)});
+    ts.people=Object.values(people).filter(p=>(p.role==='caller'&&p.active)||ids.has(p.id)).map(p=>p.id);ids.forEach(id=>{if(!ts.people.includes(id))ts.people.push(id)});
+    if(ts.caller&&!ts.people.includes(ts.caller))ts.caller='';
+    $('#tscaller').innerHTML=opt('','All callers',ts.caller)+ts.people.map(id=>opt(id,nameOf(id),ts.caller)).join('')}
+  else{ts.people=[me.id];ts.caller=me.id}
+  renderTimesheet()}
+function tsStats(id){const [a,b]=tsRange();const inP=d=>d>=a&&d<=b;
+  const list=ts.entries.filter(x=>x.caller_id===id&&inP(ctDay(x.clock_in)));
+  const mins=list.reduce((n,x)=>n+(shiftMins(x)||0),0),open=list.filter(x=>!x.clock_out).length;
+  const appts=ts.appts.filter(x=>x.caller_id===id&&inP(x.day)).reduce((n,x)=>n+x.n,0);
+  const apptsMonth=ts.appts.filter(x=>x.caller_id===id).reduce((n,x)=>n+x.n,0);
+  const hours=Math.round(mins/60*100)/100; // pay uses hours rounded to 2 decimals, so the invoice adds up line by line
+  const hourPay=Math.round(hours*PAY_RATE*100)/100,bonus=appts*APPT_BONUS;
+  return {id,shifts:list.length,mins,hours,open,appts,apptsMonth,hourPay,bonus,total:Math.round((hourPay+bonus)*100)/100}}
+function tsTotals(st){return st.reduce((t,x)=>({hours:t.hours+x.hours,appts:t.appts+x.appts,apptsMonth:t.apptsMonth+x.apptsMonth,hourPay:t.hourPay+x.hourPay,bonus:t.bonus+x.bonus,total:t.total+x.total,open:t.open+x.open,shifts:t.shifts+x.shifts}),
+  {hours:0,appts:0,apptsMonth:0,hourPay:0,bonus:0,total:0,open:0,shifts:0})}
+function renderTimesheet(){
+  const a=isAdmin();const list=a?(ts.caller?[ts.caller]:ts.people):[me.id];const st=list.map(tsStats);const T=tsTotals(st);const pl=tsPeriodLabel();
+  $('#tskpis').innerHTML=[[fmtN(T.hours,2),`Hours worked · ${pl}`],[fmtN(T.appts),'Appointments set'],[usd(T.hourPay),`Hourly pay · $${PAY_RATE}/hr`],
+    [usd(T.bonus),`Appointment bonus · $${APPT_BONUS} each`],[usd(T.total),a&&list.length>1?'Total for all callers':'Total pay']]
+    .map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+  // Pay summary (admins)
+  $('#tssumpanel').hidden=!a;
+  if(a){$('#tssumtitle').textContent=`Pay summary · ${pl}`;
+    $('#tssum').innerHTML=`<thead><tr><th>Caller</th><th class="num">Shifts</th><th class="num">Hours worked</th><th class="num">Appts (pay period)</th><th class="num">Appts (month)</th><th class="num">Hourly pay</th><th class="num">Appt bonus</th><th class="num">Total</th></tr></thead><tbody>`+
+      (st.length?st.map(x=>`<tr><td>${personCell(x.id)}${x.open?` <span class="tag2">${x.open} not clocked out</span>`:''}</td><td class="num">${fmtN(x.shifts)}</td><td class="num"><b>${fmtN(x.hours,2)}</b></td>
+        <td class="num">${fmtN(x.appts)}</td><td class="num">${fmtN(x.apptsMonth)}</td><td class="num">${usd(x.hourPay)}</td><td class="num">${usd(x.bonus)}</td><td class="num"><b>${usd(x.total)}</b></td></tr>`).join('')
+        +(st.length>1?`<tr class="total"><td>All callers</td><td class="num">${fmtN(T.shifts)}</td><td class="num">${fmtN(T.hours,2)}</td><td class="num">${fmtN(T.appts)}</td><td class="num">${fmtN(T.apptsMonth)}</td><td class="num">${usd(T.hourPay)}</td><td class="num">${usd(T.bonus)}</td><td class="num">${usd(T.total)}</td></tr>`:'')
+      :`<tr><td colspan="8"><div class="empty">No callers yet.</div></td></tr>`)+'</tbody>'}
+  // Time entries
+  const [pa,pb]=tsRange();const showWho=a&&!ts.caller;
+  const rows=ts.entries.filter(x=>list.includes(x.caller_id)&&ctDay(x.clock_in)>=pa&&ctDay(x.clock_in)<=pb).sort((x,y)=>new Date(y.clock_in)-new Date(x.clock_in));
+  $('#tstitle').textContent=`${a?(ts.caller?nameOf(ts.caller):'All callers'):'Your timesheet'} · ${pl}`;
+  $('#tssub').textContent=a?'Click Edit to fix a time or a break. Changes are saved with your name.':'Something wrong? Ask an admin to fix it.';
+  const cols=6+(showWho?1:0)+(a?1:0);
+  const dayLbl=iso=>new Date(ctDay(iso)+'T12:00:00').toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+  $('#tstable').innerHTML=`<thead><tr><th>Date</th>${showWho?'<th>Caller</th>':''}<th>Clock in</th><th>Clock out</th><th class="num">Break</th><th class="num">Hours</th><th>Note</th>${a?'<th></th>':''}</tr></thead><tbody>`+
+    (rows.length?rows.map(x=>{const m=shiftMins(x);const nextDay=x.clock_out&&ctDay(x.clock_out)!==ctDay(x.clock_in);
+      const edited=x.updated_by&&x.updated_by!==x.caller_id?`<div class="sub">Edited by ${esc(nameOf(x.updated_by))} ${esc(fmtWhen(x.updated_at))}</div>`:'';
+      return `<tr><td>${esc(dayLbl(x.clock_in))}</td>${showWho?`<td>${personCell(x.caller_id)}</td>`:''}<td>${esc(fmtTime(x.clock_in))}</td>
+        <td>${x.clock_out?esc(fmtTime(x.clock_out))+(nextDay?' <span class="tag2">next day</span>':''):'<span class="tag2">Still clocked in</span>'}</td>
+        <td class="num">${x.break_minutes} min${x.break_started_at?' <span class="tag2">on break</span>':''}</td><td class="num"><b>${m==null?'—':fmtN(m/60,2)}</b></td>
+        <td class="wrap">${esc(x.note||'')}${edited}</td>${a?`<td class="num" style="white-space:nowrap"><button class="btn small soft" data-tsedit="${x.id}">Edit</button> <button class="btn small danger" data-tsdel="${x.id}">Delete</button></td>`:''}</tr>`}).join('')
+      +`<tr class="total"><td colspan="${showWho?5:4}">Total · ${rows.length} shift${rows.length===1?'':'s'}</td><td class="num">${fmtN(T.hours,2)}</td><td colspan="${a?2:1}"></td></tr>`
+    :`<tr><td colspan="${cols}"><div class="empty">No time on the clock in this pay period.</div></td></tr>`)+'</tbody>';
+  $('#tstable').querySelectorAll('[data-tsedit]').forEach(b=>b.onclick=()=>tsForm(ts.entries.find(x=>String(x.id)===b.dataset.tsedit)));
+  $('#tstable').querySelectorAll('[data-tsdel]').forEach(b=>b.onclick=()=>tsDelete(ts.entries.find(x=>String(x.id)===b.dataset.tsdel)))}
+function tsForm(e){if(!isAdmin())return;const isNew=!e;
+  const ids=[...new Set([...ts.people,...Object.values(people).filter(p=>p.active&&p.role==='caller').map(p=>p.id)])];
+  if(isNew&&!ids.length)return toast('Invite a caller on the Team page first');
+  const cin=e?new Date(e.clock_in):(()=>{const d=new Date();d.setHours(9,0,0,0);return d})();
+  const cout=e?(e.clock_out?new Date(e.clock_out):null):new Date(cin.getTime()+8*3600e3);
+  openModal(isNew?'Add time entry':'Edit time entry',`<div class="fgrid">
+    <label class="f wide">Caller${isNew?' *':''}<select name="caller_id" ${isNew?'required':'disabled'}>${(isNew?ids:[e.caller_id]).map(id=>opt(id,nameOf(id),e?.caller_id||ts.caller||ids[0])).join('')}</select></label>
+    <label class="f">Clock in *<input type="datetime-local" name="cin" value="${toLocalInput(cin)}" required></label>
+    <label class="f">Clock out <span class="hint">leave empty if still clocked in</span><input type="datetime-local" name="cout" value="${cout?toLocalInput(cout):''}"></label>
+    <label class="f">Break minutes<input type="text" inputmode="numeric" name="brk" value="${e?e.break_minutes:0}"></label>
+    <div class="f">Hours worked<div class="stat" id="tshrs" style="flex:1 1 100%;font-size:15px;color:var(--fg);font-weight:700;padding-top:6px"></div></div>
+    <label class="f wide">Note<input type="text" name="note" value="${esc(e?.note||'')}" placeholder="Optional, e.g. forgot to clock out"></label></div>`,
+    {submit:isNew?'Add entry':'Save changes',onSubmit:async fd=>{
+      const ci=new Date(fd.get('cin')),coRaw=String(fd.get('cout')||''),co=coRaw?new Date(coRaw):null,n=parseBreak(fd.get('brk'));
+      if(isNaN(ci))return toast('Enter the clock-in date and time'),false;
+      if(co&&(isNaN(co)||co<=ci))return toast('Clock out has to be after clock in'),false;
+      if(n==null)return toast('Enter break minutes as a whole number, like 30'),false;
+      if(co&&n>(co-ci)/60000)return toast('The break is longer than the shift'),false;
+      if(co&&co-ci>24*3600e3&&!confirm('This shift is longer than 24 hours. Save it anyway?'))return false;
+      const rec={clock_in:ci.toISOString(),clock_out:co?co.toISOString():null,break_minutes:n,note:String(fd.get('note')||'').trim()};
+      if(co)rec.break_started_at=null;
+      const {error}=isNew?await sb.from('time_entries').insert({...rec,caller_id:fd.get('caller_id'),created_by:me.id}):await sb.from('time_entries').update(rec).eq('id',e.id);
+      if(error){toast(timeErr(error));return false}
+      toast(isNew?'Time entry added':'Time entry saved');loadTimesheet()}});
+  const f=$('#mform');const upd=()=>{const ci=new Date(f.cin.value),co=f.cout.value?new Date(f.cout.value):null,n=parseBreak(f.brk.value);
+    $('#tshrs').textContent=!co?'Still clocked in':isNaN(ci)||isNaN(co)||co<=ci||n==null?'—':fmtN(Math.max(0,(co-ci)/60000-n)/60,2)+' hours'};
+  ['cin','cout','brk'].forEach(k=>f[k].addEventListener('input',upd));upd()}
+async function tsDelete(e){if(!e||!isAdmin())return;
+  if(!confirm(`Delete ${nameOf(e.caller_id)}’s shift from ${fmtFull(e.clock_in)}? This can’t be undone.`))return;
+  const {error}=await sb.from('time_entries').delete().eq('id',e.id);if(error)return toast(timeErr(error));toast('Time entry deleted');loadTimesheet()}
+function exportTimesheet(){if(!isAdmin())return;const list=ts.caller?[ts.caller]:ts.people;const st=list.map(tsStats);const T=tsTotals(st);const pl=tsPeriodLabel();
+  if(!st.length)return toast('No callers to export');
+  const lines=[['Pay period','Caller','Hours worked','Appointments (pay period)','Appointments (month)','Hourly rate','Hourly pay','Appointment bonus','Total invoice','Shifts not clocked out (not counted)'].map(csvCell).join(',')];
+  st.forEach(x=>lines.push([pl,nameOf(x.id),x.hours.toFixed(2),x.appts,x.apptsMonth,PAY_RATE.toFixed(2),x.hourPay.toFixed(2),x.bonus.toFixed(2),x.total.toFixed(2),x.open].map(csvCell).join(',')));
+  if(st.length>1)lines.push([pl,'All callers',T.hours.toFixed(2),T.appts,T.apptsMonth,'',T.hourPay.toFixed(2),T.bonus.toFixed(2),T.total.toFixed(2),T.open].map(csvCell).join(','));
+  const [a,b]=tsRange();download(`dial-desk-timesheet-${a}-to-${b}.csv`,lines)}
+$('#tsmonth').addEventListener('input',e=>{ts.month=e.target.value;loadTimesheet()});
+$('#tsperiod').addEventListener('input',e=>{ts.period=e.target.value;renderTimesheet()});
+$('#tscaller').addEventListener('input',e=>{ts.caller=e.target.value;renderTimesheet()});
+$('#tsadd').onclick=()=>tsForm(null);
 
 function download(name,lines){const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast(`Exported ${lines.length-1} rows`)}
 

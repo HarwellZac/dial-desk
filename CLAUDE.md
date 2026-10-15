@@ -25,13 +25,15 @@ Dial Desk is the outbound calling CRM for an appointment-setting team. Callers w
 - Editing notes: `edit_note(kind 'lead'|'opp'|'call', id, body)` (author or admin) updates the text, sets `edited_at/edited_by`, and writes a `note_edited` / `call_note_edited` row to `change_log` (changes.body = [old, new], changes.note_id = [null, id]) so old wording stays in history and can be undone.
 - `call_report(p_from, p_to)`: calls and appointments (calls with status appointment + leads converted_by) per caller per day in Central time; admins get everyone, others only themselves. Feeds the callers' Leads boxes (Calls today, Appts this month, Calls this month, Callbacks due) and the admin-only Reports > Call volume view.
 - `caller_hours`: hours worked per caller per month (caller_id, month = 1st of month, hours), admin-only, typed in on Reports > Call volume.
+- `time_entries` (version 7): one row per shift (caller_id, clock_in, clock_out, break_minutes, break_started_at, note, updated_by/at). Hours = clock_out - clock_in - break. Callers write only through `clock_in()`, `start_break()`, `end_break()`, `set_break(minutes)` and `clock_out(break)`; admins/Owner insert, edit and delete rows directly. One open shift per person (unique index `time_entries_one_open`). Shifts count on the Central-time day they start. `supabase-v7-timeclock.sql` is the stand-alone paste for this version.
+- Pay (Reports > Timesheets): $18/hour + $50 per appointment (`PAY_RATE`, `APPT_BONUS` in index.html). Appointments come from `call_report()` appts, the same count as the callers' "Appts this month" box. Pay periods: 1st–15th and 16th–end of month; hours are rounded to 2 decimals before multiplying.
 - `change_log`: edit history written by the `log_changes()` trigger on leads, opportunities and clients (field -> [old, new], who, when). `updated_by` on leads/opportunities/clients is set by `touch_updated_at()`.
 - Lead statuses: `new`, `call1` (1st Call), `call2`, `call3`, `on_ice` (On Ice), `gatekeeper`, `appointment` (Appointment Set), `converted`, `dead`, `bad_info` (Bad Information).
 
 ## Permissions
-- Callers see and update only leads assigned to them (admins assign them on Leads; there is no Calling/queue page and no Pull button any more). They can convert their leads with "Appointment Set!". They never see opportunities or reports, and the Caller column is hidden for them.
+- Callers see and update only leads assigned to them (admins assign them on Leads; there is no Calling/queue page and no Pull button any more). They can convert their leads with "Appointment Set!". They clock in/out and log breaks from the time clock bar on Leads. They never see opportunities; in Reports they see only their own Timesheet (no export), and the Caller column is hidden for them.
 - Salespeople see every lead and every opportunity and see Reports; they edit only leads converted to them and deals they own or created. Only admins reassign deals.
-- Admins (and the Owner) see everything, import (`import_leads()`), assign, bulk-update, export and delete.
+- Admins (and the Owner) see everything (including every caller's timesheet, which they can edit and export), import (`import_leads()`), assign, bulk-update, export and delete.
 - Only the Owner changes roles or turns access off (`set_member()`), and only the Owner can invite admins.
 
 ## UI layout (v4)
