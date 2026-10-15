@@ -352,6 +352,27 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
 .cdot.brk{background:var(--warn);box-shadow:0 0 0 4px #fef0c7}
 .clockbar .warnline{flex:1 1 100%;color:var(--bad);font-size:12.5px;font-weight:600}
 
+/* Click-to-edit lead details */
+dl.kv dd.ie{cursor:text;border-radius:7px;padding:2px 26px 2px 7px;margin:-2px -7px;position:relative;transition:background .12s}
+dl.kv dd.ie:hover,dl.kv dd.ie:focus-visible{background:var(--accent-soft);outline:none}
+dl.kv dd.ie .iep{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--accent);opacity:0}
+dl.kv dd.ie:hover .iep,dl.kv dd.ie:focus-visible .iep{opacity:1}
+dl.kv dd.ie .add{color:var(--faint);font-weight:500}
+dl.kv dd.ie.on{padding:0;margin:-3px -2px;background:none;cursor:default}
+dl.kv dd.ie .iein{width:100%;padding:4px 8px;font:inherit;font-weight:500;border:1px solid var(--accent);border-radius:7px;box-shadow:0 0 0 3px var(--accent-soft)}
+.iehint{font-size:11.5px;color:var(--faint);margin-top:3px}
+.undobar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#fff8eb;border:1px solid #fde3b0;color:#8a5300;border-radius:9px;padding:6px 6px 6px 12px;font-size:12.5px}
+/* Time clock tab dot */
+.tabdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#c0c7d2;margin-left:2px}
+.tabdot.on{background:var(--ok)}.tabdot.brk{background:var(--warn)}
+/* Appointment box on a deal */
+.apptbox{display:flex;align-items:center;justify-content:space-between;gap:12px 20px;flex-wrap:wrap;padding:14px 18px}
+.apptbox .k{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.showchk{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:14.5px;cursor:pointer;padding:9px 14px;border:1px solid var(--line-2);border-radius:10px;background:var(--surface)}
+.showchk input{width:19px;height:19px;accent-color:#16a34a;margin:0}
+.showchk.yes{background:#e8f8ef;border-color:#b7e9cb;color:#067647}
+.showchk.dis{cursor:default;opacity:.8}
+
 /* ---------- Toast ---------- */
 .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#1a2233;color:#fff;padding:10px 12px 10px 16px;border-radius:11px;font-size:13.5px;z-index:50;max-width:calc(100% - 32px);box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:14px}
 .toast button{background:rgba(255,255,255,.16);color:#fff;border:0;border-radius:7px;padding:5px 11px;font-weight:700;cursor:pointer}
@@ -403,6 +424,7 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
     <nav class="tabs" role="tablist">
       <button role="tab" data-tab="board" aria-selected="true"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10"/></svg>Leads</button>
       <button role="tab" data-tab="opps" aria-selected="false" data-sell hidden><svg class="ic" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg>Opportunities</button>
+      <button role="tab" data-tab="clock" aria-selected="false" data-callonly hidden><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Time clock <span class="tabdot" id="clkdot"></span></button>
       <button role="tab" data-tab="reports" aria-selected="false" data-rep hidden><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
       <button role="tab" data-tab="import" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 15v4h14v-4"/></svg>Import</button>
       <button role="tab" data-tab="team" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M16 5a3 3 0 0 1 0 6M18 14c2 .5 3 2 3 5"/></svg>Team</button>
@@ -429,11 +451,19 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
       <div class="lead" id="lead"><div class="panel empty"><h3>No lead selected</h3>Pick a lead from Leads or search for one.</div></div>
     </section>
 
+    <!-- Time clock (callers) -->
+    <section id="tab-clock" class="page" hidden>
+      <div class="pagehead"><div><h1>Time clock</h1><p>Clock in when you start, log your breaks, and clock out when you’re done. Your hours go straight to your timesheet.</p></div>
+        <div class="actions"><button class="btn" id="clkfull">Full timesheet →</button></div></div>
+      <div class="panel clockbar" id="clock"></div>
+      <div class="kpis" id="clkkpis"></div>
+      <div class="panel"><div class="panel-h"><h2 id="clkshtitle">This pay period</h2><span class="stat">Something wrong? Ask an admin to fix it.</span></div><div class="tablebox"><table id="clkshifts"></table></div></div>
+    </section>
+
     <!-- Leads -->
     <section id="tab-board" class="page">
       <div class="pagehead"><div><h1>Leads</h1><p id="boardsub">Every lead, color-coded by status.</p></div>
         <div class="actions"><div class="mini" id="mykpis" data-call></div><button class="btn" id="exportbtn" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
-      <div class="panel clockbar" id="clock" hidden></div>
       <div class="chips" id="chips"></div>
       <div class="panel">
         <div class="toolbar">
@@ -723,7 +753,9 @@ async function enter(){
     $('#mename').textContent=p.full_name||p.email;
     const r=$('#merole');r.textContent=roleLabel(p.role);r.className='role '+p.role;
     $('#meav').innerHTML=avatar(p.id);
-    applyRole();setTab(isSales()&&tab==='board'&&!cur?'opps':tab);
+    applyRole();
+    if(isCaller()&&tab==='board'&&!cur){await loadClock();if(!clock.entry){setTab('clock');return}}
+    setTab(isSales()&&tab==='board'&&!cur?'opps':tab);
   } finally{entering=false}
 }
 sb.auth.onAuthStateChange((ev)=>{
@@ -735,15 +767,15 @@ sb.auth.onAuthStateChange((ev)=>{
 async function loadPeople(){const {data}=await sb.from('profiles').select('id,email,full_name,role,active,created_at').order('created_at');(data||[]).forEach(p=>people[p.id]=p)}
 
 /* ===================== Navigation ===================== */
-const TABS=['lead','board','opps','reports','import','team'];
-function allowed(t){if(t==='import'||t==='team')return isAdmin();if(t==='opps')return canSell();if(t==='reports')return canSeeReports();if(t==='lead')return !!cur;return true}
+const TABS=['lead','board','clock','opps','reports','import','team'];
+function allowed(t){if(t==='import'||t==='team')return isAdmin();if(t==='opps')return canSell();if(t==='reports')return canSeeReports();if(t==='clock')return isCaller();if(t==='lead')return !!cur;return true}
 function showTab(t){tab=t;const nav=t==='lead'?'board':t;document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===nav));TABS.forEach(k=>$('#tab-'+k).hidden=k!==t)}
 function setTab(t){if(!allowed(t))t=isSales()?'opps':'board';showTab(t);
-  if(t==='lead')selectLead(cur.id);else if(t==='board')loadBoard();else if(t==='team')loadTeam();else if(t==='opps')loadOpps();else if(t==='reports')loadReports()}
+  if(t==='lead')selectLead(cur.id);else if(t==='board')loadBoard();else if(t==='team')loadTeam();else if(t==='opps')loadOpps();else if(t==='reports')loadReports();else if(t==='clock')loadClock()}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 function applyRole(){const a=isAdmin(),sl=canSell();document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=!a);
   document.querySelectorAll('[data-sell]').forEach(b=>b.hidden=!sl);document.querySelectorAll('[data-rep]').forEach(b=>b.hidden=!canSeeReports());
-  $('#clock').hidden=!isCaller();document.querySelectorAll('[data-call]').forEach(b=>b.hidden=isSales());
+  document.querySelectorAll('[data-callonly]').forEach(b=>b.hidden=!isCaller());document.querySelectorAll('[data-call]').forEach(b=>b.hidden=isSales());
   $('#boardsub').textContent=sl?'Every lead, color-coded by status.':'Your leads, color-coded by status.';
   $('#invrole').querySelector('[value=admin]').hidden=!isOwner();}
 
@@ -850,21 +882,59 @@ function renderDetails(){
     $('#editform').onsubmit=saveEdit;p.querySelector('input').focus();return}
   const extra=Object.entries(l.extra||{});const wu=webUrl(l.website);const li=webUrl(l.linkedin);
   const row=(k,v)=>`<dt>${k}</dt><dd>${v||'<span class="muted">—</span>'}</dd>`;
-  p.innerHTML=`<div class="panel-h"><h3>Company &amp; contact</h3>${canEdit?'<button class="btn small soft" id="editbtn"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit</button>':''}</div>
-    <div class="panel-b"><dl class="kv">
-      ${row('Company',esc(l.company))}${row('Industry',esc(l.industry))}${row('Revenue',esc(fmtMoney(l.revenue)))}${row('Employees',esc(l.employees))}
-      ${row('Website',wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(l.website)}</a>`:esc(l.website))}
-      ${row('Address',esc([l.address,[l.city,[l.state,l.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')].filter(Boolean).join(', ')))}
+  // Every detail can be edited by clicking it (callers: their own leads). The caller a lead is assigned to is changed on Leads by admins only.
+  const ed=(f,v,x)=>canEdit?`<dt>${x!=null?esc(x.replace(/_/g,' ')):esc(FIELD_LABEL[f])}</dt><dd class="ie" tabindex="0" ${x!=null?`data-x="${esc(x)}"`:`data-f="${f}"`} title="Click to edit">${v||'<span class="add">Click to add</span>'}<svg class="ic iep" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></dd>`
+    :row(x!=null?esc(x.replace(/_/g,' ')):FIELD_LABEL[f],v);
+  const ph=v=>v?`<span class="mono">${esc(fmtPhone(v))}</span>`:'';
+  const u=lastUndo();
+  p.innerHTML=`<div class="panel-h"><h3>Company &amp; contact</h3>${canEdit?'<button class="btn small soft" id="editbtn"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit all</button>':''}</div>
+    <div class="panel-b">${u?`<div class="undobar"><span>Changed <b>${esc(u.label)}</b>.</span><button class="btn small" id="iundo"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo</button></div>`:''}
+      ${canEdit?'<p class="stat" style="margin:0">Click any detail to change it. Enter saves, Esc cancels.</p>':''}<dl class="kv">
+      ${ed('company',esc(l.company))}${ed('industry',esc(l.industry))}${ed('revenue',esc(fmtMoney(l.revenue)))}${ed('employees',esc(l.employees))}
+      ${ed('website',wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(l.website)}</a>`:esc(l.website))}
+      ${canEdit?ed('address',esc(l.address))+ed('city',esc(l.city))+ed('state',esc(l.state))+ed('zip',esc(l.zip))
+        :row('Address',esc([l.address,[l.city,[l.state,l.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')].filter(Boolean).join(', ')))}
       <div class="sep"></div>
-      ${row('Contact',contactName(l)?`<span class="cn">${esc(contactName(l))}</span>`:'')}${row('Title',esc(l.title))}
-      ${row('Direct phone',l.phone?`<span class="mono">${esc(fmtPhone(l.phone))}</span>`:'')}${row('Mobile',l.mobile?`<span class="mono">${esc(fmtPhone(l.mobile))}</span>`:'')}${row('Company phone',l.company_phone?`<span class="mono">${esc(fmtPhone(l.company_phone))}</span>`:'')}
-      ${row('Email',esc(l.email))}${row('LinkedIn',li?`<a href="${esc(li)}" target="_blank" rel="noopener">Profile</a>`:esc(l.linkedin))}
+      ${canEdit?ed('first_name',esc(l.first_name))+ed('last_name',esc(l.last_name)):row('Contact',contactName(l)?`<span class="cn">${esc(contactName(l))}</span>`:'')}${ed('title',esc(l.title))}
+      ${ed('phone',ph(l.phone))}${ed('mobile',ph(l.mobile))}${ed('company_phone',ph(l.company_phone))}
+      ${ed('email',esc(l.email))}${ed('linkedin',li?`<a href="${esc(li)}" target="_blank" rel="noopener">Profile</a>`:esc(l.linkedin))}
       <div class="sep"></div>
       ${row('Added',esc(fmtFull(l.created_at)))}${row('Imported from',esc(l.source))}${l.zoominfo_id?row('ZoomInfo ID',esc(l.zoominfo_id)):''}
-      ${extra.length?'<div class="sep"></div>'+extra.map(([k,v])=>row(esc(k.replace(/_/g,' ')),esc(v))).join(''):''}
+      ${extra.length?'<div class="sep"></div>'+extra.map(([k,v])=>ed(null,esc(v),k)).join(''):''}
     </dl></div>`;
-  if(canEdit)$('#editbtn').onclick=()=>{editing=true;renderDetails()};
+  if(canEdit){$('#editbtn').onclick=()=>{editing=true;renderDetails()};
+    p.querySelectorAll('dd.ie').forEach(dd=>{dd.onclick=e=>{if(e.target.closest('a'))return;startInline(dd)};dd.onkeydown=e=>{if(e.key==='Enter'&&!dd.classList.contains('on')){e.preventDefault();startInline(dd)}}})}
+  if(u)$('#iundo').onclick=undoInline;
 }
+const FIELD_LABEL=Object.fromEntries(EDIT_FIELDS.map(([k,l])=>[k,l]));FIELD_LABEL.address='Street address';
+// Undo for click-to-edit: every change is remembered (newest last) so it can be put back, one at a time.
+const inlineUndo=[];
+const lastUndo=()=>{for(let i=inlineUndo.length-1;i>=0;i--)if(inlineUndo[i].id===cur?.id)return inlineUndo[i];return null};
+function startInline(dd){if(dd.classList.contains('on'))return;const l=cur;const f=dd.dataset.f,x=dd.dataset.x;
+  const val=x!=null?String(l.extra?.[x]??''):String(l[f]??'');dd.classList.add('on');
+  dd.innerHTML=`<input class="iein" type="${f==='email'?'email':'text'}" value="${esc(val)}" aria-label="${esc(x!=null?x:FIELD_LABEL[f])}"><div class="iehint">Enter to save · Esc to cancel</div>`;
+  const inp=dd.querySelector('input');inp.focus();inp.select();let done=false;
+  const finish=save=>{if(done)return;done=true;save?saveInline(f,x,inp.value):renderDetails()};
+  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();finish(true)}else if(e.key==='Escape'){e.preventDefault();finish(false)}};
+  inp.onblur=()=>finish(true)}
+async function saveInline(f,x,raw){const l=cur;const id=l.id;const v=String(raw??'').trim();
+  const isX=x!=null;const old=isX?String(l.extra?.[x]??''):String(l[f]??'');
+  if(v===old){renderDetails();return}
+  const patch=isX?{extra:{...(l.extra||{}),[x]:v}}:{[f]:v};const prev=isX?{extra:{...(l.extra||{})}}:{[f]:old};
+  const label=isX?x.replace(/_/g,' '):FIELD_LABEL[f];
+  const {error}=await sb.from('leads').update(patch).eq('id',id);
+  if(error){toast(friendly(error));if(cur?.id===id)renderDetails();return}
+  inlineUndo.push({id,prev,label});if(inlineUndo.length>50)inlineUndo.shift();
+  refreshBoardRow(id,patch);if(cur?.id!==id)return;
+  Object.assign(cur,patch);renderHead();renderDetails();refreshLeadHist(id);
+  toast(v?`${label} saved`:`${label} cleared`,{undo:undoInline})}
+async function undoInline(){const u=lastUndo();if(!u)return;
+  const {error}=await sb.from('leads').update(u.prev).eq('id',u.id);if(error)return toast(friendly(error));
+  inlineUndo.splice(inlineUndo.lastIndexOf(u),1);refreshBoardRow(u.id,u.prev);
+  if(cur?.id===u.id){Object.assign(cur,u.prev);renderHead();renderDetails();refreshLeadHist(u.id)}
+  toast(`Put back ${u.label}`)}
+async function refreshLeadHist(id){const {data}=await sb.from('change_log').select('*').eq('row_id',id).order('created_at',{ascending:false}).limit(200);
+  if(data&&cur?.id===id){curHist=data;renderNotes()}}
 async function saveEdit(e){
   e.preventDefault();const fd=new FormData(e.target);const id=cur.id;const patch={},prev={};
   for(const [k] of EDIT_FIELDS){const v=String(fd.get(k)||'').trim();if(v!==(cur[k]||'')){patch[k]=v;prev[k]=cur[k]||''}}
@@ -1003,7 +1073,6 @@ async function loadBoard(){
   if(seq!==boardSeq)return;
   if(r.error){$('#ltbody').innerHTML=`<tr><td colspan="10"><div class="empty">${esc(friendly(r.error))}</div></td></tr>`;return}
   if(!isSales())loadMyKpis();
-  if(isCaller())loadClock();
   board.rows=r.data||[];board.total=r.count||0;board.counts={};(c.data||[]).forEach(x=>board.counts[x.status]=Number(x.n));board.trashN=Number(t.data)||0;
   renderBoard();
 }
@@ -1272,7 +1341,7 @@ $('#modal').addEventListener('mousedown',e=>{if(e.target.id==='modal')closeModal
 
 /* ===================== Edit history ===================== */
 const LEAD_LABELS={first_name:'First name',last_name:'Last name',title:'Title',company:'Company',phone:'Direct phone',mobile:'Mobile',company_phone:'Company phone',email:'Email',address:'Address',city:'City',state:'State',zip:'ZIP',industry:'Industry',website:'Website',employees:'Employees',revenue:'Revenue',linkedin:'LinkedIn',status:'Status',owner_id:'Caller',sales_owner_id:'Salesperson',callback_at:'Callback',appt_at:'Appointment',appt_rep:'Sales rep',deleted_at:'Trash'};
-const OPP_LABELS={deal_name:'Deal Name',client_id:'Client Name',agency_id:'Agency',owner_id:'Owner',type:'Type',stage:'Stage',probability:'Probability',amount:'Amount',follow_up_date:'Follow Up',close_date:'Close Date',lead_source:'Lead Source',next_step:'Next Step',description:'Description',products:'Products',contact_name:'Contact',contact_title:'Contact title',contact_email:'Contact email',contact_phone:'Contact phone',deleted_at:'Deleted'};
+const OPP_LABELS={deal_name:'Deal Name',client_id:'Client Name',agency_id:'Agency',owner_id:'Owner',type:'Type',stage:'Stage',probability:'Probability',amount:'Amount',follow_up_date:'Follow Up',close_date:'Close Date',lead_source:'Lead Source',next_step:'Next Step',description:'Description',products:'Products',contact_name:'Contact',contact_title:'Contact title',contact_email:'Contact email',contact_phone:'Contact phone',appt_at:'Appointment',appt_showed:'Appointment showed',reverted_at:'Sent back to lead',deleted_at:'Deleted'};
 function fmtVal(k,v){
   if(v==null||v===''||(Array.isArray(v)&&!v.length))return'blank';
   switch(k){
@@ -1280,7 +1349,7 @@ function fmtVal(k,v){
     case 'owner_id':case 'sales_owner_id':return nameOf(v);
     case 'client_id':return lookups.clients[v]||'another client';case 'agency_id':return lookups.agencies[v]||'another agency';
     case 'amount':return money(v);case 'probability':return v+'%';case 'close_date':case 'follow_up_date':return fmtDate(v);
-    case 'callback_at':case 'appt_at':return fmtFull(v);case 'products':return v.join(', ');
+    case 'callback_at':case 'appt_at':case 'reverted_at':return fmtFull(v);case 'appt_showed':return v?'Yes':'No';case 'products':return v.join(', ');
     default:{const s=String(v);return s.length>90?s.slice(0,90)+'…':s}}
 }
 const CONTACT_LABELS={name:'Name',title:'Title',email:'Email',phone:'Phone'};
@@ -1451,11 +1520,12 @@ function renderOppDetail(){
   const liveCts=contacts.filter(x=>!x.deleted_at),goneCts=contacts.filter(x=>x.deleted_at);
   const row=(k,v)=>`<dt>${k}</dt><dd>${v||'<span class="muted">—</span>'}</dd>`;const wu=webUrl(c.website);const si=STAGE_ORDER.indexOf(o.stage);
   box.innerHTML=`<div class="actions"><button class="btn ghost" id="oback">← All opportunities</button></div>
-   ${o.deleted_at?`<div class="banner"><span>This opportunity was deleted ${esc(fmtWhen(o.deleted_at))}.</span>${isAdmin()?'<button class="btn small" id="orestore">Restore</button>':''}</div>`:''}
+   ${o.reverted_at?`<div class="banner"><span>This deal was sent back to a lead ${esc(fmtWhen(o.reverted_at))}${o.reverted_by?' by '+esc(nameOf(o.reverted_by)):''}. To make it a deal again, convert the lead again.</span></div>`
+     :o.deleted_at?`<div class="banner"><span>This opportunity was deleted ${esc(fmtWhen(o.deleted_at))}.</span>${isAdmin()?'<button class="btn small" id="orestore">Restore</button>':''}</div>`:''}
    <div class="panel g-${o.stage}">
      <div class="oh"><div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(o.deal_name)}</h2>${stagePill(o.stage)}<span class="tag2">${esc(TYPES[o.type]||'')}</span></div>
        <div style="margin-top:4px;font-size:14.5px">Client: <b>${esc(c.name||'')}</b>${o.agency?` · Agency: <b>${esc(o.agency.name)}</b>`:''}</div></div>
-       <div class="actions">${ed?'<button class="btn soft" id="oedit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit deal</button>':''}${isAdmin()&&!o.deleted_at?'<button class="btn danger" id="odel">Delete</button>':''}</div></div>
+       <div class="actions">${ed?'<button class="btn soft" id="oedit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit deal</button>':''}${canRevert(o)?'<button class="btn" id="orevert" title="Send this deal back to the caller as a lead"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Revert to lead</button>':''}${isAdmin()&&!o.deleted_at?'<button class="btn danger" id="odel">Delete</button>':''}</div></div>
      <div class="strip">
        ${cellS('Amount',esc(money(o.amount)))}${cellS('Probability',o.probability+'%')}${cellS('Follow Up',followCell(o))}${cellS('Age',ageDays(o)+' day'+(ageDays(o)===1?'':'s'))}
        ${cellS('Owner',o.owner_id?personCell(o.owner_id):'')}${cellS('Lead Source',esc(o.lead_source))}${cellS('Created',esc(fmtWhen(o.created_at))+(o.created_by?' by '+esc(nameOf(o.created_by)):''))}
@@ -1463,6 +1533,7 @@ function renderOppDetail(){
      </div>
      <div class="path">${STAGE_ORDER.map((k,i)=>`<button type="button" data-stage="${k}" class="${k===o.stage?'on':(i<si&&!CLOSED.includes(o.stage)?'done':'')}" ${ed&&k!==o.stage?'':'disabled'} title="${ed&&k!==o.stage?'Move to '+STAGES[k]:''}">${STAGES[k]}</button>`).join('')}</div>
    </div>
+   ${o.lead_id||o.converted_by?apptBox(o,ed):''}
    ${lead?`<div class="convbox"><span>Converted from a lead by <b>${esc(nameOf(o.converted_by))}</b> on ${esc(fmtFull(lead.converted_at||o.created_at))}.</span><span><button class="linkbtn" id="olead">Open the original lead: ${esc(lead.company||contactName(lead))}</button></span></div>`:''}
    <div class="ocols">
     <div class="panel"><div class="panel-h"><h3>Deal details</h3>${ed?'<button class="btn small soft" id="oedit2">Edit</button>':''}</div><div class="panel-b"><dl class="kv">
@@ -1488,7 +1559,9 @@ function renderOppDetail(){
   $('#oback').onclick=()=>{showOppList();if(oppRows)renderOpps();else loadOpps()};
   if(ed){$('#oedit').onclick=()=>openOppForm(o);$('#oedit2').onclick=()=>openOppForm(o)}
   if(isAdmin()&&!o.deleted_at)$('#odel').onclick=()=>deleteOpp(o);
-  if(o.deleted_at&&isAdmin())$('#orestore').onclick=async()=>{const {error}=await sb.from('opportunities').update({deleted_at:null,deleted_by:null}).eq('id',o.id);if(error)return toast(friendly(error));oppRows=null;toast('Opportunity restored');openOpp(o.id)};
+  if(canRevert(o))$('#orevert').onclick=()=>revertOpp(o);
+  if((o.lead_id||o.converted_by)&&ed&&!o.deleted_at){$('#apptshowed').onchange=e=>setShowed(o,e.target.checked);$('#apptdate').onclick=()=>apptDateForm(o)}
+  if(o.deleted_at&&!o.reverted_at&&isAdmin())$('#orestore').onclick=async()=>{const {error}=await sb.from('opportunities').update({deleted_at:null,deleted_by:null}).eq('id',o.id);if(error)return toast(friendly(error));oppRows=null;toast('Opportunity restored');openOpp(o.id)};
   box.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>setStage(o,b.dataset.stage));
   if(lead)$('#olead').onclick=()=>openLead(lead.id);
   if(canSell()){$('#cedit').onclick=()=>openClientForm(c);if(o.agency)$('#aedit').onclick=()=>openAgencyForm(o.agency)}
@@ -1552,7 +1625,35 @@ async function addOppNote(){
   const {data,error}=await sb.from('opp_notes').insert({opp_id:c.o.id,author_id:me.id,body}).select().single();if(error)return toast(friendly(error));
   c.notes.unshift(data);c.noteText='';renderOppNotes();toast('Note added')}
 // Any change to a deal's fields can be put back from the history.
-const OPP_UNDO=new Set(['deal_name','client_id','agency_id','type','stage','probability','amount','follow_up_date','lead_source','description','products']);
+const OPP_UNDO=new Set(['deal_name','client_id','agency_id','type','stage','probability','amount','follow_up_date','lead_source','description','products','appt_at','appt_showed']);
+/* ===================== Appointment showed + revert to lead ===================== */
+const canRevert=o=>!!o&&!o.deleted_at&&!!o.lead_id&&(isAdmin()||(isSales()&&(o.owner_id===me.id||o.created_by===me.id)));
+function apptBox(o,ed){const can=ed&&!o.deleted_at;const caller=o.converted_by?nameOf(o.converted_by):'';
+  const payDay=o.appt_at||o.appt_showed_at;
+  const info=o.appt_showed?`Marked by <b>${esc(nameOf(o.appt_showed_by))}</b> ${esc(fmtWhen(o.appt_showed_at))}.${caller?` ${esc(caller)}’s $${APPT_BONUS} appointment bonus is paid on ${esc(fmtDate(payDay))}.`:''}`
+    :caller?`Check this once the meeting happens. ${esc(caller)} earns the $${APPT_BONUS} appointment bonus, counted on the appointment date.`:'Check this once the meeting happens.';
+  return `<div class="panel apptbox"><div style="display:grid;gap:3px;min-width:0"><span class="k">Appointment</span>
+      <span style="font-size:15px"><b>${o.appt_at?esc(fmtFull(o.appt_at)):'No date set'}</b>${can?' <button class="linkbtn" id="apptdate">Change</button>':''}</span>
+      <span class="stat">${info}</span></div>
+    <label class="showchk ${o.appt_showed?'yes':''} ${can?'':'dis'}"><input type="checkbox" id="apptshowed" ${o.appt_showed?'checked':''} ${can?'':'disabled'}>Appointment showed</label></div>`}
+async function setShowed(o,on){
+  const {error}=await sb.from('opportunities').update({appt_showed:on}).eq('id',o.id);if(error){toast(friendly(error));return openOpp(o.id)}
+  oppRows=null;await openOpp(o.id);
+  toast(on?'Marked as showed':'Unmarked',{undo:async()=>{const {error}=await sb.from('opportunities').update({appt_showed:!on}).eq('id',o.id);if(error)throw error;oppRows=null;openOpp(o.id);toast('Undone')}})}
+function apptDateForm(o){
+  openModal('Appointment date',`<label class="f">Date and time<input type="datetime-local" name="at" value="${o.appt_at?toLocalInput(new Date(o.appt_at)):''}"></label>
+    <p class="stat" style="margin:0">If the meeting was rescheduled, change it here. The caller’s bonus is counted on this date.</p>`,{submit:'Save',onSubmit:async fd=>{
+      const raw=String(fd.get('at')||'');const at=raw?new Date(raw):null;if(raw&&isNaN(at))return toast('Enter a date and time'),false;
+      const prev=o.appt_at;const {error}=await sb.from('opportunities').update({appt_at:at?at.toISOString():null}).eq('id',o.id);if(error){toast(friendly(error));return false}
+      oppRows=null;setTimeout(()=>openOpp(o.id),0);
+      toast('Appointment date saved',{undo:async()=>{const {error}=await sb.from('opportunities').update({appt_at:prev}).eq('id',o.id);if(error)throw error;openOpp(o.id);toast('Undone')}})}})}
+function revertOpp(o){const caller=o.converted_by?nameOf(o.converted_by):'the caller';
+  openModal('Revert to lead',`<p style="margin:0">This sends <b>${esc(o.deal_name)}</b> back to ${esc(caller)} as a lead, with the status it had before the appointment was set. The deal leaves the pipeline but stays in the history.</p>
+    ${o.appt_showed?`<p class="stat" style="margin:0">The appointment was marked as showed, so ${esc(caller)} still gets the $${APPT_BONUS} bonus for it.</p>`:''}
+    <label class="f">Why is it going back? (optional, added as a note on the lead)<textarea name="why" rows="3" placeholder="e.g. Client didn’t show, wants a call next month"></textarea></label>`,
+    {submit:'Revert to lead',onSubmit:async fd=>{
+      const {data,error}=await sb.rpc('revert_opportunity',{p_opp:o.id,p_reason:String(fd.get('why')||'').trim()});if(error){toast(friendly(error));return false}
+      oppRows=null;lookups.loaded=false;toast('Sent back to a lead');setTimeout(()=>openLead(data||o.lead_id),0)}})}
 const canUndoOpp=h=>canUndoNote(h)||canEditOpp(opp.cur?.o)&&h.action==='update'&&Object.keys(h.changes||{}).length>0&&Object.keys(h.changes).every(k=>OPP_UNDO.has(k)||(k==='owner_id'&&isAdmin()));
 async function undoOppEdit(hid){
   const c=opp.cur;const h=c.hist.find(x=>x.id===hid);if(!h)return;const id=c.o.id;const back={},redo={};
@@ -1840,20 +1941,38 @@ const timeErr=e=>{const m=String(e?.message||e||'');
   if(/time_entries_out_after_in/.test(m))return'Clock out has to be after clock in.';
   if(/time_entries_break/.test(m))return'The break is longer than the shift. Lower the break minutes.';
   if(/time_entries|clock_in|clock_out/.test(m)&&/does not exist|schema cache/i.test(m))return'The time clock isn’t set up in the database yet. Ask whoever runs Dial Desk to run the time clock SQL in Supabase.';
+  if(/appt_pay_report|revert_opportunity|appt_showed/.test(m)&&/does not exist|schema cache/i.test(m))return'This needs the version 8 database update. Ask whoever runs Dial Desk to run supabase-v8-appointments.sql in Supabase.';
   return friendly(e)};
-const clock={entry:null,doneToday:0,timer:null,busy:false};
+const clock={entry:null,doneToday:0,timer:null,busy:false,period:[]};
 function liveMins(e){const now=Date.now();const total=Math.max(0,Math.round((now-new Date(e.clock_in))/60000));let brk=e.break_minutes||0;
   if(e.break_started_at)brk+=Math.max(0,Math.round((now-new Date(e.break_started_at))/60000));return {total,brk,worked:Math.max(0,total-brk)}}
+// The pay period today falls in: 1st–15th or 16th–end of month (Central time).
+function curPeriod(){const t=ctDay(new Date());const [y,m,d]=t.split('-').map(Number);const last=pad2(new Date(y,m,0).getDate());const k=t.slice(0,7);
+  return +d<=15?[`${k}-01`,`${k}-15`]:[`${k}-16`,`${k}-${last}`]}
 async function loadClock(){
-  const box=$('#clock');if(!isCaller()){box.hidden=true;return}box.hidden=false;
-  const since=new Date();since.setHours(0,0,0,0);since.setDate(since.getDate()-1);
-  const {data,error}=await sb.from('time_entries').select('*').eq('caller_id',me.id).or(`clock_out.is.null,clock_in.gte."${since.toISOString()}"`).order('clock_in',{ascending:false}).limit(30);
+  if(!isCaller())return;const box=$('#clock');
+  const [pa]=curPeriod();const since=new Date(pa+'T00:00:00');since.setDate(since.getDate()-1);
+  const {data,error}=await sb.from('time_entries').select('*').eq('caller_id',me.id).or(`clock_out.is.null,clock_in.gte."${since.toISOString()}"`).order('clock_in',{ascending:false}).limit(200);
   if(error){box.innerHTML=`<span class="stat">${esc(timeErr(error))}</span>`;return}
   const today=ctDay(new Date());clock.entry=(data||[]).find(e=>!e.clock_out)||null;
   clock.doneToday=(data||[]).filter(e=>e.clock_out&&ctDay(e.clock_in)===today).reduce((n,e)=>n+shiftMins(e),0);
-  renderClock()}
+  const [a,b]=curPeriod();clock.period=(data||[]).filter(e=>{const d=ctDay(e.clock_in);return d>=a&&d<=b});
+  renderClock();renderClockPeriod()}
+function renderClockPeriod(){const [a,b]=curPeriod();const list=clock.period||[];const mins=list.reduce((n,e)=>n+(shiftMins(e)||0),0);
+  const d=x=>new Date(x+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric'});const pl=`${d(a)} – ${d(b)}`;
+  const live=clock.entry?liveMins(clock.entry).worked:0;
+  $('#clkkpis').innerHTML=[[fmtHM(clock.doneToday+live),'Worked today'+(clock.entry?' so far':'')],[fmtN(mins/60,2),`Hours this pay period · ${pl}`],[fmtN(list.filter(e=>e.clock_out).length),'Shifts this pay period']]
+    .map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+  $('#clkshtitle').textContent=`This pay period · ${pl}`;
+  const dayLbl=iso=>new Date(ctDay(iso)+'T12:00:00').toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'});
+  $('#clkshifts').innerHTML=`<thead><tr><th>Date</th><th>Clock in</th><th>Clock out</th><th class="num">Break</th><th class="num">Hours</th></tr></thead><tbody>`+
+    (list.length?list.map(e=>{const m=shiftMins(e);return `<tr><td>${esc(dayLbl(e.clock_in))}</td><td>${esc(fmtTime(e.clock_in))}</td><td>${e.clock_out?esc(fmtTime(e.clock_out)):'<span class="tag2">Clocked in now</span>'}</td><td class="num">${e.break_minutes} min</td><td class="num"><b>${m==null?'—':fmtN(m/60,2)}</b></td></tr>`}).join('')
+      +`<tr class="total"><td colspan="4">Total</td><td class="num">${fmtN(mins/60,2)}</td></tr>`
+    :'<tr><td colspan="5"><div class="empty">No shifts yet this pay period.</div></td></tr>')+'</tbody>'}
+$('#clkfull').onclick=()=>{repView='time';setTab('reports')};
 function renderClock(){
   const box=$('#clock'),e=clock.entry;clearInterval(clock.timer);
+  $('#clkdot').className='tabdot'+(e?(e.break_started_at?' brk':' on'):'');$('#clkdot').title=e?(e.break_started_at?'On break':'Clocked in'):'Clocked out';
   if(!e){box.innerHTML=`<div class="clk"><span class="cdot"></span><div><b>You’re clocked out</b><div class="stat">${clock.doneToday?'Worked today: '+fmtHM(clock.doneToday):'Clock in when you start calling.'}</div></div></div>
       <div class="actions"><button class="btn primary" id="clkin">Clock in</button></div>`;
     $('#clkin').onclick=()=>clockAct('clock_in',{},'Clocked in. Have a good shift!');return}
@@ -1869,7 +1988,7 @@ function renderClock(){
   $('#clkout').onclick=clockOutForm;
   $('#clkbrk').onchange=ev=>{const n=parseBreak(ev.target.value);if(n==null){toast('Enter break minutes as a whole number, like 30');return renderClock()}
     clockAct('set_break',{p_minutes:n},`Break set to ${n} min`)};
-  clock.timer=setInterval(()=>{if(clock.entry&&document.activeElement?.id!=='clkbrk')renderClock()},30000)}
+  clock.timer=setInterval(()=>{if(clock.entry&&document.activeElement?.id!=='clkbrk'){renderClock();if(tab==='clock')renderClockPeriod()}},30000)}
 async function clockAct(fn,args,msg){if(clock.busy)return;clock.busy=true;
   try{const {error}=await sb.rpc(fn,args);if(error)return toast(timeErr(error));toast(msg)}finally{clock.busy=false;loadClock()}}
 function clockOutForm(){const e=clock.entry;if(!e)return;const L=liveMins(e);
@@ -1883,7 +2002,7 @@ function clockOutForm(){const e=clock.entry;if(!e)return;const L=liveMins(e);
   inp.oninput=upd;upd()}
 
 /* ===================== Reports: timesheets ===================== */
-const ts={month:'',period:'',caller:'',entries:[],appts:[],people:[]};
+const ts={month:'',period:'',caller:'',entries:[],appts:[],showed:[],people:[]};
 function tsRange(){const [y,m]=ts.month.split('-').map(Number);const last=pad2(new Date(y,m,0).getDate());const k=ts.month;
   return ts.period==='1'?[`${k}-01`,`${k}-15`]:ts.period==='2'?[`${k}-16`,`${k}-${last}`]:[`${k}-01`,`${k}-${last}`]}
 function tsPeriodLabel(){const [a,b]=tsRange();const d=x=>new Date(x+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric'});return `${d(a)} – ${d(b)}, ${ts.month.slice(0,4)}`}
@@ -1891,22 +2010,24 @@ async function loadTimesheet(){
   const now=new Date();if(!ts.month)ts.month=monthKey(now);if(!ts.period)ts.period=now.getDate()<=15?'1':'2';
   $('#tsmonth').innerHTML=Array.from({length:13},(_,i)=>new Date(now.getFullYear(),now.getMonth()-i,1)).map(d=>opt(monthKey(d),monthName(d),ts.month)).join('');
   $('#tsperiod').value=ts.period;
-  $('#tsnote').textContent=`Pay: $${PAY_RATE}/hour + $${APPT_BONUS} per appointment. Hours = clock out − clock in − break. Shifts count on the day they start (Central time).`;
+  $('#tsnote').textContent=`Pay: $${PAY_RATE}/hour + $${APPT_BONUS} per appointment that showed, counted on the appointment date. Hours = clock out − clock in − break.`;
   const sel=monthOf(ts.month);
   // A day of slack on each side; everything is then sorted into days by Central time.
   const from=new Date(sel.getFullYear(),sel.getMonth(),0),to=new Date(sel.getFullYear(),sel.getMonth()+1,2);
   $('#tskpis').innerHTML='<div class="kpi"><span>Loading…</span></div>';
   let q=sb.from('time_entries').select('*').gte('clock_in',from.toISOString()).lt('clock_in',to.toISOString()).order('clock_in');
   if(!isAdmin())q=q.eq('caller_id',me.id);
-  const [e,r]=await Promise.all([q,sb.rpc('call_report',{p_from:from.toISOString(),p_to:to.toISOString()})]);
-  const err=e.error||r.error;
+  const last=pad2(new Date(sel.getFullYear(),sel.getMonth()+1,0).getDate());
+  const [e,r,w]=await Promise.all([q,sb.rpc('call_report',{p_from:from.toISOString(),p_to:to.toISOString()}),sb.rpc('appt_pay_report',{p_from:`${ts.month}-01`,p_to:`${ts.month}-${last}`})]);
+  const err=e.error||r.error||w.error;
   if(err){$('#tskpis').innerHTML=`<div class="kpi"><span>${esc(timeErr(err))}</span></div>`;$('#tstable').innerHTML='';$('#tssum').innerHTML='';$('#tssumpanel').hidden=true;return}
   const k=ts.month;
   ts.entries=(e.data||[]).filter(x=>ctDay(x.clock_in).slice(0,7)===k);
   ts.appts=(r.data||[]).filter(x=>String(x.day).slice(0,7)===k&&(isAdmin()||x.caller_id===me.id)).map(x=>({caller_id:x.caller_id,day:String(x.day).slice(0,10),n:Number(x.appts)||0})).filter(x=>x.n);
+  ts.showed=(w.data||[]).filter(x=>isAdmin()||x.caller_id===me.id).map(x=>({caller_id:x.caller_id,day:String(x.day).slice(0,10),n:Number(x.showed)||0})).filter(x=>x.n);
   if(isAdmin()){
     // Active callers, plus anyone with time on the clock this month, plus former callers who set appointments.
-    const ids=new Set(ts.entries.map(x=>x.caller_id));ts.appts.forEach(x=>{if(people[x.caller_id]?.role==='caller')ids.add(x.caller_id)});
+    const ids=new Set([...ts.entries.map(x=>x.caller_id),...ts.showed.map(x=>x.caller_id)]);ts.appts.forEach(x=>{if(people[x.caller_id]?.role==='caller')ids.add(x.caller_id)});
     ts.people=Object.values(people).filter(p=>(p.role==='caller'&&p.active)||ids.has(p.id)).map(p=>p.id);ids.forEach(id=>{if(!ts.people.includes(id))ts.people.push(id)});
     if(ts.caller&&!ts.people.includes(ts.caller))ts.caller='';
     $('#tscaller').innerHTML=opt('','All callers',ts.caller)+ts.people.map(id=>opt(id,nameOf(id),ts.caller)).join('')}
@@ -1915,26 +2036,27 @@ async function loadTimesheet(){
 function tsStats(id){const [a,b]=tsRange();const inP=d=>d>=a&&d<=b;
   const list=ts.entries.filter(x=>x.caller_id===id&&inP(ctDay(x.clock_in)));
   const mins=list.reduce((n,x)=>n+(shiftMins(x)||0),0),open=list.filter(x=>!x.clock_out).length;
-  const appts=ts.appts.filter(x=>x.caller_id===id&&inP(x.day)).reduce((n,x)=>n+x.n,0);
-  const apptsMonth=ts.appts.filter(x=>x.caller_id===id).reduce((n,x)=>n+x.n,0);
+  const booked=ts.appts.filter(x=>x.caller_id===id&&inP(x.day)).reduce((n,x)=>n+x.n,0);
+  const appts=ts.showed.filter(x=>x.caller_id===id&&inP(x.day)).reduce((n,x)=>n+x.n,0); // paid: appointments that showed, by appointment date
+  const apptsMonth=ts.showed.filter(x=>x.caller_id===id).reduce((n,x)=>n+x.n,0);
   const hours=Math.round(mins/60*100)/100; // pay uses hours rounded to 2 decimals, so the invoice adds up line by line
   const hourPay=Math.round(hours*PAY_RATE*100)/100,bonus=appts*APPT_BONUS;
-  return {id,shifts:list.length,mins,hours,open,appts,apptsMonth,hourPay,bonus,total:Math.round((hourPay+bonus)*100)/100}}
-function tsTotals(st){return st.reduce((t,x)=>({hours:t.hours+x.hours,appts:t.appts+x.appts,apptsMonth:t.apptsMonth+x.apptsMonth,hourPay:t.hourPay+x.hourPay,bonus:t.bonus+x.bonus,total:t.total+x.total,open:t.open+x.open,shifts:t.shifts+x.shifts}),
-  {hours:0,appts:0,apptsMonth:0,hourPay:0,bonus:0,total:0,open:0,shifts:0})}
+  return {id,shifts:list.length,mins,hours,open,booked,appts,apptsMonth,hourPay,bonus,total:Math.round((hourPay+bonus)*100)/100}}
+function tsTotals(st){return st.reduce((t,x)=>({hours:t.hours+x.hours,booked:t.booked+x.booked,appts:t.appts+x.appts,apptsMonth:t.apptsMonth+x.apptsMonth,hourPay:t.hourPay+x.hourPay,bonus:t.bonus+x.bonus,total:t.total+x.total,open:t.open+x.open,shifts:t.shifts+x.shifts}),
+  {hours:0,booked:0,appts:0,apptsMonth:0,hourPay:0,bonus:0,total:0,open:0,shifts:0})}
 function renderTimesheet(){
   const a=isAdmin();const list=a?(ts.caller?[ts.caller]:ts.people):[me.id];const st=list.map(tsStats);const T=tsTotals(st);const pl=tsPeriodLabel();
-  $('#tskpis').innerHTML=[[fmtN(T.hours,2),`Hours worked · ${pl}`],[fmtN(T.appts),'Appointments set'],[usd(T.hourPay),`Hourly pay · $${PAY_RATE}/hr`],
+  $('#tskpis').innerHTML=[[fmtN(T.hours,2),`Hours worked · ${pl}`],[fmtN(T.appts),`Appointments showed (paid) · ${fmtN(T.booked)} booked`],[usd(T.hourPay),`Hourly pay · $${PAY_RATE}/hr`],
     [usd(T.bonus),`Appointment bonus · $${APPT_BONUS} each`],[usd(T.total),a&&list.length>1?'Total for all callers':'Total pay']]
     .map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
   // Pay summary (admins)
   $('#tssumpanel').hidden=!a;
   if(a){$('#tssumtitle').textContent=`Pay summary · ${pl}`;
-    $('#tssum').innerHTML=`<thead><tr><th>Caller</th><th class="num">Shifts</th><th class="num">Hours worked</th><th class="num">Appts (pay period)</th><th class="num">Appts (month)</th><th class="num">Hourly pay</th><th class="num">Appt bonus</th><th class="num">Total</th></tr></thead><tbody>`+
+    $('#tssum').innerHTML=`<thead><tr><th>Caller</th><th class="num">Shifts</th><th class="num">Hours worked</th><th class="num">Appts booked</th><th class="num">Appts showed (paid)</th><th class="num">Showed (month)</th><th class="num">Hourly pay</th><th class="num">Appt bonus</th><th class="num">Total</th></tr></thead><tbody>`+
       (st.length?st.map(x=>`<tr><td>${personCell(x.id)}${x.open?` <span class="tag2">${x.open} not clocked out</span>`:''}</td><td class="num">${fmtN(x.shifts)}</td><td class="num"><b>${fmtN(x.hours,2)}</b></td>
-        <td class="num">${fmtN(x.appts)}</td><td class="num">${fmtN(x.apptsMonth)}</td><td class="num">${usd(x.hourPay)}</td><td class="num">${usd(x.bonus)}</td><td class="num"><b>${usd(x.total)}</b></td></tr>`).join('')
-        +(st.length>1?`<tr class="total"><td>All callers</td><td class="num">${fmtN(T.shifts)}</td><td class="num">${fmtN(T.hours,2)}</td><td class="num">${fmtN(T.appts)}</td><td class="num">${fmtN(T.apptsMonth)}</td><td class="num">${usd(T.hourPay)}</td><td class="num">${usd(T.bonus)}</td><td class="num">${usd(T.total)}</td></tr>`:'')
-      :`<tr><td colspan="8"><div class="empty">No callers yet.</div></td></tr>`)+'</tbody>'}
+        <td class="num">${fmtN(x.booked)}</td><td class="num"><b>${fmtN(x.appts)}</b></td><td class="num">${fmtN(x.apptsMonth)}</td><td class="num">${usd(x.hourPay)}</td><td class="num">${usd(x.bonus)}</td><td class="num"><b>${usd(x.total)}</b></td></tr>`).join('')
+        +(st.length>1?`<tr class="total"><td>All callers</td><td class="num">${fmtN(T.shifts)}</td><td class="num">${fmtN(T.hours,2)}</td><td class="num">${fmtN(T.booked)}</td><td class="num">${fmtN(T.appts)}</td><td class="num">${fmtN(T.apptsMonth)}</td><td class="num">${usd(T.hourPay)}</td><td class="num">${usd(T.bonus)}</td><td class="num">${usd(T.total)}</td></tr>`:'')
+      :`<tr><td colspan="9"><div class="empty">No callers yet.</div></td></tr>`)+'</tbody>'}
   // Time entries
   const [pa,pb]=tsRange();const showWho=a&&!ts.caller;
   const rows=ts.entries.filter(x=>list.includes(x.caller_id)&&ctDay(x.clock_in)>=pa&&ctDay(x.clock_in)<=pb).sort((x,y)=>new Date(y.clock_in)-new Date(x.clock_in));
@@ -1985,9 +2107,9 @@ async function tsDelete(e){if(!e||!isAdmin())return;
   const {error}=await sb.from('time_entries').delete().eq('id',e.id);if(error)return toast(timeErr(error));toast('Time entry deleted');loadTimesheet()}
 function exportTimesheet(){if(!isAdmin())return;const list=ts.caller?[ts.caller]:ts.people;const st=list.map(tsStats);const T=tsTotals(st);const pl=tsPeriodLabel();
   if(!st.length)return toast('No callers to export');
-  const lines=[['Pay period','Caller','Hours worked','Appointments (pay period)','Appointments (month)','Hourly rate','Hourly pay','Appointment bonus','Total invoice','Shifts not clocked out (not counted)'].map(csvCell).join(',')];
-  st.forEach(x=>lines.push([pl,nameOf(x.id),x.hours.toFixed(2),x.appts,x.apptsMonth,PAY_RATE.toFixed(2),x.hourPay.toFixed(2),x.bonus.toFixed(2),x.total.toFixed(2),x.open].map(csvCell).join(',')));
-  if(st.length>1)lines.push([pl,'All callers',T.hours.toFixed(2),T.appts,T.apptsMonth,'',T.hourPay.toFixed(2),T.bonus.toFixed(2),T.total.toFixed(2),T.open].map(csvCell).join(','));
+  const lines=[['Pay period','Caller','Hours worked','Appointments booked (pay period)','Appointments showed (pay period, paid)','Appointments showed (month)','Hourly rate','Hourly pay','Appointment bonus','Total invoice','Shifts not clocked out (not counted)'].map(csvCell).join(',')];
+  st.forEach(x=>lines.push([pl,nameOf(x.id),x.hours.toFixed(2),x.booked,x.appts,x.apptsMonth,PAY_RATE.toFixed(2),x.hourPay.toFixed(2),x.bonus.toFixed(2),x.total.toFixed(2),x.open].map(csvCell).join(',')));
+  if(st.length>1)lines.push([pl,'All callers',T.hours.toFixed(2),T.booked,T.appts,T.apptsMonth,'',T.hourPay.toFixed(2),T.bonus.toFixed(2),T.total.toFixed(2),T.open].map(csvCell).join(','));
   const [a,b]=tsRange();download(`dial-desk-timesheet-${a}-to-${b}.csv`,lines)}
 $('#tsmonth').addEventListener('input',e=>{ts.month=e.target.value;loadTimesheet()});
 $('#tsperiod').addEventListener('input',e=>{ts.period=e.target.value;renderTimesheet()});
