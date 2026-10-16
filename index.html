@@ -352,14 +352,29 @@ td.rn{color:var(--faint);font-size:12px;text-align:right}
 .cdot.brk{background:var(--warn);box-shadow:0 0 0 4px #fef0c7}
 .clockbar .warnline{flex:1 1 100%;color:var(--bad);font-size:12.5px;font-weight:600}
 
+/* Lead stats */
+.mixbar{height:10px;border-radius:5px;background:var(--c,#2a78d6);min-width:2px}
+.mixcell{display:flex;align-items:center;gap:10px;min-width:160px}
+tr.activerow td{background:#eef6ff;font-weight:700}
+#lsmat td.num,#lsmat th.num{white-space:nowrap}
+/* Combined lead filters */
+.lfrow{background:var(--surface-2,#f8fafc);align-items:flex-end}
+.lfrow label.f{flex:0 1 180px}
+.lfsum{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 14px;font-size:12.5px;color:var(--muted)}
+.lfsum:not(:empty){padding:8px 14px;border-bottom:1px solid var(--line)}
+.fxn{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:#fff;font-size:11px}
 /* Click-to-edit lead details */
-dl.kv dd.ie{cursor:text;border-radius:7px;padding:2px 26px 2px 7px;margin:-2px -7px;position:relative;transition:background .12s}
-dl.kv dd.ie:hover,dl.kv dd.ie:focus-visible{background:var(--accent-soft);outline:none}
-dl.kv dd.ie .iep{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--accent);opacity:0}
-dl.kv dd.ie:hover .iep,dl.kv dd.ie:focus-visible .iep{opacity:1}
-dl.kv dd.ie .add{color:var(--faint);font-weight:500}
-dl.kv dd.ie.on{padding:0;margin:-3px -2px;background:none;cursor:default}
-dl.kv dd.ie .iein{width:100%;padding:4px 8px;font:inherit;font-weight:500;border:1px solid var(--accent);border-radius:7px;box-shadow:0 0 0 3px var(--accent-soft)}
+.ie{cursor:text;border-radius:7px;padding:2px 26px 2px 7px;margin:-2px -7px;position:relative;transition:background .12s}
+.ie:hover,.ie:focus-visible{background:var(--accent-soft);outline:none}
+.ie .iep{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--accent);opacity:0}
+.ie:hover .iep,.ie:focus-visible .iep{opacity:1}
+.ie .add{color:var(--faint);font-weight:500;font-size:13px}
+.ie.on{padding:0;margin:-3px -2px;background:none;cursor:default;display:block}
+.ie .iein{width:100%;padding:4px 8px;font:inherit;font-weight:500;border:1px solid var(--accent);border-radius:7px;box-shadow:0 0 0 3px var(--accent-soft)}
+.ie .iegrp{display:flex;gap:6px}.ie .iegrp .iein{min-width:0}
+.lh h2.ie{display:inline-block}.lh .who .ie{display:inline-block}
+.strip .v.ie{margin:2px -7px -2px;display:flex}
+#lundo:not(:empty){margin-bottom:10px}
 .iehint{font-size:11.5px;color:var(--faint);margin-top:3px}
 .undobar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#fff8eb;border:1px solid #fde3b0;color:#8a5300;border-radius:9px;padding:6px 6px 6px 12px;font-size:12.5px}
 /* Time clock tab dot */
@@ -476,8 +491,32 @@ dl.kv dd.ie .iein{width:100%;padding:4px 8px;font:inherit;font-weight:500;border
             <option value="callback">Sort: Next callback</option>
             <option value="company">Sort: Company A–Z</option>
             <option value="added">Sort: Date added</option>
+            <option value="attempts">Sort: Most calls</option>
+            <option value="state">Sort: State</option>
+            <option value="industry">Sort: Industry</option>
           </select>
+          <select id="lsort2" aria-label="Then sort by">
+            <option value="">Then by: —</option>
+            <option value="company">Then by: Company A–Z</option>
+            <option value="recent">Then by: Last contact, newest</option>
+            <option value="oldest">Then by: Longest since contact</option>
+            <option value="status">Then by: Status</option>
+            <option value="callback">Then by: Next callback</option>
+            <option value="added">Then by: Date added</option>
+            <option value="attempts">Then by: Most calls</option>
+            <option value="state">Then by: State</option>
+            <option value="industry">Then by: Industry</option>
+          </select>
+          <button class="btn" id="lfbtn" type="button" aria-expanded="false"></button>
         </div>
+        <div class="toolbar lfrow" id="lfrow" hidden>
+          <label class="f">State<input type="text" id="lfstate" placeholder="e.g. OK" maxlength="30"></label>
+          <label class="f">Industry contains<input type="text" id="lfind" placeholder="e.g. School"></label>
+          <label class="f">Last contact<select id="lfcontact"><option value="">Any time</option><option value="never">Never called</option><option value="today">Today</option><option value="week">In the last 7 days</option><option value="7">Not in 7+ days</option><option value="30">Not in 30+ days</option></select></label>
+          <label class="f">Callback<select id="lfcb"><option value="">Any</option><option value="due">Due now or overdue</option><option value="upcoming">Scheduled later</option><option value="none">No callback set</option></select></label>
+          <button class="btn ghost" type="button" id="lfreset">Clear filters</button>
+        </div>
+        <div class="lfsum" id="lfsum"></div>
         <div class="bulk" id="bulk" hidden>
           <b id="selcount"></b><button class="lnk" id="selallmatch" hidden></button>
           <span id="bulk-live"><select id="assignto" aria-label="Assign to"></select><button class="btn small" id="assignbtn">Assign</button>
@@ -525,8 +564,21 @@ dl.kv dd.ie .iein{width:100%;padding:4px 8px;font:inherit;font-weight:500;border
     <!-- Reports -->
     <section id="tab-reports" class="page" hidden>
       <div class="pagehead"><div><h1>Reports</h1><p id="rsub">Opportunity report. Filter, group and export.</p></div>
-        <div class="actions"><div class="seg" id="rview" hidden><button type="button" data-v="opps" aria-pressed="true">Opportunities</button><button type="button" data-v="calls" aria-pressed="false">Call volume</button><button type="button" data-v="time" aria-pressed="false">Timesheets</button></div>
-          <button class="btn" id="rexport"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
+        <div class="actions"><div class="seg" id="rview" hidden><button type="button" data-v="leads" aria-pressed="false">Lead stats</button><button type="button" data-v="opps" aria-pressed="true">Opportunities</button><button type="button" data-v="calls" aria-pressed="false">Call volume</button><button type="button" data-v="time" aria-pressed="false">Timesheets</button></div>
+          <button class="btn" id="rexport"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button>
+          <button class="btn primary" id="rpdf" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg>Download PDF</button></div></div>
+      <div id="rep-leads" class="page" hidden>
+        <div class="panel"><div class="filters">
+          <label class="f">Activity month<select id="lsmonth"></select></label>
+          <label class="f">Status table shows<select id="lsmode"><option value="n">Number of leads</option><option value="pct">% of each caller’s leads</option></select></label>
+          <span class="stat" style="flex:1 1 280px;align-self:center">Lead counts are as of right now. Calls, appointments, hours and pay are for the month you pick. Active = New, 1st Call and 2nd Call.</span>
+        </div></div>
+        <div class="kpis" id="lskpis"></div>
+        <div class="kpis" id="lskpis2"></div>
+        <div class="panel"><div class="panel-h"><div><h2>Where the leads are</h2><p class="stat" style="margin:2px 0 0">Every live lead by status, for the whole team.</p></div></div><div class="tablebox"><table id="lsmix"></table></div></div>
+        <div class="panel"><div class="panel-h"><div><h2>Lead status by caller</h2><p class="stat" style="margin:2px 0 0" id="lsmatsub"></p></div></div><div class="tablebox"><table id="lsmat"></table></div></div>
+        <div class="panel"><div class="panel-h"><div><h2 id="lsperftitle">Caller performance</h2><p class="stat" style="margin:2px 0 0">Show rate = appointments that showed ÷ appointments booked. Cost per appointment = caller pay (hours × $18 + $50 per showed) ÷ appointments booked.</p></div></div><div class="tablebox"><table id="lsperf"></table></div></div>
+      </div>
       <div id="rep-calls" class="page" hidden>
         <div class="panel"><div class="filters">
           <label class="f">Month<select id="cvmonth"></select></label>
@@ -663,7 +715,7 @@ const PAGE=100;
 /* ===================== State ===================== */
 let me=null; const people={};
 let tab='board', cur=null, curCalls=[], curNotes=[], curHist=[], draft=null, editing=false, period='today';
-const board={status:'',owner:'',search:'',sort:'recent',page:0,rows:[],total:0,counts:{},trashN:0,trash:false,sel:new Set(),all:false};
+const board={statuses:new Set(),state:'',industry:'',contact:'',callback:'',sort2:'',owner:'',search:'',sort:'recent',page:0,rows:[],total:0,counts:{},trashN:0,trash:false,sel:new Set(),all:false};
 let imp=null;
 
 /* ===================== Utilities ===================== */
@@ -838,39 +890,56 @@ function renderLead(){
   const box=$('#lead');const l=cur;
   if(!l){box.innerHTML=`<div class="panel empty"><h3>No lead selected</h3>Pick a lead from Leads or search for one.</div>`;renderLeadNav();return}
   box.innerHTML=`${l.deleted_at?`<div class="banner"><span>This lead is in the Trash (moved ${esc(fmtWhen(l.deleted_at))}${l.deleted_by?' by '+esc(who(l.deleted_by)):''}).</span>${isAdmin()?'<button class="btn small" id="restore1">Restore lead</button>':''}</div>`:''}
-    <div class="panel" id="lhead"></div>
+    <div id="lundo"></div><div class="panel" id="lhead"></div>
     <div class="cols"><div class="panel" id="pdetails"></div><div class="panel" id="plog"></div><div class="panel" id="pnotes"></div></div>`;
   if(l.deleted_at&&isAdmin())$('#restore1').onclick=async()=>{const {error}=await sb.from('leads').update({deleted_at:null,deleted_by:null}).eq('id',l.id);if(error)return toast(friendly(error));toast('Lead restored');selectLead(l.id)};
   renderHead();renderDetails();renderLog();renderNotes();renderLeadNav();
 }
 function renderHead(){
-  const l=cur;const loc=[l.city,l.state].filter(Boolean).join(', ');const wu=webUrl(l.website);
-  const second=l.mobile?['Mobile',l.mobile]:['Company phone',l.company_phone];
+  const l=cur;const loc=[l.city,l.state].filter(Boolean).join(', ');const wu=webUrl(l.website);const li=webUrl(l.linkedin);
+  const ce=canEditLead(l)&&!l.deleted_at;
   const lastCall=curCalls[0];
   const cell=(k,v,cls='')=>`<div><div class="k">${k}</div><div class="v ${cls}">${v||'<span class="none">Not on file</span>'}</div></div>`;
+  const PEN='<svg class="ic iep" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
+  // An editable piece: data-f is one field, data-fs is several edited together (e.g. city, state, ZIP).
+  const ed=(fs,html,empty='Click to add',cls='')=>ce?`<span class="ie ${cls}" tabindex="0" ${fs.includes(',')?`data-fs="${fs}"`:`data-f="${fs}"`} title="Click to edit">${html||`<span class="add">${empty}</span>`}${PEN}</span>`:html;
+  const ecell=(k,fs,html,cls='')=>ce?`<div><div class="k">${k}</div><div class="v ie ${cls}" tabindex="0" ${fs.includes(',')?`data-fs="${fs}"`:`data-f="${fs}"`} title="Click to edit">${html||'<span class="add">Click to add</span>'}${PEN}</div></div>`:cell(k,html,cls);
   const ph=p=>p?`${esc(fmtPhone(p))} <button class="copy" data-copy="${esc(digits(p))}">Copy</button>`:'';
+  const own=l.owner_id===me.id;const canRe=!l.deleted_at&&l.status!=='converted'&&(isAdmin()||own);
   $('#lhead').className='panel '+sc(l.status);
+  const strip=ce?`
+      ${ecell('Direct phone','phone',ph(l.phone),'num')}${ecell('Mobile','mobile',ph(l.mobile),'num')}${ecell('Company phone','company_phone',ph(l.company_phone),'num')}
+      ${ecell('Email','email',l.email?`${esc(l.email)} <button class="copy" data-copy="${esc(l.email)}">Copy</button>`:'')}
+      ${ecell('Website','website',wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(l.website.replace(/^https?:\/\/(www\.)?/i,'').replace(/\/$/,''))}</a>`:esc(l.website))}
+      ${ecell('Street address','address',esc(l.address))}${ecell('City · State · ZIP','city,state,zip',esc([l.city,[l.state,l.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')))}
+      ${ecell('LinkedIn','linkedin',li?`<a href="${esc(li)}" target="_blank" rel="noopener">Profile</a>`:esc(l.linkedin))}
+      ${ecell('Industry','industry',esc(l.industry))}${ecell('Revenue','revenue',esc(fmtMoney(l.revenue)))}${ecell('Employees','employees',esc(l.employees))}
+      ${cell('Added',esc(fmtDate(l.created_at)))}`
+    :`
+      ${cell('Direct phone',ph(l.phone),'num')}
+      ${cell(l.mobile?'Mobile':'Company phone',ph(l.mobile||l.company_phone),'num')}
+      ${cell('Email',l.email?`${esc(l.email)} <button class="copy" data-copy="${esc(l.email)}">Copy</button>`:'')}
+      ${cell('Website',wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(l.website.replace(/^https?:\/\/(www\.)?/i,'').replace(/\/$/,''))}</a>`:esc(l.website))}
+      ${cell('Location',esc(loc))}${cell('Revenue',esc(fmtMoney(l.revenue)))}${cell('Employees',esc(l.employees))}${cell('Industry',esc(l.industry))}`;
   $('#lhead').innerHTML=`<div class="lh">
-      <div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(l.company||'Unnamed company')}</h2>${pill(l.status)}</div>
-        <div class="who">${contactName(l)?`<b>${esc(contactName(l))}</b>`:'<span class="muted">No contact name</span>'}${l.title?` <span class="muted">· ${esc(l.title)}</span>`:''}</div></div>
+      <div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="${ce?'ie':''}" ${ce?'tabindex="0" data-f="company" title="Click to edit"':''}>${esc(l.company)||(ce?'<span class="add">Add company name</span>':'Unnamed company')}${ce?PEN:''}</h2>${pill(l.status)}</div>
+        <div class="who">${ce?`${ed('first_name,last_name',contactName(l)?`<b>${esc(contactName(l))}</b>`:'','Add contact name')} <span class="muted">·</span> ${ed('title',l.title?`<span class="muted">${esc(l.title)}</span>`:'','Add job title')}`
+          :`${contactName(l)?`<b>${esc(contactName(l))}</b>`:'<span class="muted">No contact name</span>'}${l.title?` <span class="muted">· ${esc(l.title)}</span>`:''}`}</div>
+        ${ce?'<div class="stat" style="margin-top:6px">Click any detail to change it. Enter saves, Esc cancels.</div>':''}</div>
       <div class="metas">
         <span>Last contact <b>${l.last_call_at?esc(fmtFull(l.last_call_at)):'Never'}</b>${lastCall&&l.last_call_at?' by '+esc(who(lastCall.caller_id)):''}</span>
         <span>Calls <b>${l.attempts||0}</b></span>
         ${l.status==='appointment'&&l.appt_at?`<span>Appointment <b>${esc(fmtFull(l.appt_at))}</b>${l.appt_rep?' with '+esc(l.appt_rep):''}</span>`:l.callback_at?`<span>Callback <b>${esc(fmtFull(l.callback_at))}</b></span>`:''}
-        ${canSell()?`<span>${l.owner_id?personCell(l.owner_id):'<span class="muted">Unassigned</span>'}</span>`:''}
+        ${canSell()?`<span>${l.owner_id?personCell(l.owner_id):'<span class="muted">Unassigned</span>'}${canRe?' <button class="linkbtn" id="reassign">Reassign</button>':''}</span>`
+          :own?`<span>Assigned to <b>you</b>${canRe?' · <button class="linkbtn" id="reassign">Reassign</button>':''}</span>`:''}
         ${l.updated_by?`<span>Last edited <b>${esc(fmtWhen(l.updated_at))}</b> by ${esc(nameOf(l.updated_by))}</span>`:''}
       </div></div>
-    <div class="strip">
-      ${cell('Direct phone',ph(l.phone),'num')}
-      ${cell(second[0],ph(second[1]),'num')}
-      ${cell('Email',l.email?`${esc(l.email)} <button class="copy" data-copy="${esc(l.email)}">Copy</button>`:'')}
-      ${cell('Website',wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(l.website.replace(/^https?:\/\/(www\.)?/i,'').replace(/\/$/,''))}</a>`:esc(l.website))}
-      ${cell('Location',esc(loc))}
-      ${cell('Revenue',esc(fmtMoney(l.revenue)))}
-      ${cell('Employees',esc(l.employees))}
-      ${cell('Industry',esc(l.industry))}
+    <div class="strip">${strip}
     </div>`;
   $('#lhead').querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(b.dataset.copy,b));
+  if(ce)wireInline($('#lhead'));
+  if(canRe)$('#reassign').onclick=reassignForm;
+  renderUndoBar();
 }
 function renderDetails(){
   const p=$('#pdetails');const l=cur;const canEdit=canEditLead(l);
@@ -886,10 +955,8 @@ function renderDetails(){
   const ed=(f,v,x)=>canEdit?`<dt>${x!=null?esc(x.replace(/_/g,' ')):esc(FIELD_LABEL[f])}</dt><dd class="ie" tabindex="0" ${x!=null?`data-x="${esc(x)}"`:`data-f="${f}"`} title="Click to edit">${v||'<span class="add">Click to add</span>'}<svg class="ic iep" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></dd>`
     :row(x!=null?esc(x.replace(/_/g,' ')):FIELD_LABEL[f],v);
   const ph=v=>v?`<span class="mono">${esc(fmtPhone(v))}</span>`:'';
-  const u=lastUndo();
   p.innerHTML=`<div class="panel-h"><h3>Company &amp; contact</h3>${canEdit?'<button class="btn small soft" id="editbtn"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit all</button>':''}</div>
-    <div class="panel-b">${u?`<div class="undobar"><span>Changed <b>${esc(u.label)}</b>.</span><button class="btn small" id="iundo"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo</button></div>`:''}
-      ${canEdit?'<p class="stat" style="margin:0">Click any detail to change it. Enter saves, Esc cancels.</p>':''}<dl class="kv">
+    <div class="panel-b"><dl class="kv">
       ${ed('company',esc(l.company))}${ed('industry',esc(l.industry))}${ed('revenue',esc(fmtMoney(l.revenue)))}${ed('employees',esc(l.employees))}
       ${ed('website',wu?`<a href="${esc(wu)}" target="_blank" rel="noopener">${esc(l.website)}</a>`:esc(l.website))}
       ${canEdit?ed('address',esc(l.address))+ed('city',esc(l.city))+ed('state',esc(l.state))+ed('zip',esc(l.zip))
@@ -902,37 +969,57 @@ function renderDetails(){
       ${row('Added',esc(fmtFull(l.created_at)))}${row('Imported from',esc(l.source))}${l.zoominfo_id?row('ZoomInfo ID',esc(l.zoominfo_id)):''}
       ${extra.length?'<div class="sep"></div>'+extra.map(([k,v])=>ed(null,esc(v),k)).join(''):''}
     </dl></div>`;
-  if(canEdit){$('#editbtn').onclick=()=>{editing=true;renderDetails()};
-    p.querySelectorAll('dd.ie').forEach(dd=>{dd.onclick=e=>{if(e.target.closest('a'))return;startInline(dd)};dd.onkeydown=e=>{if(e.key==='Enter'&&!dd.classList.contains('on')){e.preventDefault();startInline(dd)}}})}
-  if(u)$('#iundo').onclick=undoInline;
+  if(canEdit){$('#editbtn').onclick=()=>{editing=true;renderDetails()};wireInline(p)}
 }
+function renderUndoBar(){const u=lastUndo();const box=$('#lundo');if(!box)return;
+  box.innerHTML=u?`<div class="undobar"><span>You changed <b>${esc(u.label)}</b>. Made a mistake?</span><button class="btn small" id="iundo"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo</button></div>`:'';
+  if(u)$('#iundo').onclick=undoInline}
+function wireInline(root){root.querySelectorAll('.ie[data-f],.ie[data-fs],.ie[data-x]').forEach(el=>{
+  el.onclick=e=>{if(e.target.closest('a,button')&&!el.classList.contains('on'))return;startInline(el)};
+  el.onkeydown=e=>{if(e.key==='Enter'&&!el.classList.contains('on')){e.preventDefault();startInline(el)}}})}
+const rerenderLead=()=>{renderHead();renderDetails()};
 const FIELD_LABEL=Object.fromEntries(EDIT_FIELDS.map(([k,l])=>[k,l]));FIELD_LABEL.address='Street address';
 // Undo for click-to-edit: every change is remembered (newest last) so it can be put back, one at a time.
 const inlineUndo=[];
 const lastUndo=()=>{for(let i=inlineUndo.length-1;i>=0;i--)if(inlineUndo[i].id===cur?.id)return inlineUndo[i];return null};
-function startInline(dd){if(dd.classList.contains('on'))return;const l=cur;const f=dd.dataset.f,x=dd.dataset.x;
-  const val=x!=null?String(l.extra?.[x]??''):String(l[f]??'');dd.classList.add('on');
-  dd.innerHTML=`<input class="iein" type="${f==='email'?'email':'text'}" value="${esc(val)}" aria-label="${esc(x!=null?x:FIELD_LABEL[f])}"><div class="iehint">Enter to save · Esc to cancel</div>`;
-  const inp=dd.querySelector('input');inp.focus();inp.select();let done=false;
-  const finish=save=>{if(done)return;done=true;save?saveInline(f,x,inp.value):renderDetails()};
-  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();finish(true)}else if(e.key==='Escape'){e.preventDefault();finish(false)}};
-  inp.onblur=()=>finish(true)}
-async function saveInline(f,x,raw){const l=cur;const id=l.id;const v=String(raw??'').trim();
-  const isX=x!=null;const old=isX?String(l.extra?.[x]??''):String(l[f]??'');
-  if(v===old){renderDetails();return}
-  const patch=isX?{extra:{...(l.extra||{}),[x]:v}}:{[f]:v};const prev=isX?{extra:{...(l.extra||{})}}:{[f]:old};
-  const label=isX?x.replace(/_/g,' '):FIELD_LABEL[f];
+const PLACE={first_name:'First name',last_name:'Last name',city:'City',state:'State',zip:'ZIP'};
+function startInline(el){if(el.classList.contains('on'))return;const l=cur;const x=el.dataset.x;
+  const fs=x!=null?[null]:(el.dataset.fs||el.dataset.f).split(',');
+  const val=f=>x!=null?String(l.extra?.[x]??''):String(l[f]??'');
+  el.classList.add('on');
+  el.innerHTML=`<div class="iegrp">${fs.map(f=>`<input class="iein" data-k="${f||''}" type="${f==='email'?'email':'text'}" value="${esc(val(f))}" placeholder="${esc(PLACE[f]||'')}" aria-label="${esc(x!=null?x:(PLACE[f]||FIELD_LABEL[f]||f))}" ${f==='state'?'style="max-width:70px"':f==='zip'?'style="max-width:90px"':''}>`).join('')}</div><div class="iehint">Enter to save · Esc to cancel</div>`;
+  const ins=[...el.querySelectorAll('input')];ins[0].focus();ins[0].select();let done=false;
+  const finish=save=>{if(done)return;done=true;if(save)saveInline(fs,x,ins.map(i=>i.value));else rerenderLead()};
+  ins.forEach(inp=>inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();finish(true)}else if(e.key==='Escape'){e.preventDefault();finish(false)}});
+  el.addEventListener('focusout',e=>{if(!el.contains(e.relatedTarget))finish(true)})}
+async function saveInline(fs,x,vals){const l=cur;const id=l.id;const isX=x!=null;const patch={},prev={};
+  if(isX){const v=String(vals[0]??'').trim();if(v!==String(l.extra?.[x]??'')){patch.extra={...(l.extra||{}),[x]:v};prev.extra={...(l.extra||{})}}}
+  else fs.forEach((f,i)=>{let v=String(vals[i]??'').trim();if(f==='state'&&/^[a-z]{2}$/i.test(v))v=v.toUpperCase();const old=String(l[f]??'');if(v!==old){patch[f]=v;prev[f]=old}});
+  if(!Object.keys(patch).length){rerenderLead();return}
+  const label=isX?x.replace(/_/g,' '):Object.keys(patch).map(f=>FIELD_LABEL[f]||f).join(', ');
   const {error}=await sb.from('leads').update(patch).eq('id',id);
-  if(error){toast(friendly(error));if(cur?.id===id)renderDetails();return}
+  if(error){toast(friendly(error));if(cur?.id===id)rerenderLead();return}
   inlineUndo.push({id,prev,label});if(inlineUndo.length>50)inlineUndo.shift();
   refreshBoardRow(id,patch);if(cur?.id!==id)return;
-  Object.assign(cur,patch);renderHead();renderDetails();refreshLeadHist(id);
-  toast(v?`${label} saved`:`${label} cleared`,{undo:undoInline})}
+  Object.assign(cur,patch);rerenderLead();refreshLeadHist(id);
+  const cleared=!isX&&Object.values(patch).every(v=>v==='');
+  toast(cleared?`${label} cleared`:`${label} saved`,{undo:undoInline})}
 async function undoInline(){const u=lastUndo();if(!u)return;
   const {error}=await sb.from('leads').update(u.prev).eq('id',u.id);if(error)return toast(friendly(error));
   inlineUndo.splice(inlineUndo.lastIndexOf(u),1);refreshBoardRow(u.id,u.prev);
-  if(cur?.id===u.id){Object.assign(cur,u.prev);renderHead();renderDetails();refreshLeadHist(u.id)}
+  if(cur?.id===u.id){Object.assign(cur,u.prev);rerenderLead();refreshLeadHist(u.id)}
   toast(`Put back ${u.label}`)}
+function reassignForm(){const l=cur;const opts=Object.values(people).filter(p=>p.active&&['caller','admin','owner'].includes(p.role)&&p.id!==l.owner_id)
+    .sort((a,b)=>(a.role==='caller'?0:1)-(b.role==='caller'?0:1)||nameOf(a.id).localeCompare(nameOf(b.id)));
+  if(!opts.length)return toast('There’s nobody else to hand this lead to yet');
+  openModal('Reassign lead',`<p style="margin:0">Hand <b>${esc(l.company||contactName(l)||'this lead')}</b> to someone else. It leaves your list${isAdmin()?'':' and you won’t see it after this'}. Admins can see who moved it in the lead’s history.</p>
+    <label class="f">Give it to *<select name="to" required>${opts.map(p=>opt(p.id,nameOf(p.id)+(p.role==='caller'?'':' ('+(p.role==='owner'?'Owner':'Admin')+')'),'')).join('')}</select></label>
+    <label class="f">Why? (optional, added as a note)<textarea name="why" rows="2" placeholder="e.g. They asked for a Spanish speaker"></textarea></label>`,
+    {submit:'Reassign',onSubmit:async fd=>{const to=String(fd.get('to'));const id=l.id;
+      const {error}=await sb.rpc('reassign_lead',{p_lead:id,p_to:to,p_note:String(fd.get('why')||'').trim()});if(error){toast(friendly(error));return false}
+      toast(`Lead reassigned to ${nameOf(to)}`);refreshBoardRow(id,{owner_id:to});
+      if(isAdmin())setTimeout(()=>selectLead(id),0);
+      else{board.rows=board.rows.filter(r=>r.id!==id);cur=null;setTimeout(()=>{setTab('board');loadBoard()},0)}}})}
 async function refreshLeadHist(id){const {data}=await sb.from('change_log').select('*').eq('row_id',id).order('created_at',{ascending:false}).limit(200);
   if(data&&cur?.id===id){curHist=data;renderNotes()}}
 async function saveEdit(e){
@@ -1052,14 +1139,35 @@ async function undoLeadEdit(hid){
 function ownerFilter(){if(!canSell())return me.id;const o=board.owner;return o==='__me'?me.id:(o&&o!=='__none'?o:null)}
 function filtered(q,withStatus=true){const o=ownerFilter();if(o)q=q.eq('owner_id',o);else if(canSell()&&board.owner==='__none')q=q.is('owner_id',null);
   q=board.trash?q.not('deleted_at','is',null):q.is('deleted_at',null);
-  if(withStatus&&board.status)q=q.eq('status',board.status);const s=searchTerm(board.search);if(s)q=q.like('search_text',`%${likeEsc(s)}%`);return q}
-function sorted(q){switch(board.trash?'deleted':board.sort){
+  if(withStatus&&board.statuses.size)q=board.statuses.size===1?q.eq('status',[...board.statuses][0]):q.in('status',[...board.statuses]);
+  const s=searchTerm(board.search);if(s)q=q.like('search_text',`%${likeEsc(s)}%`);
+  const x=extraFilters();if(x.p_state)q=q.ilike('state',likeEsc(x.p_state));if(x.p_industry)q=q.ilike('industry',`%${likeEsc(x.p_industry)}%`);
+  if(x.p_never)q=q.is('last_call_at',null);if(x.p_last_before)q=q.lt('last_call_at',x.p_last_before);if(x.p_last_after)q=q.gte('last_call_at',x.p_last_after);
+  const now=new Date().toISOString();if(board.callback==='due')q=q.lte('callback_at',now);else if(board.callback==='upcoming')q=q.gt('callback_at',now);else if(board.callback==='none')q=q.is('callback_at',null);
+  return q}
+// The extra filters, in the shape the status_counts() database function takes.
+function extraFilters(){const o={};const st=board.state.trim(),ind=board.industry.trim();if(st)o.p_state=st;if(ind)o.p_industry=ind;
+  const d=n=>{const t=new Date();t.setHours(0,0,0,0);t.setDate(t.getDate()-n);return t.toISOString()};
+  if(board.contact==='never')o.p_never=true;else if(board.contact==='today')o.p_last_after=d(0);else if(board.contact==='week')o.p_last_after=d(7);
+  else if(board.contact==='7')o.p_last_before=d(7);else if(board.contact==='30')o.p_last_before=d(30);
+  if(board.callback)o.p_callback=board.callback;return o}
+const extraCount=()=>[board.state.trim(),board.industry.trim(),board.contact,board.callback].filter(Boolean).length;
+const SORT_ORDERS={
+  recent:[['last_call_at',{ascending:false,nullsFirst:false}]],oldest:[['last_call_at',{ascending:true,nullsFirst:true}]],status:[['status_rank',{}]],
+  callback:[['callback_at',{ascending:true,nullsFirst:false}]],company:[['company',{}]],added:[['created_at',{ascending:false}]],
+  attempts:[['attempts',{ascending:false}]],state:[['state',{}]],industry:[['industry',{}]]};
+function sorted(q){if(!board.trash&&board.sort2&&board.sort2!==board.sort){
+    for(const [c,o] of [...SORT_ORDERS[board.sort],...SORT_ORDERS[board.sort2]])q=q.order(c,o);return q.order('id')}
+  return sortedOne(q)}
+function sortedOne(q){switch(board.trash?'deleted':board.sort){
   case 'deleted':return q.order('deleted_at',{ascending:false});
   case 'oldest':return q.order('last_call_at',{ascending:true,nullsFirst:true}).order('created_at');
   case 'status':return q.order('status_rank').order('last_call_at',{ascending:false,nullsFirst:false});
   case 'callback':return q.order('callback_at',{ascending:true,nullsFirst:false}).order('last_call_at',{ascending:false,nullsFirst:false});
   case 'company':return q.order('company');
   case 'added':return q.order('created_at',{ascending:false});
+  case 'attempts':return q.order('attempts',{ascending:false}).order('last_call_at',{ascending:false,nullsFirst:false});
+  case 'state':return q.order('state').order('company');case 'industry':return q.order('industry').order('company');
   default:return q.order('last_call_at',{ascending:false,nullsFirst:false}).order('updated_at',{ascending:false})}}
 let boardSeq=0;
 async function loadBoard(){
@@ -1068,7 +1176,7 @@ async function loadBoard(){
   const s=searchTerm(board.search);
   const [r,c,t]=await Promise.all([
     sorted(filtered(sb.from('leads').select(cols,{count:'exact'}))).range(board.page*PAGE,board.page*PAGE+PAGE-1),
-    sb.rpc('status_counts',{p_owner:ownerFilter(),p_unassigned:canSell()&&board.owner==='__none',p_search:s?likeEsc(s):'',p_trash:board.trash}),
+    sb.rpc('status_counts',{p_owner:ownerFilter(),p_unassigned:canSell()&&board.owner==='__none',p_search:s?likeEsc(s):'',p_trash:board.trash,...extraFilters()}),
     isAdmin()?sb.rpc('trash_count'):Promise.resolve({data:0})]);
   if(seq!==boardSeq)return;
   if(r.error){$('#ltbody').innerHTML=`<tr><td colspan="10"><div class="empty">${esc(friendly(r.error))}</div></td></tr>`;return}
@@ -1088,14 +1196,23 @@ function renderBoardControls(){
   ow.innerHTML=`<option value="">All callers</option><option value="__me">My leads</option><option value="__none">Unassigned</option>`+ids.map(id=>`<option value="${id}">${esc(who(id))}</option>`).join('');
   as.innerHTML=`<option value="__none">Unassigned</option>`+ids.map(id=>`<option value="${id}">${esc(who(id))}</option>`).join('');
   ss.innerHTML=STATUS_ORDER.map(k=>`<option value="${k}">${STATUSES[k]}</option>`).join('');
-  ow.value=board.owner;as.value=av||me.id;ss.value=sv||'dead';$('#lsort').value=board.sort;$('#lsort').disabled=board.trash;
+  ow.value=board.owner;as.value=av||me.id;ss.value=sv||'dead';$('#lsort').value=board.sort;$('#lsort').disabled=board.trash;$('#lsort2').value=board.sort2;$('#lsort2').disabled=board.trash;
 }
 function renderBoard(){
   const a=isAdmin(),sc2=canSell();const all=Object.values(board.counts).reduce((x,y)=>x+y,0);
-  $('#chips').innerHTML=`<button class="chip all" data-s="" aria-pressed="${!board.status&&!board.trash}"><i></i>All leads${board.trash?'':` <b>${all.toLocaleString()}</b>`}</button>`+
-    STATUS_ORDER.map(k=>`<button class="chip ${sc(k)}" data-s="${k}" aria-pressed="${!board.trash&&board.status===k}"><i></i>${STATUSES[k]}${board.trash?'':` <b>${(board.counts[k]||0).toLocaleString()}</b>`}</button>`).join('')+
+  $('#chips').innerHTML=`<button class="chip all" data-s="" aria-pressed="${!board.statuses.size&&!board.trash}"><i></i>All leads${board.trash?'':` <b>${all.toLocaleString()}</b>`}</button>`+
+    STATUS_ORDER.map(k=>`<button class="chip ${sc(k)}" data-s="${k}" aria-pressed="${!board.trash&&board.statuses.has(k)}"><i></i>${STATUSES[k]}${board.trash?'':` <b>${(board.counts[k]||0).toLocaleString()}</b>`}</button>`).join('')+
     (a?`<button class="chip trash" data-trash="1" aria-pressed="${board.trash}"><i></i>Trash <b>${board.trashN.toLocaleString()}</b></button>`:'');
-  $('#chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{board.trash=!!c.dataset.trash;board.status=c.dataset.s||'';board.page=0;clearSel();loadBoard()});
+  // Tap one status to see it, tap more to combine them; "All leads" clears.
+  $('#chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const k=c.dataset.s||'';
+    if(c.dataset.trash){board.trash=true;board.statuses.clear()}
+    else if(!k||board.trash){board.trash=false;board.statuses.clear();if(k)board.statuses.add(k)}
+    else if(board.statuses.has(k))board.statuses.delete(k);else board.statuses.add(k);
+    board.page=0;clearSel();loadBoard()});
+  const fx=extraCount();$('#lfbtn').innerHTML=`<svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16l-6 8v6l-4-2v-4z"/></svg>Filters${fx?` <b class="fxn">${fx}</b>`:''}`;
+  const parts=[...board.statuses].map(k=>STATUSES[k]);
+  $('#lfsum').innerHTML=!board.trash&&(parts.length>1||fx||board.sort2)?`<span>Showing ${esc(parts.length?parts.join(' + '):'all statuses')}${fx?` · ${fx} more filter${fx>1?'s':''}`:''}${board.sort2?` · then sorted by ${esc(SORT_LABEL[board.sort2])}`:''}</span><button class="lnk" id="lfclear">Clear all</button>`:'';
+  if($('#lfclear'))$('#lfclear').onclick=clearFilters;
   $('#lthead').innerHTML=`<tr>${a?'<th><input type="checkbox" id="selpage" aria-label="Select this page"></th>':''}<th>Company</th><th>Contact</th><th>Phone</th><th>Status</th>${sc2?'<th>Caller</th>':''}${board.trash?'<th>Moved to Trash</th>':'<th>Last contact</th><th>Next step</th>'}<th>Latest note</th></tr>`;
   const cols=(a?1:0)+(sc2?1:0)+(board.trash?6:7);
   const grouping=!board.trash&&['recent','oldest','status'].includes(board.sort);let lastG=null;const gCount={};
@@ -1133,6 +1250,15 @@ $('#selallmatch').onclick=()=>{board.all=true;renderBoard()};
 let lsT;$('#lsearch').addEventListener('input',e=>{clearTimeout(lsT);lsT=setTimeout(()=>{board.search=e.target.value;board.page=0;clearSel();loadBoard()},300)});
 $('#lowner').addEventListener('input',e=>{board.owner=e.target.value;board.page=0;clearSel();loadBoard()});
 $('#lsort').addEventListener('input',e=>{board.sort=e.target.value;board.page=0;loadBoard()});
+$('#lsort2').addEventListener('input',e=>{board.sort2=e.target.value;board.page=0;loadBoard()});
+const SORT_LABEL={company:'company',recent:'last contact',oldest:'longest since contact',status:'status',callback:'next callback',added:'date added',attempts:'most calls',state:'state',industry:'industry'};
+$('#lfbtn').onclick=()=>{const r=$('#lfrow');r.hidden=!r.hidden;$('#lfbtn').setAttribute('aria-expanded',!r.hidden);if(!r.hidden)$('#lfstate').focus()};
+let lfT;const lfSet=(k,v,wait)=>{board[k]=v;board.page=0;clearSel();clearTimeout(lfT);lfT=setTimeout(loadBoard,wait?350:0)};
+$('#lfstate').addEventListener('input',e=>lfSet('state',e.target.value,true));$('#lfind').addEventListener('input',e=>lfSet('industry',e.target.value,true));
+$('#lfcontact').addEventListener('input',e=>lfSet('contact',e.target.value));$('#lfcb').addEventListener('input',e=>lfSet('callback',e.target.value));
+function clearFilters(){Object.assign(board,{state:'',industry:'',contact:'',callback:'',sort2:''});board.statuses.clear();board.page=0;clearSel();
+  $('#lfstate').value=$('#lfind').value='';$('#lfcontact').value=$('#lfcb').value='';$('#lsort2').value='';loadBoard()}
+$('#lfreset').onclick=clearFilters;
 $('#prevpg').onclick=()=>{board.page--;loadBoard()};$('#nextpg').onclick=()=>{board.page++;loadBoard()};
 // Bulk changes remember the old values so they can be undone.
 async function targets(fields){
@@ -1738,7 +1864,7 @@ function dateRange(k){const n=new Date(),y=n.getFullYear(),m=n.getMonth(),q=Math
   switch(k){case'this_month':return[d(y,m,1),d(y,m+1,0)];case'last_month':return[d(y,m-1,1),d(y,m,0)];case'this_q':return[d(y,q*3,1),d(y,q*3+3,0)];
     case'last_q':return[d(y,q*3-3,1),d(y,q*3,0)];case'this_year':return[d(y,0,1),d(y,11,31)];case'last90':return[d(y,m,n.getDate()-90),d(y,m,n.getDate())];default:return null}}
 async function loadReports(){
-  showRepView();const rv=effView();if(rv==='calls')return loadCallVolume();if(rv==='time')return loadTimesheet();
+  showRepView();const rv=effView();if(rv==='leads')return loadLeadStats();if(rv==='calls')return loadCallVolume();if(rv==='time')return loadTimesheet();
   try{await Promise.all([loadOppRows(true),loadLookups()])}catch(e){$('#rtable').innerHTML=`<tbody><tr><td><div class="empty">${esc(friendly(e))}</div></td></tr></tbody>`;return}
   $('#rowner').innerHTML=ownerOptions(rep.owner,'All owners');
   $('#rstage').innerHTML=opt('','All stages',rep.stage)+opt('open','Open deals',rep.stage)+STAGE_ORDER.map(k=>opt(k,STAGES[k],rep.stage)).join('');
@@ -1780,7 +1906,7 @@ function renderReport(){
 }
 [['rdate','date'],['rstage','stage'],['rowner','owner'],['rtype','type'],['rsource','source'],['rgroup','group']].forEach(([id,k])=>$('#'+id).addEventListener('input',e=>{rep[k]=e.target.value;renderReport()}));
 $('#rsearch').addEventListener('input',e=>{rep.search=e.target.value;renderReport()});
-$('#rexport').onclick=()=>{const rv=effView();if(rv==='calls')return exportCalls();if(rv==='time')return exportTimesheet();const rows=repRows();if(!rows.length)return toast('No deals to export');
+$('#rexport').onclick=()=>{const rv=effView();if(rv==='leads')return exportLeadStats();if(rv==='calls')return exportCalls();if(rv==='time')return exportTimesheet();const rows=repRows();if(!rows.length)return toast('No deals to export');
   const lines=[RCOLS.map(c=>csvCell(c[1])).join(',')];
   rows.forEach(o=>lines.push(RCOLS.map(([c])=>csvCell(c==='created'?fmtDate(o.created_at):c==='amount'?(o.amount??''):c==='follow_up'?fmtDate(o.follow_up_date):repVal(o,c))).join(',')));
   download(`dial-desk-opportunities-${ymd(new Date())}.csv`,lines)};
@@ -1790,14 +1916,14 @@ const cv={month:'',caller:'',rows:[],hours:{},months:[],people:[]};
 const SERIES=['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#6250d6','#e34948'];
 const TEAM_INK='#475467';
 // Which report this person is looking at: callers only ever get their own timesheet.
-function effView(){if(repView==='calls'&&isAdmin())return'calls';if(repView==='time'&&(isAdmin()||isCaller()))return'time';return canSell()?'opps':'time'}
+function effView(){if(repView==='leads'&&isAdmin())return'leads';if(repView==='calls'&&isAdmin())return'calls';if(repView==='time'&&(isAdmin()||isCaller()))return'time';return canSell()?'opps':'time'}
 function showRepView(){const v=effView();
-  $('#rep-calls').hidden=v!=='calls';$('#rep-opps').hidden=v!=='opps';$('#rep-time').hidden=v!=='time';
-  const can={opps:canSell(),calls:isAdmin(),time:isAdmin()||isCaller()};
+  $('#rep-calls').hidden=v!=='calls';$('#rep-opps').hidden=v!=='opps';$('#rep-time').hidden=v!=='time';$('#rep-leads').hidden=v!=='leads';
+  const can={leads:isAdmin(),opps:canSell(),calls:isAdmin(),time:isAdmin()||isCaller()};$('#rpdf').hidden=!isAdmin();
   $('#rview').querySelectorAll('button').forEach(b=>{b.hidden=!can[b.dataset.v];b.setAttribute('aria-pressed',b.dataset.v===v)});
   $('#rview').hidden=Object.values(can).filter(Boolean).length<2;
   $('#rexport').hidden=v==='time'&&!isAdmin();
-  $('#rsub').textContent=v==='calls'?'Call volume by caller, month by month. Only admins see this.'
+  $('#rsub').textContent=v==='leads'?'Lead status, appointments and caller results for the team and each caller. Only admins see this.':v==='calls'?'Call volume by caller, month by month. Only admins see this.'
     :v==='time'?(isAdmin()?'Clocked hours, appointments and pay for every caller. Admins and the owner can fix any entry.':'Your clocked hours, appointments and pay. Only you and the admins can see this.')
     :'Opportunity report. Filter, group and export.'}
 $('#rview').querySelectorAll('button').forEach(b=>b.onclick=()=>{repView=b.dataset.v;loadReports()});
@@ -2116,6 +2242,151 @@ $('#tsperiod').addEventListener('input',e=>{ts.period=e.target.value;renderTimes
 $('#tscaller').addEventListener('input',e=>{ts.caller=e.target.value;renderTimesheet()});
 $('#tsadd').onclick=()=>tsForm(null);
 
+
+/* ===================== Reports: lead stats (admins) ===================== */
+const ACTIVE=['new','call1','call2'];
+const ls={month:'',mode:'n',rows:[],calls:[],showed:[],entries:[],people:[]};
+const pct=(a,b)=>b?a/b*100:null;const fmtPct=v=>v==null?'—':(v<10&&v>0?v.toFixed(1):Math.round(v))+'%';
+async function loadLeadStats(){
+  const now=new Date();if(!ls.month)ls.month=monthKey(now);
+  $('#lsmonth').innerHTML=Array.from({length:13},(_,i)=>new Date(now.getFullYear(),now.getMonth()-i,1)).map(d=>opt(monthKey(d),monthName(d),ls.month)).join('');
+  $('#lsmode').value=ls.mode;$('#lskpis').innerHTML='<div class="kpi"><span>Loading…</span></div>';$('#lskpis2').innerHTML='';
+  const sel=monthOf(ls.month);const last=pad2(new Date(sel.getFullYear(),sel.getMonth()+1,0).getDate());
+  const from=new Date(sel.getFullYear(),sel.getMonth(),0),to=new Date(sel.getFullYear(),sel.getMonth()+1,2);
+  const [a,b,c,d]=await Promise.all([sb.rpc('lead_status_report'),sb.rpc('call_report',{p_from:from.toISOString(),p_to:to.toISOString()}),
+    sb.rpc('appt_pay_report',{p_from:`${ls.month}-01`,p_to:`${ls.month}-${last}`}),
+    sb.from('time_entries').select('caller_id,clock_in,clock_out,break_minutes').gte('clock_in',from.toISOString()).lt('clock_in',to.toISOString())]);
+  const err=a.error||b.error||c.error||d.error;
+  if(err){const m=String(err.message||'');$('#lskpis').innerHTML=`<div class="kpi"><span>${esc(/lead_status_report/.test(m)&&/does not exist|schema cache/i.test(m)?'This needs the version 9 database update. Run supabase-v9-reports.sql in Supabase.':timeErr(err))}</span></div>`;['#lsmix','#lsmat','#lsperf'].forEach(t=>$(t).innerHTML='');return}
+  const k=ls.month;
+  ls.rows=(a.data||[]).map(r=>({owner:r.owner_id||'',status:r.status,n:+r.n,never:+r.never_called,due:+r.callbacks_due,stale:+r.stale30}));
+  ls.calls=(b.data||[]).filter(x=>String(x.day).slice(0,7)===k).map(x=>({id:x.caller_id,calls:+x.calls||0,appts:+x.appts||0}));
+  ls.showed=(c.data||[]).map(x=>({id:x.caller_id,n:+x.showed||0}));
+  ls.entries=(d.data||[]).filter(e=>ctDay(e.clock_in).slice(0,7)===k);
+  const ids=new Set([...ls.rows.map(r=>r.owner).filter(Boolean),...ls.calls.map(x=>x.id),...ls.showed.map(x=>x.id),...ls.entries.map(e=>e.caller_id)]);
+  ls.people=Object.values(people).filter(p=>(p.role==='caller'&&p.active)||ids.has(p.id)).sort((x,y)=>(x.role==='caller'?0:1)-(y.role==='caller'?0:1)||nameOf(x.id).localeCompare(nameOf(y.id))).map(p=>p.id);
+  ids.forEach(id=>{if(!ls.people.includes(id))ls.people.push(id)});
+  renderLeadStats()}
+// One row of numbers per person ('' = unassigned leads).
+function lsStat(id){const rows=ls.rows.filter(r=>r.owner===id);const by={};STATUS_ORDER.forEach(s=>by[s]=0);rows.forEach(r=>by[r.status]=(by[r.status]||0)+r.n);
+  const total=rows.reduce((n,r)=>n+r.n,0),active=ACTIVE.reduce((n,s)=>n+(by[s]||0),0);
+  const sum=(arr,f)=>arr.reduce((n,x)=>n+f(x),0);
+  const calls=sum(ls.calls.filter(x=>x.id===id),x=>x.calls),booked=sum(ls.calls.filter(x=>x.id===id),x=>x.appts),showed=sum(ls.showed.filter(x=>x.id===id),x=>x.n);
+  const mins=sum(ls.entries.filter(e=>e.caller_id===id),e=>shiftMins(e)||0);const hours=Math.round(mins/60*100)/100;
+  const pay=Math.round((hours*PAY_RATE+showed*APPT_BONUS)*100)/100;
+  return {id,by,total,active,never:sum(rows,r=>r.never),due:sum(rows,r=>r.due),stale:sum(rows,r=>r.stale),calls,booked,showed,hours,pay,
+    showRate:pct(showed,booked),callsPerAppt:booked?calls/booked:null,cph:hours>0?calls/hours:null,apptPer8:hours>0?booked/hours*8:null,costPerAppt:booked?pay/booked:null}}
+function lsTeam(list){const t={by:{},total:0,active:0,never:0,due:0,stale:0,calls:0,booked:0,showed:0,hours:0,pay:0};STATUS_ORDER.forEach(s=>t.by[s]=0);
+  list.forEach(x=>{STATUS_ORDER.forEach(s=>t.by[s]+=x.by[s]||0);['total','active','never','due','stale','calls','booked','showed','hours','pay'].forEach(k=>t[k]+=x[k])});
+  t.hours=Math.round(t.hours*100)/100;t.pay=Math.round(t.pay*100)/100;
+  return {...t,showRate:pct(t.showed,t.booked),callsPerAppt:t.booked?t.calls/t.booked:null,cph:t.hours>0?t.calls/t.hours:null,apptPer8:t.hours>0?t.booked/t.hours*8:null,costPerAppt:t.booked?t.pay/t.booked:null}}
+function lsData(){const st=ls.people.map(lsStat);const un=lsStat('');const all=lsTeam([...st,un]);return {st,un,all,mon:monthName(monthOf(ls.month))}}
+function renderLeadStats(){const {st,un,all,mon}=lsData();
+  $('#lskpis').innerHTML=[[fmtN(all.total),'Live leads'],[fmtN(all.active),`Active · ${fmtPct(pct(all.active,all.total))} of leads`],[fmtN(all.booked),`Appointments booked · ${mon}`],
+    [fmtN(all.showed),`Showed · ${fmtPct(all.showRate)} show rate`],[fmtN(all.calls),`Calls · ${all.callsPerAppt==null?'—':fmtN(all.callsPerAppt,1)} per appointment`],
+    [all.costPerAppt==null?'—':usd(all.costPerAppt),'Caller cost per appointment']].map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+  $('#lskpis2').innerHTML=[[fmtN(all.never),'Never called'],[fmtN(all.due),'Callbacks due or overdue'],[fmtN(all.stale),'Open leads not called in 30+ days'],[fmtN(un.total),'Unassigned leads'],
+    [all.cph==null?'—':fmtN(all.cph,1),'Calls per hour on the clock'],[all.apptPer8==null?'—':fmtN(all.apptPer8,2),'Appointments per 8 hours']].map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+  // Team status mix
+  const max=Math.max(1,...STATUS_ORDER.map(s=>all.by[s]));
+  $('#lsmix').innerHTML=`<thead><tr><th>Status</th><th class="num">Leads</th><th class="num">% of all leads</th><th></th></tr></thead><tbody>`+
+    STATUS_ORDER.map(s=>`<tr><td>${pill(s)}</td><td class="num">${fmtN(all.by[s])}</td><td class="num">${fmtPct(pct(all.by[s],all.total))}</td><td style="width:45%"><div class="mixcell"><div class="mixbar ${sc(s)}" style="width:${all.by[s]/max*100}%;background:var(--c)"></div></div></td></tr>`).join('')
+    +`<tr class="activerow"><td>Active (New + 1st Call + 2nd Call)</td><td class="num">${fmtN(all.active)}</td><td class="num">${fmtPct(pct(all.active,all.total))}</td><td></td></tr>`
+    +`<tr class="total"><td>All live leads</td><td class="num">${fmtN(all.total)}</td><td class="num">100%</td><td></td></tr></tbody>`;
+  // Status by caller
+  const P=ls.mode==='pct';$('#lsmatsub').textContent=P?'Each number is the share of that caller’s own leads.':'Number of live leads each caller has in each status.';
+  const cellv=(x,s)=>P?fmtPct(pct(x.by[s],x.total)):fmtN(x.by[s]);
+  const mrow=(name,x,cls='')=>`<tr class="${cls}"><td>${name}</td><td class="num"><b>${fmtN(x.total)}</b></td><td class="num">${fmtN(x.active)}</td><td class="num">${fmtPct(pct(x.active,x.total))}</td>${STATUS_ORDER.map(s=>`<td class="num">${cellv(x,s)}</td>`).join('')}<td class="num">${fmtN(x.due)}</td><td class="num">${fmtN(x.never)}</td></tr>`;
+  $('#lsmat').innerHTML=`<thead><tr><th>Caller</th><th class="num">Leads</th><th class="num">Active</th><th class="num">% active</th>${STATUS_ORDER.map(s=>`<th class="num">${esc(STATUSES[s])}</th>`).join('')}<th class="num">Callbacks due</th><th class="num">Never called</th></tr></thead><tbody>`+
+    st.map(x=>mrow(personCell(x.id),x)).join('')+(un.total?mrow('<span class="muted">Unassigned</span>',un):'')+mrow('Team total',all,'total')+'</tbody>';
+  // Performance
+  $('#lsperftitle').textContent=`Caller performance · ${mon}`;
+  const prow=(name,x,cls='')=>`<tr class="${cls}"><td>${name}</td><td class="num">${fmtN(x.calls)}</td><td class="num">${fmtN(x.hours,2)}</td><td class="num">${x.cph==null?'—':fmtN(x.cph,1)}</td><td class="num"><b>${fmtN(x.booked)}</b></td><td class="num">${x.callsPerAppt==null?'—':fmtN(x.callsPerAppt,1)}</td><td class="num">${fmtN(x.showed)}</td><td class="num">${fmtPct(x.showRate)}</td><td class="num">${usd(x.pay)}</td><td class="num">${x.costPerAppt==null?'—':usd(x.costPerAppt)}</td></tr>`;
+  $('#lsperf').innerHTML=`<thead><tr><th>Caller</th><th class="num">Calls</th><th class="num">Hours</th><th class="num">Calls / hour</th><th class="num">Appts booked</th><th class="num">Calls per appt</th><th class="num">Showed</th><th class="num">Show rate</th><th class="num">Caller pay</th><th class="num">Cost per appt</th></tr></thead><tbody>`+
+    (st.length?st.map(x=>prow(personCell(x.id),x)).join('')+prow('Team total',all,'total'):'<tr><td colspan="10"><div class="empty">No callers yet.</div></td></tr>')+'</tbody>'}
+$('#lsmonth').addEventListener('input',e=>{ls.month=e.target.value;loadLeadStats()});
+$('#lsmode').addEventListener('input',e=>{ls.mode=e.target.value;renderLeadStats()});
+const n1=v=>v==null?'':v.toFixed(1),n2=v=>v==null?'':v.toFixed(2),pc=v=>v==null?'':(Math.round(v*10)/10)+'%';
+function lsTables(){const {st,un,all,mon}=lsData();const list=[...st,...(un.total?[un]:[])];const nm=x=>x.id?nameOf(x.id):'Unassigned';
+  return {mon,all,un,
+    mix:{title:'Where the leads are (as of today)',head:['Status','Leads','% of all leads'],num:[1,2],
+      body:[...STATUS_ORDER.map(s=>[STATUSES[s],all.by[s],pc(pct(all.by[s],all.total))]),['Active (New + 1st Call + 2nd Call)',all.active,pc(pct(all.active,all.total))]],foot:['All live leads',all.total,'100%']},
+    mat:{title:`Lead status by caller (${ls.mode==='pct'?'% of each caller\u2019s leads':'number of leads'})`,head:['Caller','Leads','Active','% active',...STATUS_ORDER.map(s=>STATUSES[s]),'Callbacks due','Never called'],num:Array.from({length:16},(_,i)=>i+1),
+      body:list.map(x=>[nm(x),x.total,x.active,pc(pct(x.active,x.total)),...STATUS_ORDER.map(s=>ls.mode==='pct'?pc(pct(x.by[s],x.total)):x.by[s]),x.due,x.never]),
+      foot:['Team total',all.total,all.active,pc(pct(all.active,all.total)),...STATUS_ORDER.map(s=>ls.mode==='pct'?pc(pct(all.by[s],all.total)):all.by[s]),all.due,all.never]},
+    perf:{title:`Caller performance - ${mon}`,head:['Caller','Calls','Hours','Calls / hour','Appts booked','Calls per appt','Showed','Show rate','Caller pay','Cost per appt'],num:[1,2,3,4,5,6,7,8,9],
+      body:st.map(x=>[nm(x),x.calls,x.hours.toFixed(2),n1(x.cph),x.booked,n1(x.callsPerAppt),x.showed,pc(x.showRate),usd(x.pay),x.costPerAppt==null?'':usd(x.costPerAppt)]),
+      foot:['Team total',all.calls,all.hours.toFixed(2),n1(all.cph),all.booked,n1(all.callsPerAppt),all.showed,pc(all.showRate),usd(all.pay),all.costPerAppt==null?'':usd(all.costPerAppt)]}}}
+function exportLeadStats(){const {st,un,all,mon}=lsData();const list=[...st,...(un.total?[un]:[])];
+  const head=['Month (activity)','Caller','Live leads','Active','% active',...STATUS_ORDER.map(s=>STATUSES[s]),'Callbacks due','Never called','Not called 30+ days','Calls','Hours','Calls per hour','Appointments booked','Calls per appointment','Showed','Show rate','Caller pay','Cost per appointment'];
+  const row=(name,x)=>[mon,name,x.total,x.active,pc(pct(x.active,x.total)),...STATUS_ORDER.map(s=>x.by[s]),x.due,x.never,x.stale,x.calls,x.hours.toFixed(2),n1(x.cph),x.booked,n1(x.callsPerAppt),x.showed,pc(x.showRate),x.pay.toFixed(2),x.costPerAppt==null?'':x.costPerAppt.toFixed(2)];
+  const lines=[head.map(csvCell).join(','),...list.map(x=>row(x.id?nameOf(x.id):'Unassigned',x).map(csvCell).join(',')),row('Team total',all).map(csvCell).join(',')];
+  download(`dial-desk-lead-stats-${ls.month}.csv`,lines)}
+
+/* ===================== PDF downloads (admins) — fits on US Letter paper ===================== */
+function loadScript(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=res;el.onerror=()=>rej(new Error('Couldn’t load the PDF tool. Check your internet connection and try again.'));document.head.appendChild(el)})}
+async function pdfLib(){if(!window.jspdf?.jsPDF){await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js')}
+  if(!window.jspdf.jsPDF.API.autoTable)await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+  return window.jspdf.jsPDF}
+// The built-in PDF fonts only know basic Western characters, so swap the rest for plain ones.
+const pdfT=v=>String(v??'').replace(/[\u2212\u2010-\u2012]/g,'-').replace(/\u2192/g,'->').replace(/\u00a0/g,' ').replace(/[^\x09\x0a\x20-\x7e\u00a1-\u00ff\u2013\u2014\u2018\u2019\u201c\u201d\u2022\u2026\u20ac]/g,'');
+async function makePdf(spec,file){
+  const jsPDF=await pdfLib();const wide=spec.landscape??spec.tables.some(t=>t.head.length>7);
+  const doc=new jsPDF({orientation:wide?'landscape':'portrait',unit:'pt',format:'letter'});
+  const W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight(),M=36;
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(16,24,40);doc.text(pdfT(spec.title),M,M+8);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(102,112,133);doc.text(pdfT(spec.subtitle||''),M,M+24);
+  let y=M+38;
+  if(spec.kpis?.length){const rows=[];for(let i=0;i<spec.kpis.length;i+=6)rows.push(spec.kpis.slice(i,i+6));
+    for(const r of rows){const gap=8,bw=(W-2*M-gap*(r.length-1))/r.length;
+      r.forEach(([v,label],i)=>{const x=M+i*(bw+gap);doc.setDrawColor(228,231,236);doc.setFillColor(248,250,252);doc.roundedRect(x,y,bw,42,4,4,'FD');
+        doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(16,24,40);doc.text(pdfT(v),x+8,y+17);
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(102,112,133);doc.text(doc.splitTextToSize(pdfT(label),bw-14).slice(0,2),x+8,y+28)});
+      y+=50}
+    y+=4}
+  for(const t of spec.tables){
+    if(y>H-90){doc.addPage();y=M}
+    doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(16,24,40);doc.text(pdfT(t.title),M,y+10);y+=16;
+    const cs={};(t.num||[]).forEach(i=>cs[i]={halign:'right'});
+    const many=t.head.length;
+    doc.autoTable({startY:y,head:[t.head.map(pdfT)],body:t.body.length?t.body.map(r=>r.map(pdfT)):[[{content:t.empty||'Nothing to show.',colSpan:many,styles:{halign:'center',textColor:[102,112,133]}}]],
+      foot:t.foot?[t.foot.map(pdfT)]:undefined,showFoot:'lastPage',margin:{left:M,right:M,top:M,bottom:M+10},theme:'grid',
+      styles:{font:'helvetica',fontSize:many>12?6.5:many>8?7.5:8.5,cellPadding:many>12?2.5:3.5,overflow:'linebreak',lineColor:[228,231,236],lineWidth:0.5,textColor:[52,64,84],valign:'middle'},
+      headStyles:{fillColor:[30,41,59],textColor:255,fontStyle:'bold',halign:'left'},footStyles:{fillColor:[238,242,247],textColor:[16,24,40],fontStyle:'bold'},
+      alternateRowStyles:{fillColor:[250,251,252]},columnStyles:cs,
+      didParseCell:d=>{if((d.section==='head'||d.section==='foot')&&cs[d.column.index])d.cell.styles.halign='right'}});
+    y=doc.lastAutoTable.finalY+20}
+  const n=doc.internal.getNumberOfPages();const stamp=pdfT(`Dial Desk · made ${new Date().toLocaleString([],{dateStyle:'medium',timeStyle:'short'})} by ${nameOf(me.id)}`);
+  for(let i=1;i<=n;i++){doc.setPage(i);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(152,162,179);doc.text(stamp,M,H-18);doc.text(`Page ${i} of ${n}`,W-M,H-18,{align:'right'})}
+  doc.save(file)}
+function pdfSpec(){const v=effView();
+  if(v==='leads'){const t=lsTables();const a=t.all;
+    return {file:`dial-desk-lead-stats-${ls.month}.pdf`,landscape:true,title:'Lead stats',subtitle:`Lead counts as of ${fmtDate(new Date())} · Activity for ${t.mon}`,
+      kpis:[[fmtN(a.total),'Live leads'],[fmtN(a.active),`Active (${pc(pct(a.active,a.total))} of leads)`],[fmtN(a.booked),`Appointments booked in ${t.mon}`],[fmtN(a.showed),`Showed (${pc(a.showRate)||'-'} show rate)`],
+        [fmtN(a.calls),`Calls (${n1(a.callsPerAppt)||'-'} per appointment)`],[a.costPerAppt==null?'-':usd(a.costPerAppt),'Caller cost per appointment'],
+        [fmtN(a.never),'Never called'],[fmtN(a.due),'Callbacks due'],[fmtN(a.stale),'Not called in 30+ days'],[fmtN(t.un.total),'Unassigned leads'],[n1(a.cph)||'-','Calls per hour'],[n2(a.apptPer8)||'-','Appointments per 8 hours']],
+      tables:[t.mix,t.mat,t.perf]}}
+  if(v==='time'){const list=ts.caller?[ts.caller]:ts.people;const st=list.map(tsStats);const T=tsTotals(st);const pl=tsPeriodLabel();const [pa,pb]=tsRange();
+    const rows=ts.entries.filter(x=>list.includes(x.caller_id)&&ctDay(x.clock_in)>=pa&&ctDay(x.clock_in)<=pb).sort((x,y)=>new Date(x.clock_in)-new Date(y.clock_in));
+    return {file:`dial-desk-timesheet-${pa}-to-${pb}.pdf`,landscape:true,title:`Timesheets · ${pl}`,subtitle:`${ts.caller?nameOf(ts.caller):'All callers'} · $${PAY_RATE}/hour + $${APPT_BONUS} per appointment that showed`,
+      kpis:[[fmtN(T.hours,2),'Hours worked'],[fmtN(T.booked),'Appointments booked'],[fmtN(T.appts),'Appointments showed (paid)'],[usd(T.hourPay),'Hourly pay'],[usd(T.bonus),'Appointment bonus'],[usd(T.total),'Total invoice']],
+      tables:[{title:'Pay summary',head:['Caller','Shifts','Hours worked','Appts booked','Appts showed (paid)','Showed (month)','Hourly pay','Appt bonus','Total'],num:[1,2,3,4,5,6,7,8],
+          body:st.map(x=>[nameOf(x.id)+(x.open?` (${x.open} not clocked out)`:''),x.shifts,x.hours.toFixed(2),x.booked,x.appts,x.apptsMonth,usd(x.hourPay),usd(x.bonus),usd(x.total)]),
+          foot:st.length>1?['All callers',T.shifts,T.hours.toFixed(2),T.booked,T.appts,T.apptsMonth,usd(T.hourPay),usd(T.bonus),usd(T.total)]:undefined},
+        {title:'Time entries',head:['Date','Caller','Clock in','Clock out','Break','Hours','Note'],num:[4,5],empty:'No time on the clock in this pay period.',
+          body:rows.map(x=>{const m=shiftMins(x);return [new Date(ctDay(x.clock_in)+'T12:00:00').toLocaleDateString([],{weekday:'short',month:'short',day:'numeric'}),nameOf(x.caller_id),fmtTime(x.clock_in),x.clock_out?fmtTime(x.clock_out):'Still clocked in',x.break_minutes+' min',m==null?'-':(m/60).toFixed(2),x.note||'']}),
+          foot:['Total','','','','',T.hours.toFixed(2),'']}]}}
+  if(v==='calls'){const list=cv.caller?[cv.caller]:cv.people;const st=list.map(cvStats);const mon=monthName(monthOf(cv.month));
+    const tc=st.reduce((n,x)=>n+x.calls,0),ta=st.reduce((n,x)=>n+x.appts,0);
+    return {file:`dial-desk-call-volume-${cv.month}.pdf`,title:`Call volume · ${mon}`,subtitle:cv.caller?nameOf(cv.caller):'All callers',kpis:[[fmtN(tc),'Calls'],[fmtN(ta),'Appointments'],[ta?n1(tc/ta):'-','Calls per appointment']],
+      tables:[{title:'By caller',head:['Caller','Calls','Days worked','Avg calls per day','Hours worked','Calls per hour','Appointments'],num:[1,2,3,4,5,6],
+        body:st.map(x=>[nameOf(x.id),x.calls,x.days,n1(x.avg),x.hours??'',n1(x.cph),x.appts]),foot:['Total',tc,'','','','',ta]}]}}
+  const rows=repRows();
+  return {file:`dial-desk-opportunities-${ymd(new Date())}.pdf`,landscape:true,title:'Opportunities',subtitle:`${rows.length} deal${rows.length===1?'':'s'} · ${money(rows.reduce((n,o)=>n+(+o.amount||0),0))||'$0'} total`,
+    tables:[{title:'Deals',head:RCOLS.map(c=>c[1]),num:[RCOLS.findIndex(c=>c[0]==='amount'),RCOLS.findIndex(c=>c[0]==='probability'),RCOLS.findIndex(c=>c[0]==='age')].filter(i=>i>=0),empty:'No deals match these filters.',
+      body:rows.map(o=>RCOLS.map(([c])=>c==='created'?fmtDate(o.created_at):c==='amount'?money(o.amount):c==='follow_up'?fmtDate(o.follow_up_date):repVal(o,c)))}]}}
+$('#rpdf').onclick=async()=>{if(!isAdmin())return;const b=$('#rpdf');b.disabled=true;const old=b.innerHTML;b.lastChild.textContent='Making PDF…';
+  try{const sp=pdfSpec();await makePdf(sp,sp.file);toast('PDF downloaded')}catch(e){toast(e.message||'Couldn’t make the PDF')}finally{b.disabled=false;b.innerHTML=old}};
 function download(name,lines){const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast(`Exported ${lines.length-1} rows`)}
 
 $('#backboard').onclick=()=>setTab('board');
