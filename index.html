@@ -2652,7 +2652,7 @@ async function openAgency(id){
   window.scrollTo({top:0})}
 $('#newag').onclick=()=>{
   const F=[['name','Agency name'],['contact_name','Contact name'],['phone','Phone'],['email','Email'],['website','Website']];
-  openModal('New agency',`<div class="fgrid">${F.map(([k,l])=>`<label class="f">${l}${k==='name'?' <span class="req">*</span>':''}<input type="${k==='email'?'email':'text'}" name="${k}" ${k==='name'?'required':''}></label>`).join('')}</div>`,
+  openModal('New Agency',`<div class="fgrid">${F.map(([k,l])=>`<label class="f">${l}${k==='name'?' <span class="req">*</span>':''}<input type="${k==='email'?'email':'text'}" name="${k}" ${k==='name'?'required':''}></label>`).join('')}</div>`,
     {submit:'Add agency',onSubmit:async fd=>{const rec={};F.forEach(([k])=>rec[k]=String(fd.get(k)||'').trim());
       const {data,error}=await sb.from('agencies').insert({...rec,created_by:me.id}).select('id').single();
       if(error){toast(/duplicate/i.test(error.message)?'That agency is already in the list':friendly(error));return false}
