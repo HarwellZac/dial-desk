@@ -2108,6 +2108,31 @@ create policy "add client notes" on public.client_notes for insert to authentica
 grant select, insert, update, delete on public.client_notes to authenticated;
 grant usage, select on sequence public.client_notes_id_seq to authenticated;
 
+-- Notes on agencies (v21).
+create table if not exists public.agency_notes (
+  id bigint generated always as identity primary key,
+  agency_id uuid not null references public.agencies(id) on delete cascade,
+  author_id uuid references public.profiles(id) on delete set null default auth.uid(),
+  body text not null check (length(btrim(body)) > 0),
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  deleted_by uuid references public.profiles(id) on delete set null,
+  edited_at timestamptz,
+  edited_by uuid references public.profiles(id) on delete set null
+);
+create index if not exists agency_notes_agency_idx on public.agency_notes (agency_id, created_at desc);
+
+-- Salespeople, admins and the Owner read and add agency notes. Only the author or an admin edits or deletes one
+-- (through edit_note / set_note_deleted below; there is no direct update or delete).
+alter table public.agency_notes enable row level security;
+drop policy if exists "read agency notes" on public.agency_notes;
+create policy "read agency notes" on public.agency_notes for select to authenticated using (public.can_sell());
+drop policy if exists "add agency notes" on public.agency_notes;
+create policy "add agency notes" on public.agency_notes for insert to authenticated
+  with check (public.can_sell() and author_id = auth.uid());
+grant select, insert on public.agency_notes to authenticated;
+grant usage, select on sequence public.agency_notes_id_seq to authenticated;
+
 -- Deleting and editing notes now covers client notes too (kind 'client').
 create or replace function public.set_note_deleted(p_kind text, p_id bigint, p_deleted boolean) returns void
 language plpgsql security definer set search_path = public as $$
@@ -2117,6 +2142,7 @@ begin
   if p_kind = 'lead' then select author_id into a from public.lead_notes where id = p_id;
   elsif p_kind = 'opp' then select author_id into a from public.opp_notes where id = p_id;
   elsif p_kind = 'client' then select author_id into a from public.client_notes where id = p_id;
+  elsif p_kind = 'agency' then select author_id into a from public.agency_notes where id = p_id;
   else raise exception 'Unknown note.'; end if;
   if not found then raise exception 'That note no longer exists.'; end if;
   if not (public.is_admin() or a = auth.uid()) then raise exception 'You can only delete your own notes.'; end if;
@@ -2124,6 +2150,8 @@ begin
     update public.lead_notes set deleted_at = case when p_deleted then now() end, deleted_by = case when p_deleted then auth.uid() end where id = p_id;
   elsif p_kind = 'client' then
     update public.client_notes set deleted_at = case when p_deleted then now() end, deleted_by = case when p_deleted then auth.uid() end where id = p_id;
+  elsif p_kind = 'agency' then
+    update public.agency_notes set deleted_at = case when p_deleted then now() end, deleted_by = case when p_deleted then auth.uid() end where id = p_id;
   else
     update public.opp_notes set deleted_at = case when p_deleted then now() end, deleted_by = case when p_deleted then auth.uid() end where id = p_id;
   end if;
@@ -2140,6 +2168,8 @@ begin
     select author_id, body, opp_id into a, old_body, rid from public.opp_notes where id = p_id; tbl := 'opportunities';
   elsif p_kind = 'client' then
     select author_id, body, client_id into a, old_body, rid from public.client_notes where id = p_id; tbl := 'clients';
+  elsif p_kind = 'agency' then
+    select author_id, body, agency_id into a, old_body, rid from public.agency_notes where id = p_id; tbl := 'agencies';
   elsif p_kind = 'call' then
     select caller_id, note, lead_id into a, old_body, rid from public.calls where id = p_id; tbl := 'leads';
   else raise exception 'Unknown note.'; end if;
@@ -2153,6 +2183,8 @@ begin
     update public.opp_notes set body = p_body, edited_at = now(), edited_by = auth.uid() where id = p_id;
   elsif p_kind = 'client' then
     update public.client_notes set body = p_body, edited_at = now(), edited_by = auth.uid() where id = p_id;
+  elsif p_kind = 'agency' then
+    update public.agency_notes set body = p_body, edited_at = now(), edited_by = auth.uid() where id = p_id;
   else
     update public.calls set note = coalesce(p_body, ''), edited_at = now(), edited_by = auth.uid() where id = p_id;
   end if;

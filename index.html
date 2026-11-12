@@ -1358,9 +1358,9 @@ async function addNote(){
 // Notes are never erased: "Delete" hides the note but keeps it in the history, and it can be restored.
 async function setNoteDeleted(kind,nid,del){
   const {error}=await sb.rpc('set_note_deleted',{p_kind:kind,p_id:nid,p_deleted:del});if(error)return toast(friendly(error));
-  const list=kind==='lead'?curNotes:kind==='client'?(cl.cur?.notes||[]):(opp.cur?.notes||[]);const n=list.find(x=>x.id===nid);
+  const list=kind==='lead'?curNotes:kind==='client'?(cl.cur?.notes||[]):kind==='agency'?(ag.cur?.notes||[]):(opp.cur?.notes||[]);const n=list.find(x=>x.id===nid);
   if(n){n.deleted_at=del?new Date().toISOString():null;n.deleted_by=del?me.id:null}
-  kind==='lead'?renderNotes():kind==='client'?renderClientNotes():renderOppNotes();
+  kind==='lead'?renderNotes():kind==='client'?renderClientNotes():kind==='agency'?renderAgencyNotes():renderOppNotes();
   toast(del?'Note deleted. It stays in the history.':'Note restored',del?{undo:()=>setNoteDeleted(kind,nid,false)}:{})}
 // Any edit to a lead's details can be put back from the history.
 const LEAD_UNDO=new Set(EDIT_FIELDS.map(f=>f[0]));
@@ -3056,7 +3056,7 @@ async function openAgency(id){
   const cts=[];for(const c of chunk(deals.map(o=>o.id),150)){const {data}=await sb.from('opp_contacts').select('*').in('opp_id',c).is('deleted_at',null);cts.push(...(data||[]))}
   cts.forEach(ct=>{const o=deals.find(x=>x.id===ct.opp_id);if(!o)return;const g=byClient.get(o.client_id);const key=(ct.email||ct.name||ct.phone||'').toLowerCase().trim();if(key&&!g.contacts.has(key))g.contacts.set(key,ct)});
   const groups=[...byClient.values()].sort((x,y)=>x.name.localeCompare(y.name));const st=agStats(id);
-  ag.cur={id,a};const direct=id==='direct';
+  const keepN=ag.cur?.id===id?ag.cur:null;ag.cur={id,a,notes:null,notesErr:null,noteText:keepN?.noteText||''};const direct=id==='direct';
   box.innerHTML=`<div class="actions"><button class="btn ghost" id="agback">← All agencies</button></div>
     <div class="panel"><div class="oh" style="border-left-color:#c026d3"><div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(direct?'Direct (no agency)':a.name)}</h2>${a.source?`<span class="tag2">Source: ${esc(a.source)}</span>`:''}</div>
         <div class="stat" style="margin-top:4px">${direct?'Clients who buy from us directly, with no agency in between.':esc([a.contact_name,fmtPhone(a.phone),a.email,a.website].filter(Boolean).join(' · '))||'No contact details yet.'}</div></div>
@@ -3065,7 +3065,8 @@ async function openAgency(id){
       <div class="strip">${cellS('Clients',fmtN(groups.length))}${cellS('Deals',fmtN(st.deals))}${cellS('Open pipeline',(money(st.open)||'$0')+` <span class="muted">· ${st.openN} open</span>`)}${cellS('Closed won',(money(st.won)||'$0')+` <span class="muted">· ${st.wonN} won</span>`)}</div></div>
     ${direct?'':`<div class="ocols" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="panel"><div class="panel-h"><h3>Agency contacts</h3></div><div class="panel-b"><dl class="kv">
         ${[['Agency Source',esc(a.source||'')],['Main contact',esc([a.contact_name,fmtPhone(a.phone),a.email].filter(Boolean).join(' · '))],['Billing Contact',ctHtml(a.billing_contact)],['Content Contact',ctHtml(a.content_contact)],['Website',webUrl(a.website)?`<a href="${esc(webUrl(a.website))}" target="_blank" rel="noopener">${esc(a.website)}</a>`:'']]
-          .map(([k,v])=>`<dt>${k}</dt><dd>${v||'<span class="muted">—</span>'}</dd>`).join('')}</dl></div></div>${filesPanel()}</div>`}
+          .map(([k,v])=>`<dt>${k}</dt><dd>${v||'<span class="muted">—</span>'}</dd>`).join('')}</dl></div></div>${filesPanel()}</div>
+    <div class="panel" id="agnotes"></div>`}
     <h2 style="font-size:16px;margin:4px 0 -4px">Clients${groups.length?' · '+groups.length:''}</h2>
     ${groups.length?groups.map(g=>{const tot=g.deals.reduce((n,o)=>n+(+o.amount||0),0);const cs=[...g.contacts.values()];
       return `<div class="panel"><div class="panel-h"><h3><button class="cklink" data-cl="${esc(g.id)}" title="Open this client">${esc(g.name)}</button></h3><span class="stat">${g.c?.owner_id?'Owner: '+esc(nameOf(g.c.owner_id))+' · ':''}${g.deals.length} deal${g.deals.length===1?'':'s'} · ${money(tot)||'$0'}</span></div>
@@ -3082,9 +3083,31 @@ async function openAgency(id){
   if($('#agnewdeal'))$('#agnewdeal').onclick=()=>openOppForm(null,{agency:a.name});
   box.querySelectorAll('[data-cl]').forEach(b=>b.onclick=()=>openClient(b.dataset.cl));
   box.querySelectorAll('tr[data-opp]').forEach(tr=>tr.onclick=()=>openOpp(tr.dataset.opp));
-  if(!direct)loadFiles('agency',id,canSell());
-  window.scrollTo({top:0})}
+  if(!direct){loadFiles('agency',id,canSell());renderAgencyNotes();loadAgencyNotes(id)}
+  if(!keepN)window.scrollTo({top:0})}
 $('#newag').onclick=()=>openAgencyForm(null);
+// Notes on an agency: salespeople, admins and the Owner can all add notes. The author (or an admin) can edit or delete a note
+// (edit_note / set_note_deleted, kind 'agency'); deleted notes stay visible, struck through, and can be restored.
+const AGN_SETUP='Agency notes aren’t set up yet. Run supabase-v21-agency-notes.sql in Supabase first.';
+const agnErr=e=>/agency_notes/i.test(e?.message||'')?AGN_SETUP:friendly(e);
+async function loadAgencyNotes(id){
+  const {data,error}=await sb.from('agency_notes').select('*').eq('agency_id',id).order('created_at',{ascending:false});
+  if(ag.cur?.id!==id)return;ag.cur.notes=error?[]:(data||[]);ag.cur.notesErr=error||null;renderAgencyNotes()}
+function renderAgencyNotes(){
+  const p=$('#agnotes');const c=ag.cur;if(!p||!c)return;const ed=canSell();const live=(c.notes||[]).filter(n=>!n.deleted_at).length;
+  p.innerHTML=`<div class="panel-h"><h3>Notes${live?' · '+live:''}</h3></div>
+   <div class="panel-b">${c.notesErr?`<p class="stat" style="margin:0">${esc(agnErr(c.notesErr))}</p>`:''}
+   ${ed&&!c.notesErr?`<div class="composer"><textarea id="agnbody" placeholder="Add a note about ${esc(c.a.name)}…">${esc(c.noteText)}</textarea><div class="row"><span class="stat">Stamped with the date and your name · Ctrl+Enter to add</span><button class="btn primary small" id="agnadd">Add note</button></div></div>`:''}
+   ${c.notes===null?'<p class="stat" style="margin:0">Loading notes…</p>':c.notes.length?`<ul class="tl">${c.notes.map(noteItem).join('')}</ul>`:c.notesErr?'':'<p class="stat" style="margin:0">No notes on this agency yet.</p>'}</div>`;
+  p.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>setNoteDeleted('agency',+b.dataset.del,true));
+  p.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>setNoteDeleted('agency',+b.dataset.restore,false));
+  p.querySelectorAll('[data-nedit]').forEach(b=>b.onclick=()=>{const n=c.notes.find(x=>x.id===+b.dataset.nedit);if(n)openNoteEdit('agency',n.id,n.body,()=>loadAgencyNotes(c.id))});
+  const ta=$('#agnbody');if(ta){ta.oninput=()=>c.noteText=ta.value;ta.onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();addAgencyNote()}};$('#agnadd').onclick=addAgencyNote}}
+async function addAgencyNote(){
+  const c=ag.cur;if(!c)return;const body=c.noteText.trim();if(!body)return toast('Type a note first');$('#agnadd').disabled=true;
+  const {data,error}=await sb.from('agency_notes').insert({agency_id:c.id,author_id:me.id,body}).select().single();
+  if(error){if($('#agnadd'))$('#agnadd').disabled=false;return toast(agnErr(error))}
+  if(ag.cur!==c)return;c.notes=[data,...(c.notes||[])];c.noteText='';renderAgencyNotes();toast('Note added')}
 
 /* ===================== Reports: Appointments (salespeople and admins; replaces the CSR Details sheet) ===================== */
 // One row per appointment the call center booked = every live deal with a CSR (converted_by).
