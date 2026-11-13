@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-The Arc (formerly Dial Desk; the repo and Netlify site keep the old name) is the outbound calling CRM for an appointment-setting team. Callers work their assigned leads, log each call with a status, and book appointments ("Appointment Set!" converts the lead into a Deal for a salesperson). Admins import ZoomInfo CSV/Excel lists, assign leads, manage the team and read reports.
+The Ark (formerly The Arc, and before that Dial Desk; the repo keeps the old name) is the outbound calling CRM for an appointment-setting team. Callers work their assigned leads, log each call with a status, and book appointments ("Appointment Set!" converts the lead into a Deal for a salesperson). Admins import ZoomInfo CSV/Excel lists, assign leads, manage the team and read reports.
 
 The users are not developers. Explain steps in plain words, one click at a time.
 
@@ -12,7 +12,7 @@ There is no build, lint or test suite. The only check is that the inline script 
 node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(/<script>([\s\S]*?)<\/script>/g)].forEach(m=>new Function(m[1]));console.log('OK')"
 ```
 - `git` is not on PATH on this machine. Use GitHub Desktop's copy: `& "$env:LOCALAPPDATA\GitHubDesktop\app-<version>\resources\app\git\cmd\git.exe"` (find the version folder with `Get-ChildItem $env:LOCALAPPDATA\GitHubDesktop -Filter git.exe -Recurse`). Remote: `github.com/HarwellZac/dial-desk`.
-- Deploy = commit and push to `main`. Netlify (site `thearc`, https://thearc.netlify.app; was dialdeskcrm) publishes the repo root in about a minute (`netlify.toml`). `SETUP.md` still describes manual drag-and-drop deploys; that is out of date.
+- Deploy = commit and push to `main`. Netlify (site `thearkcrm`, https://thearkcrm.netlify.app; was thearccrm, before that dialdeskcrm) publishes the repo root in about a minute (`netlify.toml`). `SETUP.md` still describes manual drag-and-drop deploys; that is out of date.
 
 ## How it is built
 - `index.html` is the whole app: HTML, CSS and plain JavaScript in one file, no framework, no build step. CDN libraries: `@supabase/supabase-js`, SheetJS (imports).
@@ -57,7 +57,7 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 - `appt_history`: appointments from the old CSR Details sheet or added by hand (`source='manual'`, `added_by`); names are text, no lead/deal behind them, so they don't count toward pay. Salespeople/admins read; admins edit/delete.
 - Report functions: `call_report(from, to)` (calls and appointments per caller per day; admins get everyone), `appt_pay_report(from, to)` (showed deals per CSR, dated by `appt_at`; reverted deals still count), `status_counts()` (Leads chip counts with all Leads filters), `lead_status_report()` (admins: live leads per caller per status with never-called, callbacks-due, 30-day-stale counts).
 
-## Version 19 (The Arc)
+## Version 19 (The Arc, now The Ark)
 - More than one Owner (Dan Newman). `main_owner()` = the first Owner account; nobody can change it, and callers' 3rd Call / Already Opportunity / Dead / Bad Info leads go to it (`mainOwner()` in the page). Salespeople keep their own leads.
 - Has Agency: `link_agency_lead(lead)` makes the agency its own lead for the same caller (or links an existing one by name/phone/email), filling `agency_for` (companies it represents) and `agency_lead_id` on the client lead; `unlink_agency_lead()` is the Undo.
 - Salespeople add leads (`create_lead`, they own them): New Lead button on the Leads page; New Deal in the top bar (`#newdealtop`, `data-salesonly`).
