@@ -30,7 +30,7 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 
 ## Database
 - `supabase-setup.sql` is the full schema: every table, RLS policy, trigger and function. It must stay safe to re-run (`if not exists`, `create or replace`, `drop policy if exists`).
-- `supabase-vNN-<topic>.sql` files are stand-alone pastes for each version that changed the database (v7–v20). `supabase-fix-owner.sql` is a one-off repair that makes the earliest login the Owner.
+- `supabase-vNN-<topic>.sql` files are stand-alone pastes for each version that changed the database (v7–v21). `supabase-fix-owner.sql` is a one-off repair that makes the earliest login the Owner.
 - To change the database:
   1. Write a new `supabase-vNN-<topic>.sql` with just the change (also re-runnable).
   2. Fold the same change into `supabase-setup.sql`.
@@ -66,6 +66,7 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 - Deal forms: "Client Source" (stored in `lead_source`), "Deal Type" (`first_deal` New Client, `returning`, `new_returning_agency`). `wireAutofill()` fills the client source, contacts and deal type when an agency or existing client is picked. Salespeople get no "Other products" box.
 - Stages show Qualifying → Nurturing → Proposal/Price Quote → Closed (`STAGE_ORDER`).
 - Client notes (v20): `client_notes` table, same rules as deal notes (`set_note_deleted`/`edit_note` kind 'client'); `renderClientNotes()` shows notes + edits on the client page.
+- Agency notes (v21): `agency_notes` table, same pattern (kind 'agency'); salespeople/admins read and add (`can_sell()`), author or admin edits/deletes. `renderAgencyNotes()` on the agency page (`openAgency`).
 - Files panels are `.filesbox` inside each page (`#opp-detail`, `#cl-detail`, `#ag-detail`); `loadFiles()` looks inside the page being shown, because hidden pages keep their old HTML.
 - `followBox()/wireFollow()` (date + 7 days / 30 days / 6 months) on deals and clients. `filesPanel()/loadFiles()`: `attachments` table + private storage bucket `attachments` (50 MB/file).
 - Reports > Call volume: Dates filter (`cv.range`, `cvRange()`): today, yesterday, this/last week, last 7/30 days, picked dates, or a whole month (only whole months take typed hours).
