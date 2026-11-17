@@ -791,7 +791,7 @@ ul.files li .danger{margin-left:auto}
     <!-- Finances (Finance role / Finance access) -->
     <section id="tab-fin" class="page" hidden>
       <div class="pagehead"><div><h1>Finances</h1><p id="fsub">Invoices, payments, commissions and allocations for every Closed Won deal.</p></div>
-        <div class="actions"><div class="seg" id="fview"><button type="button" data-v="deals" aria-pressed="true">Closed deals</button><button type="button" data-v="reports" aria-pressed="false">Reports</button></div>
+        <div class="actions"><div class="seg" id="fview"><button type="button" data-v="deals" aria-pressed="true">Closed Deals</button><button type="button" data-v="reports" aria-pressed="false">Reports</button></div>
           <button class="btn" id="fexport"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
       <div id="fin-list" class="page">
         <div class="kpis" id="fkpis"></div>
@@ -801,15 +801,15 @@ ul.files li .danger{margin-left:auto}
             <input type="search" id="fsearch" placeholder="Search deal, client, agency or invoice #">
             <select id="fowner" aria-label="Owner"></select>
             <select id="fsort" aria-label="Sort">
-              <option value="closed">Sort: Closed, newest</option>
-              <option value="due">Sort: Next payment due, soonest</option>
-              <option value="balance">Sort: Outstanding, highest</option>
-              <option value="amount">Sort: Amount, highest</option>
-              <option value="deal">Sort: Deal name A–Z</option>
+              <option value="closed">Sort: Closed, Newest</option>
+              <option value="due">Sort: Next Payment Due, Soonest</option>
+              <option value="balance">Sort: Outstanding, Highest</option>
+              <option value="amount">Sort: Amount, Highest</option>
+              <option value="deal">Sort: Deal Name A–Z</option>
             </select>
           </div>
           <div class="tablebox"><table>
-            <thead><tr><th>Deal Name</th><th>Client</th><th>Agency</th><th>Owner</th><th>Closed</th><th class="num">Amount</th><th class="num">Invoiced</th><th class="num">Collected</th><th class="num">Outstanding</th><th>Next due</th><th>Status</th></tr></thead>
+            <thead><tr><th>Deal Name</th><th>Client</th><th>Agency</th><th>Owner</th><th>Closed</th><th class="num">Amount</th><th class="num">Invoiced</th><th class="num">Collected</th><th class="num">Outstanding</th><th>Next Due</th><th>Status</th></tr></thead>
             <tbody id="fbody"></tbody>
           </table></div>
           <div class="boardfoot"><span class="stat" id="ffoot"></span></div>
@@ -819,14 +819,14 @@ ul.files li .danger{margin-left:auto}
       <div id="fin-reports" class="page" hidden>
         <div class="panel"><div class="filters">
           <label class="f">Report<select id="frv">
-            <option value="ar">Receivables (unpaid invoices)</option><option value="cash">Collections (payments received)</option>
-            <option value="com">Commissions</option><option value="alc">Allocations</option><option value="deals">Closed Won deals</option></select></label>
+            <option value="ar">Receivables (Unpaid Invoices)</option><option value="cash">Collections (Payments Received)</option>
+            <option value="com">Commissions</option><option value="alc">Allocations</option><option value="deals">Closed Won Deals</option></select></label>
           <label class="f" id="frangef">Dates<select id="frange">
-            <option value="this_month">This month</option><option value="last_month">Last month</option><option value="this_q">This quarter</option><option value="last_q">Last quarter</option>
-            <option value="this_year" selected>This year</option><option value="last_year">Last year</option><option value="all">All time</option><option value="custom">Pick dates…</option></select></label>
+            <option value="this_month">This Month</option><option value="last_month">Last Month</option><option value="this_q">This Quarter</option><option value="last_q">Last Quarter</option>
+            <option value="this_year" selected>This Year</option><option value="last_year">Last Year</option><option value="all">All Time</option><option value="custom">Pick Dates…</option></select></label>
           <label class="f" id="ffromf" hidden>From<input type="date" id="ffrom"></label>
           <label class="f" id="ftof" hidden>To<input type="date" id="fto"></label>
-          <label class="f"><span id="frownerl">Deal owner</span><select id="frowner"></select></label>
+          <label class="f"><span id="frownerl">Deal Owner</span><select id="frowner"></select></label>
           <span class="stat" style="flex:1 1 260px;align-self:center" id="frnote"></span>
         </div></div>
         <div class="kpis" id="frkpis"></div>
@@ -2437,7 +2437,8 @@ async function openClient(id){
         ${deals.length?`<div class="tablebox"><table><thead><tr><th>Deal</th><th>Stage</th><th class="num">Amount</th><th>Follow up</th></tr></thead><tbody>${deals.map(o=>`<tr class="click lead-row g-${o.stage}" data-opp="${o.id}"><td class="wrap"><span class="co">${esc(o.deal_name)}</span><div class="sub">${esc(agencyName(o))} · ${esc(o.owner_id?nameOf(o.owner_id):'')}</div></td><td>${stagePill(o.stage)}</td><td class="num">${esc(money(o.amount))||'—'}</td><td>${followCell(o)||'—'}</td></tr>`).join('')}</tbody></table></div>`
           :'<div class="empty">No deals with this client yet.</div>'}</div>
       <div class="panel" id="clnotes"></div></div>
-    </div>`;
+    </div>
+    ${finInvPanel()}`;
   $('#clback').onclick=()=>{showClList();renderClients()};
   if(ed)$('#cledit').onclick=()=>openClientForm(c);
   $('#cldeal').onclick=()=>openOppForm(null,{client:c.name,agency:a?.name||''});
@@ -2445,7 +2446,7 @@ async function openClient(id){
   box.querySelectorAll('tr[data-opp]').forEach(tr=>tr.onclick=()=>openOpp(tr.dataset.opp));
   box.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(b.dataset.copy,b));
   cl.labels=CL_LABELS;renderClientNotes();
-  wireFollow(box,'client',c,()=>openClient(id));loadFiles('client',id,ed);if(!keep)window.scrollTo({top:0})}
+  wireFollow(box,'client',c,()=>openClient(id));loadFiles('client',id,ed);loadFinInvPanel(box,deals);if(!keep)window.scrollTo({top:0})}
 // Notes & history on a client: dated notes plus every edit to the client.
 function renderClientNotes(){
   const p=$('#clnotes');const c=cl.cur;if(!p||!c)return;const ed=canEditClient(c.c);
@@ -3138,6 +3139,7 @@ async function openAgency(id){
         ${[['Agency Source',esc(a.source||'')],['Main contact',esc([a.contact_name,fmtPhone(a.phone),a.email].filter(Boolean).join(' · '))],['Billing Contact',ctHtml(a.billing_contact)],['Content Contact',ctHtml(a.content_contact)],['Website',webUrl(a.website)?`<a href="${esc(webUrl(a.website))}" target="_blank" rel="noopener">${esc(a.website)}</a>`:'']]
           .map(([k,v])=>`<dt>${k}</dt><dd>${v||'<span class="muted">—</span>'}</dd>`).join('')}</dl></div></div>${filesPanel()}</div>
     <div class="panel" id="agnotes"></div>`}
+    ${finInvPanel()}
     <h2 style="font-size:16px;margin:4px 0 -4px">Clients${groups.length?' · '+groups.length:''}</h2>
     ${groups.length?groups.map(g=>{const tot=g.deals.reduce((n,o)=>n+(+o.amount||0),0);const cs=[...g.contacts.values()];
       return `<div class="panel"><div class="panel-h"><h3><button class="cklink" data-cl="${esc(g.id)}" title="Open this client">${esc(g.name)}</button></h3><span class="stat">${g.c?.owner_id?'Owner: '+esc(nameOf(g.c.owner_id))+' · ':''}${g.deals.length} deal${g.deals.length===1?'':'s'} · ${money(tot)||'$0'}</span></div>
@@ -3155,6 +3157,7 @@ async function openAgency(id){
   box.querySelectorAll('[data-cl]').forEach(b=>b.onclick=()=>openClient(b.dataset.cl));
   box.querySelectorAll('tr[data-opp]').forEach(tr=>tr.onclick=()=>openOpp(tr.dataset.opp));
   if(!direct){loadFiles('agency',id,canSell());renderAgencyNotes();loadAgencyNotes(id)}
+  loadFinInvPanel(box,deals);
   if(!keepN)window.scrollTo({top:0})}
 $('#newag').onclick=()=>openAgencyForm(null);
 // Notes on an agency: salespeople, admins and the Owner can all add notes. The author (or an admin) can edit or delete a note
@@ -3304,10 +3307,10 @@ function download(name,lines){const blob=new Blob(['﻿'+lines.join('\r\n')],{ty
 /* ===================== Finances (v22) ===================== */
 // Everything after a deal is Closed Won: invoices (payment plans), commissions, allocations and finance files.
 // Tables deal_invoices / deal_commissions / deal_allocations; only can_finance() people can read or change them (RLS).
-const ALLOCATIONS=['TBN Linear','TBN+','TBN Israel','YouTube'];
-const ALLOC_SECONDARY=['None','Erick Stakelbeck','Kirk Cameron','Joel Rosenberg'];
+const ALLOCATIONS=['TBN Linear','TBN+','YouTube','Informal Allocation'];
+const ALLOC_SECONDARY=['None','Erick Stakelbeck','Kirk Cameron','Joel Rosenberg','TBN Israel'];
 const COM_PRESETS=['2','3','4','7.5'];
-const FIN_STATUS={none:'Not invoiced',open:'Awaiting payment',partial:'Partly paid',overdue:'Overdue',paid:'Paid in full'};
+const FIN_STATUS={none:'Not Invoiced',open:'Awaiting Payment',partial:'Partly Paid',overdue:'Overdue',paid:'Paid In Full'};
 const FIN_ORDER=['none','open','partial','overdue','paid'];
 const fin={view:'deals',status:'',owner:'',search:'',sort:'closed',deals:[],inv:[],com:[],alc:[],cur:null,loaded:false,
   rv:'ar',range:'this_year',from:'',to:'',rowner:'',csv:null};
@@ -3329,9 +3332,27 @@ function finSum(o){
   return {inv,com,alc,invoiced,paid,outstanding:invoiced-paid,overdueAmt:fsum(overdue,i=>i.amount),overdueN:overdue.length,
     notInvoiced:Math.max(0,amt-invoiced),next:open.map(i=>i.due_date).filter(Boolean).sort()[0]||'',status,
     comTotal:fsum(com,c=>comAmt(c,o)),comOwed:fsum(com.filter(c=>!c.paid_on),c=>comAmt(c,o)),allocated:fsum(alc,a=>a.amount)}}
-function invStatus(i){return i.paid_on?['paid','Paid']:i.due_date&&i.due_date<todayYmd()?['overdue','Overdue']:i.sent_on?['open','Sent to client']:i.ar_submitted_on?['open','With AR']:['none','Not sent yet']}
+function invStatus(i){return i.paid_on?['paid','Paid']:i.due_date&&i.due_date<todayYmd()?['overdue','Overdue']:i.sent_on?['open','Sent To Client']:i.ar_submitted_on?['open','With AR']:['none','Not Sent Yet']}
 const finPill=(k,l)=>`<span class="fpill f-${k}">${esc(l||FIN_STATUS[k])}</span>`;
 const finErr=e=>{const m=String(e?.message||e||'');return /deal_invoices|deal_commissions|deal_allocations|can_finance|set_finance|finance/i.test(m)&&/does not exist|schema cache|relation|column|function/i.test(m)?'Finances aren’t set up yet. Run supabase-v22-finances.sql in Supabase first.':friendly(e)};
+
+// Invoices panel on a client or agency page: finance people only (deal_invoices RLS is can_finance()).
+function finInvPanel(){return canFinance()?'<div class="panel fininvbox"><div class="panel-h"><h3>Invoices</h3></div><div class="panel-b"><span class="stat">Loading…</span></div></div>':''}
+async function loadFinInvPanel(box,deals){
+  const p=box.querySelector('.fininvbox');if(!p)return;
+  const ids=deals.map(o=>o.id),byId={};deals.forEach(o=>byId[o.id]=o);const inv=[];
+  try{for(const c of chunk(ids,150)){const {data,error}=await sb.from('deal_invoices').select('*').in('opp_id',c);if(error)throw error;inv.push(...(data||[]))}}
+  catch(e){if(p.isConnected)p.querySelector('.panel-b').innerHTML=`<span class="stat">${esc(finErr(e))}</span>`;return}
+  if(!p.isConnected)return;
+  inv.sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
+  const t=todayYmd(),tot=fsum(inv,i=>i.amount),paid=fsum(inv.filter(i=>i.paid_on),i=>i.amount);
+  p.querySelector('h3').textContent='Invoices'+(inv.length?' · '+inv.length:'');
+  p.querySelector('.panel-b').outerHTML=inv.length?`<div class="tablebox"><table><thead><tr><th>Deal</th><th>Invoice #</th><th class="num">Amount</th><th>Due</th><th>Sent To Client</th><th>Paid</th><th>Status</th></tr></thead><tbody>
+    ${inv.map(i=>{const [k,l]=invStatus(i);return `<tr class="click" data-finopp="${i.opp_id}"><td class="wrap"><span class="co">${esc(byId[i.opp_id]?.deal_name||'')}</span></td><td>${esc(i.invoice_no)||'<span class="muted">—</span>'}</td><td class="num">${esc(m2(i.amount))}</td>
+      <td><span class="${!i.paid_on&&i.due_date&&i.due_date<t?'overdue':''}">${esc(fmtDate(i.due_date))}</span></td><td>${esc(fmtDate(i.sent_on))}</td><td>${esc(fmtDate(i.paid_on))}</td><td>${finPill(k,l)}</td></tr>`}).join('')}</tbody>
+    <tfoot><tr class="total"><td colspan="2"><b>Total</b></td><td class="num"><b>${esc(m2(tot))}</b></td><td colspan="4" class="stat">${esc(m2(paid))} collected · ${esc(m2(tot-paid))} outstanding</td></tr></tfoot></table></div>`
+    :'<div class="panel-b"><span class="stat">No invoices yet.</span></div>';
+  p.querySelectorAll('tr[data-finopp]').forEach(tr=>tr.onclick=()=>openFin(tr.dataset.finopp))}
 
 async function loadFinData(){
   const [o,i,c,a]=await Promise.all([
@@ -3360,11 +3381,11 @@ function finListRows(){
     (!q||[o.deal_name,o.client?.name,o.agency?.name,...fin.inv.filter(i=>i.opp_id===o.id).map(i=>i.invoice_no)].join(' ').toLowerCase().includes(q)))}
 function renderFinList(){
   const owners=[...new Set(fin.deals.map(d=>d.owner_id).filter(Boolean))].sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
-  $('#fowner').innerHTML=opt('','All owners',fin.owner)+owners.map(id=>opt(id,who(id),fin.owner)).join('');
+  $('#fowner').innerHTML=opt('','All Owners',fin.owner)+owners.map(id=>opt(id,who(id),fin.owner)).join('');
   const base=finListRows();const T=k=>base.reduce((n,x)=>n+x.s[k],0);
   const won=base.filter(x=>x.o.stage==='closed_won');
-  $('#fkpis').innerHTML=[[m2(fsum(won,x=>x.o.amount)),`Closed won · ${won.length} deal${won.length===1?'':'s'}`],[m2(T('invoiced')),'Invoiced'],[m2(T('paid')),'Collected'],
-    [m2(T('outstanding')),'Outstanding'],[m2(T('overdueAmt')),'Overdue'],[m2(T('notInvoiced')),'Not invoiced yet'],[m2(T('comOwed')),'Commissions unpaid']]
+  $('#fkpis').innerHTML=[[m2(fsum(won,x=>x.o.amount)),`Closed Won · ${won.length} deal${won.length===1?'':'s'}`],[m2(T('invoiced')),'Invoiced'],[m2(T('paid')),'Collected'],
+    [m2(T('outstanding')),'Outstanding'],[m2(T('overdueAmt')),'Overdue'],[m2(T('notInvoiced')),'Not Invoiced Yet'],[m2(T('comOwed')),'Commissions Unpaid']]
     .map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
   const cnt={};base.forEach(x=>cnt[x.s.status]=(cnt[x.s.status]||0)+1);
   $('#fchips').innerHTML=`<button class="chip all" data-s="" aria-pressed="${!fin.status}"><i></i>All <b>${base.length}</b></button>`+
@@ -3391,42 +3412,42 @@ async function openFin(id){
   fin.view='deals';syncFinSeg();$('#fin-list').hidden=true;$('#fin-reports').hidden=true;const box=$('#fin-detail');box.hidden=false;
   if(!fin.loaded||!fin.deals.some(d=>d.id===id)){box.innerHTML='<div class="panel empty">Loading…</div>';
     try{await loadFinData()}catch(e){box.innerHTML=`<div class="panel empty"><h3>${esc(finErr(e))}</h3></div>`;return}}
-  if(!fin.deals.some(d=>d.id===id)){box.innerHTML=`<div class="panel empty"><h3>That deal isn’t in Finances</h3>Only Closed Won deals show here.<div style="margin-top:10px"><button class="btn" id="fback">← All closed deals</button></div></div>`;$('#fback').onclick=()=>loadFin();return}
+  if(!fin.deals.some(d=>d.id===id)){box.innerHTML=`<div class="panel empty"><h3>That deal isn’t in Finances</h3>Only Closed Won deals show here.<div style="margin-top:10px"><button class="btn" id="fback">← All Closed Deals</button></div></div>`;$('#fback').onclick=()=>loadFin();return}
   fin.cur=id;renderFinDetail();window.scrollTo({top:0})}
 async function finReload(){await loadFinData();renderFinDetail()}
 function renderFinDetail(){
   const o=fin.deals.find(d=>d.id===fin.cur);if(!o)return loadFin();
   const s=finSum(o),box=$('#fin-detail'),t=todayYmd();
   const acts=(k,id,extra='')=>`<td class="fin-acts">${extra}<button type="button" class="btn small soft" data-${k}edit="${id}">Edit</button> <button type="button" class="btn small ghost danger" data-${k}del="${id}">Delete</button></td>`;
-  box.innerHTML=`<div class="actions"><button class="btn ghost" id="fback">← All closed deals</button></div>
+  box.innerHTML=`<div class="actions"><button class="btn ghost" id="fback">← All Closed Deals</button></div>
    ${o.stage!=='closed_won'?`<div class="banner"><span>This deal is no longer Closed Won (it is now ${esc(STAGES[o.stage]||o.stage)}). Its finance records are kept here.</span></div>`:''}
    <div class="panel g-${o.stage}">
      <div class="oh"><div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(o.deal_name)}</h2>${stagePill(o.stage)}${finPill(s.status)}</div>
        <div style="margin-top:4px;font-size:14.5px">Client: <b>${esc(o.client?.name||'')}</b> · Agency: <b>${esc(agencyName(o))}</b>${o.owner_id?` · Owner: <b>${esc(nameOf(o.owner_id))}</b>`:''}</div></div>
-       <div class="actions">${canSell()?'<button class="btn soft" id="fopen">Open deal</button>':''}</div></div>
+       <div class="actions">${canSell()?'<button class="btn soft" id="fopen">Open Deal</button>':''}</div></div>
      <div class="strip">
-       ${cellS('Deal amount',esc(m2(o.amount)))}${cellS('Closed',esc(fmtDate(o.closed_at)))}${cellS('Invoiced',esc(m2(s.invoiced)))}${cellS('Collected',esc(m2(s.paid)))}
-       ${cellS('Outstanding',esc(m2(s.outstanding))+(s.overdueN?` <span class="overdue">${esc(m2(s.overdueAmt))} overdue</span>`:''))}${cellS('Not invoiced yet',esc(m2(s.notInvoiced)))}
+       ${cellS('Deal Amount',esc(m2(o.amount)))}${cellS('Closed',esc(fmtDate(o.closed_at)))}${cellS('Invoiced',esc(m2(s.invoiced)))}${cellS('Collected',esc(m2(s.paid)))}
+       ${cellS('Outstanding',esc(m2(s.outstanding))+(s.overdueN?` <span class="overdue">${esc(m2(s.overdueAmt))} overdue</span>`:''))}${cellS('Not Invoiced Yet',esc(m2(s.notInvoiced)))}
        ${cellS('Commissions',s.com.length?esc(m2(s.comTotal))+(s.comOwed?` <span class="stat">${esc(m2(s.comOwed))} unpaid</span>`:''):'')}${cellS('Allocations',s.alc.length?s.alc.length+(s.allocated?' · '+esc(m2(s.allocated)):''):'')}
      </div></div>
    <div class="panel"><div class="panel-h"><div><h3>Invoices${s.inv.length?' · '+s.inv.length:''}</h3><p class="stat" style="margin:2px 0 0">One row per invoice. For a payment plan, add each payment with its own due date.</p></div>
-     <button type="button" class="btn small primary" id="finvadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add invoice</button></div>
-     <div class="tablebox"><table><thead><tr><th>Invoice #</th><th class="num">Amount</th><th>Due</th><th>Submitted to AR</th><th>Sent to client</th><th>Paid</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>
+     <button type="button" class="btn small primary" id="finvadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Invoice</button></div>
+     <div class="tablebox"><table><thead><tr><th>Invoice #</th><th class="num">Amount</th><th>Due</th><th>Submitted To AR</th><th>Sent To Client</th><th>Paid</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>
      ${s.inv.length?s.inv.map(i=>{const [k,l]=invStatus(i);return `<tr><td><b>${esc(i.invoice_no)||'<span class="muted">—</span>'}</b></td><td class="num">${esc(m2(i.amount))}</td>
        <td><span class="${!i.paid_on&&i.due_date&&i.due_date<t?'overdue':''}">${esc(fmtDate(i.due_date))}</span></td><td>${esc(fmtDate(i.ar_submitted_on))}</td><td>${esc(fmtDate(i.sent_on))}</td><td>${esc(fmtDate(i.paid_on))}</td>
-       <td>${finPill(k,l)}</td><td class="wrap" style="white-space:pre-wrap;max-width:280px">${esc(i.notes)}</td>${acts('i',i.id,i.paid_on?'':`<button type="button" class="btn small" data-ipay="${i.id}" title="Mark this invoice paid today">Paid today</button> `)}</tr>`}).join('')
-       :`<tr><td colspan="9"><div class="empty">No invoices yet. Click Add invoice.</div></td></tr>`}</tbody>
+       <td>${finPill(k,l)}</td><td class="wrap" style="white-space:pre-wrap;max-width:280px">${esc(i.notes)}</td>${acts('i',i.id,i.paid_on?'':`<button type="button" class="btn small" data-ipay="${i.id}" title="Mark this invoice paid today">Paid Today</button> `)}</tr>`}).join('')
+       :`<tr><td colspan="9"><div class="empty">No invoices yet. Click Add Invoice.</div></td></tr>`}</tbody>
      ${s.inv.length?`<tfoot><tr class="total"><td><b>Total</b></td><td class="num"><b>${esc(m2(s.invoiced))}</b></td><td colspan="7" class="stat">${esc(m2(s.paid))} collected · ${esc(m2(s.outstanding))} outstanding${s.notInvoiced?' · '+esc(m2(s.notInvoiced))+' of the deal not invoiced yet':''}</td></tr></tfoot>`:''}</table></div></div>
    <div class="fincols">
      <div class="panel"><div class="panel-h"><div><h3>Commissions${s.com.length?' · '+s.com.length:''}</h3><p class="stat" style="margin:2px 0 0">Each salesperson's own rate, on the deal amount. Earned so far follows what has been collected.</p></div>
-       <button type="button" class="btn small primary" id="fcomadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add commission</button></div>
-       <div class="tablebox"><table><thead><tr><th>Salesperson</th><th>Rate</th><th class="num">Commission</th><th class="num">Earned so far</th><th>Paid out</th><th></th></tr></thead><tbody>
+       <button type="button" class="btn small primary" id="fcomadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Commission</button></div>
+       <div class="tablebox"><table><thead><tr><th>Salesperson</th><th>Rate</th><th class="num">Commission</th><th class="num">Earned So Far</th><th>Paid Out</th><th></th></tr></thead><tbody>
        ${s.com.length?s.com.map(c=>`<tr><td class="wrap">${c.person_id?personCell(c.person_id):esc(c.person_name)}${c.notes?`<div class="sub" style="white-space:pre-wrap">${esc(c.notes)}</div>`:''}</td><td>${esc(rateLabel(c))}</td>
          <td class="num"><b>${esc(m2(comAmt(c,o)))}</b></td><td class="num">${esc(m2(comEarned(c,o,s.paid)))}</td><td>${c.paid_on?esc(fmtDate(c.paid_on)):'<span class="muted">Not yet</span>'}</td>${acts('c',c.id)}</tr>`).join('')
          :`<tr><td colspan="6"><div class="empty">No commissions yet.</div></td></tr>`}</tbody>
        ${s.com.length?`<tfoot><tr class="total"><td colspan="2"><b>Total</b></td><td class="num"><b>${esc(m2(s.comTotal))}</b></td><td class="num">${esc(m2(fsum(s.com,c=>comEarned(c,o,s.paid))))}</td><td colspan="2" class="stat">${esc(m2(s.comOwed))} not paid out</td></tr></tfoot>`:''}</table></div></div>
      <div class="panel"><div class="panel-h"><div><h3>Allocations${s.alc.length?' · '+s.alc.length:''}</h3><p class="stat" style="margin:2px 0 0">Where this deal's revenue is allocated. Amount is optional.</p></div>
-       <button type="button" class="btn small primary" id="falcadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add allocation</button></div>
+       <button type="button" class="btn small primary" id="falcadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add Allocation</button></div>
        <div class="tablebox"><table><thead><tr><th>Allocation</th><th>Secondary</th><th class="num">Amount</th><th></th></tr></thead><tbody>
        ${s.alc.length?s.alc.map(a=>`<tr><td class="wrap"><b>${esc(a.allocation)}</b>${a.notes?`<div class="sub" style="white-space:pre-wrap">${esc(a.notes)}</div>`:''}</td><td class="wrap">${a.secondary&&a.secondary!=='None'?esc(a.secondary):'<span class="muted">None</span>'}</td>
          <td class="num">${a.amount!=null?esc(m2(a.amount)):'<span class="muted">—</span>'}</td>${acts('a',a.id)}</tr>`).join('')
@@ -3452,15 +3473,15 @@ const fval=(fd,k)=>String(fd.get(k)||'').trim();
 const fdate=(fd,k)=>fval(fd,k)||null;
 function invoiceForm(o,i){const s=finSum(o);const v=k=>esc(i?.[k]??'');
   const left=Math.round(s.notInvoiced*100)/100;
-  openModal(i?'Edit invoice':'Add invoice',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}${!i&&s.inv.length?` · ${esc(m2(left))} not invoiced yet`:''}</p><div class="fgrid">
-    <label class="f">Invoice number<input type="text" name="invoice_no" value="${v('invoice_no')}" autocomplete="off" maxlength="80"></label>
+  openModal(i?'Edit Invoice':'Add Invoice',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}${!i&&s.inv.length?` · ${esc(m2(left))} not invoiced yet`:''}</p><div class="fgrid">
+    <label class="f">Invoice Number<input type="text" name="invoice_no" value="${v('invoice_no')}" autocomplete="off" maxlength="80"></label>
     <label class="f">Amount <span class="req">*</span><input type="text" name="amount" inputmode="decimal" required value="${i?v('amount'):left?esc(String(left)):''}" placeholder="e.g. 2500.00"></label>
-    <label class="f">Due date<input type="date" name="due_date" value="${v('due_date')}"></label>
-    <label class="f">Submitted to AR<input type="date" name="ar_submitted_on" value="${v('ar_submitted_on')}"></label>
-    <label class="f">Sent to client<input type="date" name="sent_on" value="${v('sent_on')}"></label>
+    <label class="f">Due Date<input type="date" name="due_date" value="${v('due_date')}"></label>
+    <label class="f">Submitted To AR<input type="date" name="ar_submitted_on" value="${v('ar_submitted_on')}"></label>
+    <label class="f">Sent To Client<input type="date" name="sent_on" value="${v('sent_on')}"></label>
     <label class="f">Paid<input type="date" name="paid_on" value="${v('paid_on')}"></label>
     <label class="f wide">Notes<textarea name="notes" rows="3">${v('notes')}</textarea></label></div>`,
-  {submit:i?'Save invoice':'Add invoice',onSubmit:async fd=>{
+  {submit:i?'Save Invoice':'Add Invoice',onSubmit:async fd=>{
     const amount=parseAmount(fd.get('amount'));if(amount==null){toast('Type the invoice amount, like 2500 or 2,500.00');return false}
     const row={invoice_no:fval(fd,'invoice_no'),amount,due_date:fdate(fd,'due_date'),ar_submitted_on:fdate(fd,'ar_submitted_on'),sent_on:fdate(fd,'sent_on'),paid_on:fdate(fd,'paid_on'),notes:fval(fd,'notes')};
     const {error}=i?await sb.from('deal_invoices').update(row).eq('id',i.id):await sb.from('deal_invoices').insert({...row,opp_id:o.id});
@@ -3471,16 +3492,16 @@ function commissionForm(o,c){
   const kind=!c?'':c.manual_amount!=null?'manual':COM_PRESETS.includes(String(+c.rate))?String(+c.rate):'custom';
   const ps=sellers().map(p=>p.id);if(c?.person_id&&!ps.includes(c.person_id))ps.push(c.person_id);
   const other=!!c&&!c.person_id;
-  openModal(c?'Edit commission':'Add commission',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}</p><div class="fgrid">
-    <label class="f">Salesperson <span class="req">*</span><select name="person_id">${opt('','Choose a person',c?.person_id||(other?'__other':''))}${ps.map(id=>opt(id,nameOf(id),c?.person_id||'')).join('')}${opt('__other','Someone else (type a name)',other?'__other':'')}</select></label>
-    <label class="f" id="cmname" ${other?'':'hidden'}>Their name<input type="text" name="person_name" value="${esc(c?.person_name||'')}" maxlength="120"></label>
-    <label class="f">Commission rate <span class="req">*</span><select name="kind">${opt('','Choose a rate',kind)}${COM_PRESETS.map(r=>opt(r,r+'%',kind)).join('')}${opt('custom','Custom %',kind)}${opt('manual','Manual dollar amount',kind)}</select></label>
-    <label class="f" id="cmrate" ${kind==='custom'?'':'hidden'}>Custom rate (%)<input type="text" name="rate" inputmode="decimal" value="${kind==='custom'?esc(String(+c.rate)):''}" placeholder="e.g. 5.25"></label>
-    <label class="f" id="cmamt" ${kind==='manual'?'':'hidden'}>Commission amount ($)<input type="text" name="manual_amount" inputmode="decimal" value="${kind==='manual'?esc(String(c.manual_amount)):''}" placeholder="e.g. 750"></label>
-    <label class="f">Paid out on<input type="date" name="paid_on" value="${esc(c?.paid_on||'')}"></label>
+  openModal(c?'Edit Commission':'Add Commission',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}</p><div class="fgrid">
+    <label class="f">Salesperson <span class="req">*</span><select name="person_id">${opt('','Choose A Person',c?.person_id||(other?'__other':''))}${ps.map(id=>opt(id,nameOf(id),c?.person_id||'')).join('')}${opt('__other','Someone Else (Type A Name)',other?'__other':'')}</select></label>
+    <label class="f" id="cmname" ${other?'':'hidden'}>Their Name<input type="text" name="person_name" value="${esc(c?.person_name||'')}" maxlength="120"></label>
+    <label class="f">Commission Rate <span class="req">*</span><select name="kind">${opt('','Choose A Rate',kind)}${COM_PRESETS.map(r=>opt(r,r+'%',kind)).join('')}${opt('custom','Custom %',kind)}${opt('manual','Manual Dollar Amount',kind)}</select></label>
+    <label class="f" id="cmrate" ${kind==='custom'?'':'hidden'}>Custom Rate (%)<input type="text" name="rate" inputmode="decimal" value="${kind==='custom'?esc(String(+c.rate)):''}" placeholder="e.g. 5.25"></label>
+    <label class="f" id="cmamt" ${kind==='manual'?'':'hidden'}>Commission Amount ($)<input type="text" name="manual_amount" inputmode="decimal" value="${kind==='manual'?esc(String(c.manual_amount)):''}" placeholder="e.g. 750"></label>
+    <label class="f">Paid Out On<input type="date" name="paid_on" value="${esc(c?.paid_on||'')}"></label>
     <label class="f wide">Notes<textarea name="notes" rows="2">${esc(c?.notes||'')}</textarea></label>
     <p class="stat wide" id="cmpv" style="margin:0;grid-column:1/-1"></p></div>`,
-  {submit:c?'Save commission':'Add commission',onSubmit:async fd=>{
+  {submit:c?'Save Commission':'Add Commission',onSubmit:async fd=>{
     const pid=fval(fd,'person_id'),k=fval(fd,'kind');
     if(!pid){toast('Choose the salesperson');return false}
     if(pid==='__other'&&!fval(fd,'person_name')){toast('Type their name');return false}
@@ -3501,12 +3522,12 @@ function commissionForm(o,c){
 
 function allocationForm(o,a){const s=finSum(o);
   const al=[...new Set([...ALLOCATIONS,a?.allocation].filter(Boolean))],se=[...new Set([...ALLOC_SECONDARY,a?.secondary].filter(Boolean))];
-  openModal(a?'Edit allocation':'Add allocation',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}${s.allocated?` · ${esc(m2(s.allocated))} allocated so far`:''}</p><div class="fgrid">
-    <label class="f">Allocation <span class="req">*</span><select name="allocation" required>${opt('','Choose one',a?.allocation||'')}${al.map(x=>opt(x,x,a?.allocation||'')).join('')}</select></label>
-    <label class="f">Secondary allocation <span class="req">*</span><select name="secondary" required>${se.map(x=>opt(x,x,a?.secondary||'None')).join('')}</select></label>
-    <label class="f">Amount (optional)<input type="text" name="amount" inputmode="decimal" value="${a?.amount!=null?esc(String(a.amount)):''}" placeholder="e.g. 10000"></label><span></span>
+  openModal(a?'Edit Allocation':'Add Allocation',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}${s.allocated?` · ${esc(m2(s.allocated))} allocated so far`:''}</p><div class="fgrid">
+    <label class="f">Allocation <span class="req">*</span><select name="allocation" required>${opt('','Choose One',a?.allocation||'')}${al.map(x=>opt(x,x,a?.allocation||'')).join('')}</select></label>
+    <label class="f">Secondary Allocation <span class="req">*</span><select name="secondary" required>${se.map(x=>opt(x,x,a?.secondary||'None')).join('')}</select></label>
+    <label class="f">Amount (Optional)<input type="text" name="amount" inputmode="decimal" value="${a?.amount!=null?esc(String(a.amount)):''}" placeholder="e.g. 10000"></label><span></span>
     <label class="f wide">Notes<textarea name="notes" rows="2">${esc(a?.notes||'')}</textarea></label></div>`,
-  {submit:a?'Save allocation':'Add allocation',onSubmit:async fd=>{
+  {submit:a?'Save Allocation':'Add Allocation',onSubmit:async fd=>{
     const amount=parseAmount(fd.get('amount'));if(amount===undefined){toast('Type the amount as a number, or leave it blank');return false}
     const row={allocation:fval(fd,'allocation'),secondary:fval(fd,'secondary')||'None',amount,notes:fval(fd,'notes')};
     const {error}=a?await sb.from('deal_allocations').update(row).eq('id',a.id):await sb.from('deal_allocations').insert({...row,opp_id:o.id});
@@ -3536,10 +3557,10 @@ const dcol=(h,f)=>({h,v:r=>fmtDate(f(r)),html:r=>esc(fmtDate(f(r)))});
 function renderFinReports(){
   const rng=finRange(),t=todayYmd(),rv=fin.rv,isCom=rv==='com';
   $('#frv').value=rv;$('#frange').value=fin.range;$('#ffromf').hidden=$('#ftof').hidden=fin.range!=='custom';$('#ffrom').value=fin.from;$('#fto').value=fin.to;
-  $('#frangef').hidden=rv==='ar';$('#frownerl').textContent=isCom?'Salesperson':'Deal owner';
+  $('#frangef').hidden=rv==='ar';$('#frownerl').textContent=isCom?'Salesperson':'Deal Owner';
   const ownIds=isCom?[...new Set(fin.com.map(c=>c.person_id).filter(Boolean))]:[...new Set(fin.deals.map(d=>d.owner_id).filter(Boolean))];
   if(fin.rowner&&!ownIds.includes(fin.rowner))fin.rowner='';
-  $('#frowner').innerHTML=opt('',isCom?'All salespeople':'All owners',fin.rowner)+ownIds.sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).map(id=>opt(id,who(id),fin.rowner)).join('');
+  $('#frowner').innerHTML=opt('',isCom?'All Salespeople':'All Owners',fin.rowner)+ownIds.sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).map(id=>opt(id,who(id),fin.rowner)).join('');
   const byId={};fin.deals.forEach(d=>byId[d.id]=d);
   const deals=fin.deals.filter(d=>isCom||!fin.rowner||d.owner_id===fin.rowner);const dealSet=new Set(deals.map(d=>d.id));
   const sums={};fin.deals.forEach(d=>sums[d.id]=finSum(d));
@@ -3552,56 +3573,56 @@ function renderFinReports(){
   if(rv==='ar'){
     const open=fin.inv.filter(i=>!i.paid_on&&dealSet.has(i.opp_id)).map(i=>({...tag(i),late:i.due_date&&i.due_date<t?Math.round((new Date(t+'T12:00:00')-new Date(i.due_date+'T12:00:00'))/864e5):0}))
       .sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
-    const B=[['Not due yet',r=>!r.late],['1–30 days late',r=>r.late>=1&&r.late<=30],['31–60 days late',r=>r.late>30&&r.late<=60],['61–90 days late',r=>r.late>60&&r.late<=90],['Over 90 days late',r=>r.late>90]];
+    const B=[['Not Due Yet',r=>!r.late],['1–30 Days Late',r=>r.late>=1&&r.late<=30],['31–60 Days Late',r=>r.late>30&&r.late<=60],['61–90 Days Late',r=>r.late>60&&r.late<=90],['Over 90 Days Late',r=>r.late>90]];
     const tot=fsum(open,i=>i.amount),od=open.filter(r=>r.late);
     const won=deals.filter(d=>d.stage==='closed_won');
-    kp([[m2(tot),`Outstanding · ${open.length} invoice${open.length===1?'':'s'}`],[m2(fsum(od,i=>i.amount)),`Overdue · ${od.length}`],[m2(fsum(open.filter(r=>!r.late),i=>i.amount)),'Not due yet'],
-      [m2(fsum(won,d=>sums[d.id].notInvoiced)),'Closed won, not invoiced yet'],[m2(fsum(open.filter(r=>!r.sent_on),i=>i.amount)),'Not sent to client yet']]);
-    head('Aging','Unpaid invoices by how late they are, as of today.','Unpaid invoices','Every invoice without a paid date, soonest due first. Click a row to open the deal.','Receivables are as of today, so the Dates filter doesn’t apply.');
+    kp([[m2(tot),`Outstanding · ${open.length} invoice${open.length===1?'':'s'}`],[m2(fsum(od,i=>i.amount)),`Overdue · ${od.length}`],[m2(fsum(open.filter(r=>!r.late),i=>i.amount)),'Not Due Yet'],
+      [m2(fsum(won,d=>sums[d.id].notInvoiced)),'Closed Won, Not Invoiced Yet'],[m2(fsum(open.filter(r=>!r.sent_on),i=>i.amount)),'Not Sent To Client Yet']]);
+    head('Aging','Unpaid invoices by how late they are, as of today.','Unpaid Invoices','Every invoice without a paid date, soonest due first. Click a row to open the deal.','Receivables are as of today, so the Dates filter doesn’t apply.');
     finTable('#frtab1',[tcol('Age',r=>r.l),ncol('Invoices',r=>r.n),mcol('Amount',r=>r.a),tcol('Share',r=>r.p)],
       B.map(([l,f])=>{const x=open.filter(f),a=fsum(x,i=>i.amount);return {l,n:x.length,a,p:tot?Math.round(100*a/tot)+'%':'—'}}),{foot:['Total',open.length,m2(tot),'100%']});
     cols2=[dealCol,clientCol,tcol('Invoice #',r=>r.invoice_no),mcol('Amount',r=>r.amount),dcol('Due',r=>r.due_date),
-      {h:'Days late',num:1,v:r=>r.late||'',html:r=>r.late?`<span class="overdue">${r.late}</span>`:''},dcol('Submitted to AR',r=>r.ar_submitted_on),dcol('Sent to client',r=>r.sent_on),
+      {h:'Days Late',num:1,v:r=>r.late||'',html:r=>r.late?`<span class="overdue">${r.late}</span>`:''},dcol('Submitted To AR',r=>r.ar_submitted_on),dcol('Sent To Client',r=>r.sent_on),
       tcol('Owner',r=>D(r).owner_id?nameOf(D(r).owner_id):''),tcol('Notes',r=>r.notes)];rows2=open;name='receivables';
   }else if(rv==='cash'){
     const paid=fin.inv.filter(i=>i.paid_on&&inRng(i.paid_on,rng)&&dealSet.has(i.opp_id)).map(tag).sort((a,b)=>b.paid_on.localeCompare(a.paid_on));
     const tp=paid.filter(i=>i.sent_on).map(i=>Math.round((new Date(i.paid_on+'T12:00:00')-new Date(i.sent_on+'T12:00:00'))/864e5));
     const due=paid.filter(i=>i.due_date),ontime=due.filter(i=>i.paid_on<=i.due_date).length;
-    kp([[m2(fsum(paid,i=>i.amount)),'Collected'],[String(paid.length),'Invoices paid'],[tp.length?Math.round(tp.reduce((a,b)=>a+b,0)/tp.length)+' days':'—','Average days to pay (sent → paid)'],[due.length?Math.round(100*ontime/due.length)+'%':'—','Paid on time']]);
-    head('By month','Payments received each month (by paid date).','Payments received','Every invoice paid in these dates. Click a row to open the deal.','Collections use each invoice’s paid date: '+rngTxt+'.');
+    kp([[m2(fsum(paid,i=>i.amount)),'Collected'],[String(paid.length),'Invoices Paid'],[tp.length?Math.round(tp.reduce((a,b)=>a+b,0)/tp.length)+' days':'—','Average Days To Pay (Sent → Paid)'],[due.length?Math.round(100*ontime/due.length)+'%':'—','Paid On Time']]);
+    head('By Month','Payments received each month (by paid date).','Payments Received','Every invoice paid in these dates. Click a row to open the deal.','Collections use each invoice’s paid date: '+rngTxt+'.');
     const bm={};paid.forEach(i=>{const k=i.paid_on.slice(0,7);(bm[k]=bm[k]||{k,n:0,a:0}).n++;bm[k].a+=fnum(i.amount)});
     const ms=Object.values(bm).sort((a,b)=>a.k.localeCompare(b.k));
-    finTable('#frtab1',[tcol('Month',r=>monthLabel(r.k)),ncol('Invoices paid',r=>r.n),mcol('Collected',r=>r.a)],ms,{foot:['Total',paid.length,m2(fsum(paid,i=>i.amount))]});
-    cols2=[dcol('Paid',r=>r.paid_on),dealCol,clientCol,tcol('Invoice #',r=>r.invoice_no),mcol('Amount',r=>r.amount),dcol('Due',r=>r.due_date),dcol('Sent to client',r=>r.sent_on),
-      ncol('Days to pay',r=>r.sent_on?Math.round((new Date(r.paid_on+'T12:00:00')-new Date(r.sent_on+'T12:00:00'))/864e5):''),tcol('Owner',r=>D(r).owner_id?nameOf(D(r).owner_id):'')];rows2=paid;name='collections';
+    finTable('#frtab1',[tcol('Month',r=>monthLabel(r.k)),ncol('Invoices Paid',r=>r.n),mcol('Collected',r=>r.a)],ms,{foot:['Total',paid.length,m2(fsum(paid,i=>i.amount))]});
+    cols2=[dcol('Paid',r=>r.paid_on),dealCol,clientCol,tcol('Invoice #',r=>r.invoice_no),mcol('Amount',r=>r.amount),dcol('Due',r=>r.due_date),dcol('Sent To Client',r=>r.sent_on),
+      ncol('Days To Pay',r=>r.sent_on?Math.round((new Date(r.paid_on+'T12:00:00')-new Date(r.sent_on+'T12:00:00'))/864e5):''),tcol('Owner',r=>D(r).owner_id?nameOf(D(r).owner_id):'')];rows2=paid;name='collections';
   }else if(rv==='com'){
     const rows=fin.com.filter(c=>inRng(dayOf(D(c).closed_at),rng)&&(!fin.rowner||c.person_id===fin.rowner)&&byId[c.opp_id]).map(c=>{const o=D(c),s=sums[c.opp_id];
       return {...tag(c),who:comWho(c),amt:comAmt(c,o),earned:comEarned(c,o,s.paid),collected:s.paid}}).sort((a,b)=>a.who.localeCompare(b.who)||String(D(b).closed_at).localeCompare(String(D(a).closed_at)));
     const T=k=>fsum(rows,r=>r[k]);
-    kp([[m2(T('amt')),'Total commission'],[m2(T('earned')),'Earned so far (on collected)'],[m2(fsum(rows.filter(r=>r.paid_on),r=>r.amt)),'Paid out'],[m2(fsum(rows.filter(r=>!r.paid_on),r=>r.amt)),'Not paid out yet']]);
-    head('By salesperson','Commission on deals closed in these dates. Earned so far = commission × share of the deal collected.','Every commission','One row per salesperson per deal. Click a row to open the deal.','Commissions use the date the deal closed: '+rngTxt+'.');
+    kp([[m2(T('amt')),'Total Commission'],[m2(T('earned')),'Earned So Far (On Collected)'],[m2(fsum(rows.filter(r=>r.paid_on),r=>r.amt)),'Paid Out'],[m2(fsum(rows.filter(r=>!r.paid_on),r=>r.amt)),'Not Paid Out Yet']]);
+    head('By Salesperson','Commission on deals closed in these dates. Earned so far = commission × share of the deal collected.','Every Commission','One row per salesperson per deal. Click a row to open the deal.','Commissions use the date the deal closed: '+rngTxt+'.');
     const g={};rows.forEach(r=>{const x=g[r.who]=g[r.who]||{who:r.who,deals:new Set(),dealAmt:0,amt:0,earned:0,paid:0,owed:0};x.deals.add(r.opp_id);x.dealAmt+=fnum(D(r).amount);x.amt+=r.amt;x.earned+=r.earned;if(r.paid_on)x.paid+=r.amt;else x.owed+=r.amt});
     const gs=Object.values(g).sort((a,b)=>b.amt-a.amt);
-    finTable('#frtab1',[tcol('Salesperson',r=>r.who),ncol('Deals',r=>r.deals.size),mcol('Deal amount',r=>r.dealAmt),mcol('Commission',r=>r.amt),mcol('Earned so far',r=>r.earned),mcol('Paid out',r=>r.paid),mcol('Not paid out',r=>r.owed)],gs,
+    finTable('#frtab1',[tcol('Salesperson',r=>r.who),ncol('Deals',r=>r.deals.size),mcol('Deal Amount',r=>r.dealAmt),mcol('Commission',r=>r.amt),mcol('Earned So Far',r=>r.earned),mcol('Paid Out',r=>r.paid),mcol('Not Paid Out',r=>r.owed)],gs,
       {foot:['Total',new Set(rows.map(r=>r.opp_id)).size,'',m2(T('amt')),m2(T('earned')),m2(fsum(gs,x=>x.paid)),m2(fsum(gs,x=>x.owed))]});
-    cols2=[tcol('Salesperson',r=>r.who),dealCol,clientCol,dcol('Closed',r=>D(r).closed_at),mcol('Deal amount',r=>D(r).amount),tcol('Rate',r=>rateLabel(r)),mcol('Commission',r=>r.amt),
-      mcol('Collected on deal',r=>r.collected),mcol('Earned so far',r=>r.earned),{h:'Paid out',v:r=>fmtDate(r.paid_on),html:r=>r.paid_on?esc(fmtDate(r.paid_on)):'<span class="muted">Not yet</span>'},tcol('Notes',r=>r.notes)];rows2=rows;name='commissions';
+    cols2=[tcol('Salesperson',r=>r.who),dealCol,clientCol,dcol('Closed',r=>D(r).closed_at),mcol('Deal Amount',r=>D(r).amount),tcol('Rate',r=>rateLabel(r)),mcol('Commission',r=>r.amt),
+      mcol('Collected On Deal',r=>r.collected),mcol('Earned So Far',r=>r.earned),{h:'Paid Out',v:r=>fmtDate(r.paid_on),html:r=>r.paid_on?esc(fmtDate(r.paid_on)):'<span class="muted">Not yet</span>'},tcol('Notes',r=>r.notes)];rows2=rows;name='commissions';
   }else if(rv==='alc'){
     const inR=deals.filter(d=>inRng(dayOf(d.closed_at),rng));const ids=new Set(inR.map(d=>d.id));
     const rows=fin.alc.filter(a=>ids.has(a.opp_id)).map(tag).sort((a,b)=>a.allocation.localeCompare(b.allocation)||String(a.secondary).localeCompare(String(b.secondary)));
     const withA=new Set(rows.map(r=>r.opp_id));
-    kp([[String(withA.size),'Deals with allocations'],[String(inR.filter(d=>d.stage==='closed_won'&&!withA.has(d.id)).length),'Closed won deals with no allocation'],[m2(fsum(rows,r=>r.amount)),'Allocated amount']]);
-    head('By allocation','Deals closed in these dates, by allocation and secondary allocation. A deal with several allocations counts under each.','Every allocation','Click a row to open the deal.','Allocations use the date the deal closed: '+rngTxt+'.');
+    kp([[String(withA.size),'Deals With Allocations'],[String(inR.filter(d=>d.stage==='closed_won'&&!withA.has(d.id)).length),'Closed Won Deals With No Allocation'],[m2(fsum(rows,r=>r.amount)),'Allocated Amount']]);
+    head('By Allocation','Deals closed in these dates, by allocation and secondary allocation. A deal with several allocations counts under each.','Every Allocation','Click a row to open the deal.','Allocations use the date the deal closed: '+rngTxt+'.');
     const g={};rows.forEach(r=>{const k=r.allocation+'|'+(r.secondary||'None');const x=g[k]=g[k]||{a:r.allocation,s:r.secondary||'None',deals:new Set(),amt:0,dealAmt:0};if(!x.deals.has(r.opp_id)){x.deals.add(r.opp_id);x.dealAmt+=fnum(D(r).amount)}x.amt+=fnum(r.amount)});
     const gs=Object.values(g).sort((x,y)=>x.a.localeCompare(y.a)||x.s.localeCompare(y.s));
-    finTable('#frtab1',[tcol('Allocation',r=>r.a),tcol('Secondary',r=>r.s),ncol('Deals',r=>r.deals.size),mcol('Allocated amount',r=>r.amt),mcol('Deal amount',r=>r.dealAmt)],gs,{foot:['Total','',withA.size,m2(fsum(rows,r=>r.amount)),'']});
-    cols2=[tcol('Allocation',r=>r.allocation),tcol('Secondary',r=>r.secondary||'None'),dealCol,clientCol,dcol('Closed',r=>D(r).closed_at),mcol('Deal amount',r=>D(r).amount),
+    finTable('#frtab1',[tcol('Allocation',r=>r.a),tcol('Secondary',r=>r.s),ncol('Deals',r=>r.deals.size),mcol('Allocated Amount',r=>r.amt),mcol('Deal Amount',r=>r.dealAmt)],gs,{foot:['Total','',withA.size,m2(fsum(rows,r=>r.amount)),'']});
+    cols2=[tcol('Allocation',r=>r.allocation),tcol('Secondary',r=>r.secondary||'None'),dealCol,clientCol,dcol('Closed',r=>D(r).closed_at),mcol('Deal Amount',r=>D(r).amount),
       {h:'Allocated',num:1,v:r=>r.amount??'',html:r=>r.amount!=null?esc(m2(r.amount)):'<span class="muted">—</span>'},tcol('Notes',r=>r.notes)];rows2=rows;name='allocations';
   }else{
     const inR=deals.filter(d=>d.stage==='closed_won'&&inRng(dayOf(d.closed_at),rng)).sort((a,b)=>String(b.closed_at).localeCompare(String(a.closed_at)));
     const S=k=>fsum(inR,d=>sums[d.id][k]);
-    kp([[m2(fsum(inR,d=>d.amount)),`Closed won · ${inR.length} deal${inR.length===1?'':'s'}`],[m2(S('invoiced')),'Invoiced'],[m2(S('paid')),'Collected'],[m2(S('outstanding')),'Outstanding'],[m2(S('notInvoiced')),'Not invoiced yet'],[m2(S('comTotal')),'Commissions']]);
-    head('By month closed','Closed Won deals by the month they closed, and where their money stands today.','Closed Won deals','Click a row to open the deal.','Deals use the date they closed: '+rngTxt+'.');
+    kp([[m2(fsum(inR,d=>d.amount)),`Closed Won · ${inR.length} deal${inR.length===1?'':'s'}`],[m2(S('invoiced')),'Invoiced'],[m2(S('paid')),'Collected'],[m2(S('outstanding')),'Outstanding'],[m2(S('notInvoiced')),'Not Invoiced Yet'],[m2(S('comTotal')),'Commissions']]);
+    head('By Month Closed','Closed Won deals by the month they closed, and where their money stands today.','Closed Won Deals','Click a row to open the deal.','Deals use the date they closed: '+rngTxt+'.');
     const bm={};inR.forEach(d=>{const k=dayOf(d.closed_at).slice(0,7),s=sums[d.id];const x=bm[k]=bm[k]||{k,n:0,amt:0,inv:0,paid:0,out:0};x.n++;x.amt+=fnum(d.amount);x.inv+=s.invoiced;x.paid+=s.paid;x.out+=s.outstanding});
     finTable('#frtab1',[tcol('Month',r=>monthLabel(r.k)),ncol('Deals',r=>r.n),mcol('Amount',r=>r.amt),mcol('Invoiced',r=>r.inv),mcol('Collected',r=>r.paid),mcol('Outstanding',r=>r.out)],
       Object.values(bm).sort((a,b)=>a.k.localeCompare(b.k)),{foot:['Total',inR.length,m2(fsum(inR,d=>d.amount)),m2(S('invoiced')),m2(S('paid')),m2(S('outstanding'))]});
@@ -3622,7 +3643,7 @@ $('#fexport').onclick=()=>{
   if(fin.view==='reports'){const c=fin.csv;if(!c||!c.rows.length)return toast('Nothing to export');
     return download(c.name,[c.cols.map(x=>csvCell(x.h)).join(','),...c.rows.map(r=>c.cols.map(x=>csvCell(x.v(r))).join(','))])}
   const rows=finListRows().filter(x=>!fin.status||x.s.status===fin.status);if(!rows.length)return toast('No deals to export');
-  const H=['Deal Name','Client','Agency','Owner','Closed','Amount','Invoiced','Collected','Outstanding','Overdue','Not invoiced','Next due','Status','Commissions','Commission unpaid','Allocations'];
+  const H=['Deal Name','Client','Agency','Owner','Closed','Amount','Invoiced','Collected','Outstanding','Overdue','Not Invoiced','Next Due','Status','Commissions','Commission Unpaid','Allocations'];
   download(`the-ark-finance-deals-${ymd(new Date())}.csv`,[H.map(csvCell).join(','),...rows.map(({o,s})=>[o.deal_name,o.client?.name||'',o.agency?.name||'Direct',o.owner_id?nameOf(o.owner_id):'',fmtDate(o.closed_at),
     fnum(o.amount),s.invoiced,s.paid,s.outstanding,s.overdueAmt,s.notInvoiced,fmtDate(s.next),FIN_STATUS[s.status],s.comTotal,s.comOwed,
     s.alc.map(a=>a.allocation+(a.secondary&&a.secondary!=='None'?' / '+a.secondary:'')).join('; ')].map(csvCell).join(','))])};
