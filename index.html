@@ -269,6 +269,16 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 .g-closed_won{--c:#16a34a;--t:#ddf5e5;--ink:#11803a}
 .g-closed_lost{--c:#6b7280;--t:#eceef1;--ink:#4b5563}
 .role.salesperson{background:#e6f7ec;color:#15803d}
+.role.finance{background:#f3e8ff;color:#6b21a8}
+/* Finances (v22) */
+.fpill{display:inline-flex;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;white-space:nowrap;background:var(--surface-3);color:var(--muted)}
+.fpill.f-paid{background:#e6f7ec;color:#15803d}.fpill.f-overdue{background:#fdecec;color:#b42318}.fpill.f-partial{background:#fff4e0;color:#9a5b00}.fpill.f-open{background:#e8f0fe;color:#1d4ed8}
+.chip.f-none{--c:#667085}.chip.f-open{--c:#2563eb}.chip.f-partial{--c:#d97706}.chip.f-overdue{--c:#d92d20}.chip.f-paid{--c:#15803d}
+.fincols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+@media (max-width:900px){.fincols{grid-template-columns:minmax(0,1fr)}}
+#fin-detail,#fin-list,#fin-reports{display:grid;gap:14px}
+#fin-detail[hidden],#fin-list[hidden],#fin-reports[hidden]{display:none}
+.fin-acts{text-align:right;white-space:nowrap}
 select.viewas{appearance:auto;border:0;cursor:pointer;font-family:inherit;padding:2px 4px}
 select.viewas.caller{background:#fff1e6;color:#b54708}
 .viewbar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px 12px;background:#fff7ed;border-bottom:1px solid #fed7aa;color:#9a3412;font-size:13px;font-weight:600;padding:8px 16px;text-align:center}
@@ -530,6 +540,7 @@ ul.files li .danger{margin-left:auto}
       <button role="tab" data-tab="agencies" aria-selected="false" data-sell hidden><svg class="ic" viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13"/><path d="M9 21v-6h6v6M8 10h.01M12 10h.01M16 10h.01"/></svg>Agencies</button>
       <button role="tab" data-tab="clock" aria-selected="false" data-callonly hidden><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Time clock <span class="tabdot" id="clkdot"></span></button>
       <button role="tab" data-tab="reports" aria-selected="false" data-rep hidden><svg class="ic" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Reports</button>
+      <button role="tab" data-tab="fin" aria-selected="false" data-fin hidden><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9.5v5M17 9.5v5"/></svg>Finances</button>
       <button role="tab" data-tab="import" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 15v4h14v-4"/></svg>Import</button>
       <button role="tab" data-tab="team" aria-selected="false" data-admin hidden><svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M16 5a3 3 0 0 1 0 6M18 14c2 .5 3 2 3 5"/></svg>Team</button>
     </nav>
@@ -777,6 +788,53 @@ ul.files li .danger{margin-left:auto}
       </div>
     </section>
 
+    <!-- Finances (Finance role / Finance access) -->
+    <section id="tab-fin" class="page" hidden>
+      <div class="pagehead"><div><h1>Finances</h1><p id="fsub">Invoices, payments, commissions and allocations for every Closed Won deal.</p></div>
+        <div class="actions"><div class="seg" id="fview"><button type="button" data-v="deals" aria-pressed="true">Closed deals</button><button type="button" data-v="reports" aria-pressed="false">Reports</button></div>
+          <button class="btn" id="fexport"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>Export CSV</button></div></div>
+      <div id="fin-list" class="page">
+        <div class="kpis" id="fkpis"></div>
+        <div class="chips" id="fchips"></div>
+        <div class="panel">
+          <div class="toolbar">
+            <input type="search" id="fsearch" placeholder="Search deal, client, agency or invoice #">
+            <select id="fowner" aria-label="Owner"></select>
+            <select id="fsort" aria-label="Sort">
+              <option value="closed">Sort: Closed, newest</option>
+              <option value="due">Sort: Next payment due, soonest</option>
+              <option value="balance">Sort: Outstanding, highest</option>
+              <option value="amount">Sort: Amount, highest</option>
+              <option value="deal">Sort: Deal name A–Z</option>
+            </select>
+          </div>
+          <div class="tablebox"><table>
+            <thead><tr><th>Deal Name</th><th>Client</th><th>Agency</th><th>Owner</th><th>Closed</th><th class="num">Amount</th><th class="num">Invoiced</th><th class="num">Collected</th><th class="num">Outstanding</th><th>Next due</th><th>Status</th></tr></thead>
+            <tbody id="fbody"></tbody>
+          </table></div>
+          <div class="boardfoot"><span class="stat" id="ffoot"></span></div>
+        </div>
+      </div>
+      <div id="fin-detail" class="page" hidden></div>
+      <div id="fin-reports" class="page" hidden>
+        <div class="panel"><div class="filters">
+          <label class="f">Report<select id="frv">
+            <option value="ar">Receivables (unpaid invoices)</option><option value="cash">Collections (payments received)</option>
+            <option value="com">Commissions</option><option value="alc">Allocations</option><option value="deals">Closed Won deals</option></select></label>
+          <label class="f" id="frangef">Dates<select id="frange">
+            <option value="this_month">This month</option><option value="last_month">Last month</option><option value="this_q">This quarter</option><option value="last_q">Last quarter</option>
+            <option value="this_year" selected>This year</option><option value="last_year">Last year</option><option value="all">All time</option><option value="custom">Pick dates…</option></select></label>
+          <label class="f" id="ffromf" hidden>From<input type="date" id="ffrom"></label>
+          <label class="f" id="ftof" hidden>To<input type="date" id="fto"></label>
+          <label class="f"><span id="frownerl">Deal owner</span><select id="frowner"></select></label>
+          <span class="stat" style="flex:1 1 260px;align-self:center" id="frnote"></span>
+        </div></div>
+        <div class="kpis" id="frkpis"></div>
+        <div class="panel"><div class="panel-h"><div><h2 id="frt1"></h2><p class="stat" style="margin:2px 0 0" id="frs1"></p></div></div><div class="tablebox"><table id="frtab1"></table></div></div>
+        <div class="panel"><div class="panel-h"><div><h2 id="frt2"></h2><p class="stat" style="margin:2px 0 0" id="frs2"></p></div></div><div class="tablebox"><table id="frtab2"></table></div></div>
+      </div>
+    </section>
+
     <!-- Import -->
     <section id="tab-import" class="page" hidden>
       <div class="pagehead"><div><h1>Import leads</h1><p>Bring in a ZoomInfo export or any CSV or Excel list.</p></div></div>
@@ -816,7 +874,7 @@ ul.files li .danger{margin-left:auto}
         <div class="panel-h"><div><h2>People</h2><p class="stat" style="margin:2px 0 0">Invite someone, then send them this site's address. They click "Create your account" and use the invited email.</p></div></div>
         <form class="toolbar" id="inviteform">
           <input type="email" id="invemail" placeholder="name@company.com" required style="flex:1 1 240px;width:auto">
-          <select id="invrole" aria-label="Role"><option value="caller">Caller</option><option value="salesperson">Salesperson</option><option value="admin">Admin</option></select>
+          <select id="invrole" aria-label="Role"><option value="caller">Caller</option><option value="salesperson">Salesperson</option><option value="admin">Admin</option><option value="finance">Finance</option></select>
           <button class="btn primary" type="submit">Invite</button>
         </form>
         <div class="tablebox"><table id="roster"></table></div>
@@ -884,7 +942,10 @@ const isSales=()=>me&&me.role==='salesperson';
 const canSell=()=>!!me&&['owner','admin','salesperson'].includes(me.role);
 const isCaller=()=>!!me&&me.role==='caller';
 const canSeeReports=()=>canSell()||isCaller();
-const roleLabel=r=>({owner:'Owner',admin:'Admin',salesperson:'Salesperson',caller:'Caller'}[r]||r);
+const roleLabel=r=>({owner:'Owner',admin:'Admin',salesperson:'Salesperson',caller:'Caller',finance:'Finance'}[r]||r);
+// Finance (v22): the Finance role sees only the Finances tab. Owners always have Finance access; the Owner can switch it on for anyone else (profiles.finance).
+const isFinRole=()=>!!me&&me.role==='finance';
+const canFinance=()=>!!me&&me.role===me.realRole&&(me.role==='owner'||me.role==='finance'||!!me.finance);
 const canEditLead=l=>!!l&&!l.deleted_at&&(isAdmin()||l.owner_id===me.id||(isSales()&&l.sales_owner_id===me.id));
 const canConvert=l=>!!l&&!l.deleted_at&&l.status!=='converted'&&(canSell()||l.owner_id===me.id);
 const sc=s=>STATUSES[s]?'s-'+s:'s-none';
@@ -970,7 +1031,7 @@ async function enter(){
     if(isSales()&&!openedOnce)opp.owner='__me';
     if(isCaller())loadClock();
     openedOnce=true;
-    setTab(isSales()&&tab==='board'&&!cur?'opps':tab);
+    setTab(isFinRole()?'fin':isSales()&&tab==='board'&&!cur?'opps':tab);
   } finally{entering=false}
 }
 sb.auth.onAuthStateChange((ev)=>{
@@ -979,20 +1040,23 @@ sb.auth.onAuthStateChange((ev)=>{
   if(ev==='SIGNED_OUT'){me=null;showAuth('signin')}
 });
 (async()=>{const {data}=await sb.auth.getSession();if(data.session)enter();else if(!/type=recovery/.test(location.hash))showAuth('signin')})();
-async function loadPeople(){const {data}=await sb.from('profiles').select('id,email,full_name,role,active,created_at').order('created_at');(data||[]).forEach(p=>people[p.id]=p)}
+async function loadPeople(){const {data}=await sb.from('profiles').select('*').order('created_at');(data||[]).forEach(p=>people[p.id]=p)}
 
 /* ===================== Navigation ===================== */
-const TABS=['lead','board','clock','opps','clients','agencies','reports','import','team'];
-function allowed(t){if(t==='import'||t==='team')return isAdmin();if(t==='opps'||t==='agencies'||t==='clients')return canSell();if(t==='reports')return canSeeReports();if(t==='clock')return isCaller();if(t==='lead')return !!cur;return true}
+const TABS=['lead','board','clock','opps','clients','agencies','reports','fin','import','team'];
+function allowed(t){if(isFinRole())return t==='fin';if(t==='fin')return canFinance();if(t==='import'||t==='team')return isAdmin();if(t==='opps'||t==='agencies'||t==='clients')return canSell();if(t==='reports')return canSeeReports();if(t==='clock')return isCaller();if(t==='lead')return !!cur;return true}
 function showTab(t){tab=t;const nav=t==='lead'?'board':t;document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===nav));TABS.forEach(k=>$('#tab-'+k).hidden=k!==t)}
-function setTab(t){if(!allowed(t))t=isSales()?'opps':'board';showTab(t);
-  if(t==='lead')selectLead(cur.id);else if(t==='board')loadBoard();else if(t==='team')loadTeam();else if(t==='opps')loadOpps();else if(t==='agencies')loadAgencies();else if(t==='clients')loadClients();else if(t==='reports')loadReports();else if(t==='clock')loadClock()}
+function setTab(t){if(!allowed(t))t=isFinRole()?'fin':isSales()?'opps':'board';showTab(t);
+  if(t==='fin')loadFin();else if(t==='lead')selectLead(cur.id);else if(t==='board')loadBoard();else if(t==='team')loadTeam();else if(t==='opps')loadOpps();else if(t==='agencies')loadAgencies();else if(t==='clients')loadClients();else if(t==='reports')loadReports();else if(t==='clock')loadClock()}
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{if(b.dataset.tab==='reports'&&canSell())repView='appts';setTab(b.dataset.tab)});
 function applyRole(){const a=isAdmin(),sl=canSell();document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=!a);
   document.querySelectorAll('[data-sell]').forEach(b=>b.hidden=!sl);document.querySelectorAll('[data-rep]').forEach(b=>b.hidden=!canSeeReports());
   document.querySelectorAll('[data-callonly]').forEach(b=>b.hidden=!isCaller());document.querySelectorAll('[data-call]').forEach(b=>b.hidden=isSales());document.querySelectorAll('[data-salesonly]').forEach(b=>b.hidden=!isSales());
   $('#boardsub').textContent=sl?'Every lead, color-coded by status.':'Your leads, color-coded by status.';
-  $('#invrole').querySelector('[value=admin]').hidden=!isOwner();}
+  document.querySelectorAll('[data-fin]').forEach(b=>b.hidden=!canFinance());
+  // The Finance role works only in Finances: no Leads tab, lead search or New Lead.
+  const fr=isFinRole();$('.tabs [data-tab=board]').hidden=fr;$('#gsearch').hidden=fr;if(fr)$('#newleadbtn').hidden=true;
+  $('#invrole').querySelector('[value=admin]').hidden=!isOwner();$('#invrole').querySelector('[value=finance]').hidden=!isOwner();}
 
 /* ===================== View as (admins preview caller / salesperson) ===================== */
 const canSwitchView=()=>!!me&&['owner','admin'].includes(me.realRole);
@@ -1670,12 +1734,18 @@ async function loadTeam(){
   $('#appts').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>openLead(tr.dataset.id));
   const invites=inv.data||[];
   const ps=Object.values(people).sort((a,b)=>(a.role==='owner'?-1:0)-(b.role==='owner'?-1:0)||nameOf(a.id).localeCompare(nameOf(b.id)));
-  $('#roster').innerHTML=`<thead><tr><th>Person</th><th>Email</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>`+
-    ps.map(p=>{const rn=canRename(p)?`<button class="btn small" data-rename="${p.id}">Rename</button> `:'';const ctl=rn+(isOwner()&&p.id!==me.id&&p.id!==mainOwner()?.id?`<select data-role="${p.id}" aria-label="Role" style="width:auto">${['caller','salesperson','admin','owner'].map(r=>`<option value="${r}" ${r===p.role?'selected':''}>${roleLabel(r)}</option>`).join('')}</select> <button class="btn small ${p.active?'danger':''}" data-active="${p.id}" data-to="${p.active?'0':'1'}">${p.active?'Turn off access':'Turn on access'}</button>`:'');
-      return `<tr><td>${personCell(p.id)}</td><td class="stat">${esc(p.email)}</td><td><span class="role ${p.role}">${roleLabel(p.role)}</span></td><td class="stat">${p.active?'Active':'Access off'}</td><td style="text-align:right">${ctl}</td></tr>`}).join('')+
-    invites.map(i=>`<tr><td class="muted">Invited</td><td class="stat">${esc(i.email)}</td><td><span class="role ${i.role}">${roleLabel(i.role)}</span></td><td class="stat">Hasn’t created an account yet</td><td style="text-align:right"><button class="btn small" data-uninvite="${esc(i.email)}">Cancel invite</button></td></tr>`).join('')+`</tbody>`;
+  // Finance access: always on for Owners and the Finance role; the Owner ticks it for anyone else.
+  const finCell=p=>p.role==='owner'||p.role==='finance'?'<span class="stat">Always</span>'
+    :isOwner()?`<label class="stat" style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" data-fin-on="${p.id}" ${p.finance?'checked':''}>${p.finance?'On':'Off'}</label>`:`<span class="stat">${p.finance?'On':'Off'}</span>`;
+  $('#roster').innerHTML=`<thead><tr><th>Person</th><th>Email</th><th>Role</th><th>Finance access</th><th>Status</th><th></th></tr></thead><tbody>`+
+    ps.map(p=>{const rn=canRename(p)?`<button class="btn small" data-rename="${p.id}">Rename</button> `:'';const ctl=rn+(isOwner()&&p.id!==me.id&&p.id!==mainOwner()?.id?`<select data-role="${p.id}" aria-label="Role" style="width:auto">${['caller','salesperson','admin','finance','owner'].map(r=>`<option value="${r}" ${r===p.role?'selected':''}>${roleLabel(r)}</option>`).join('')}</select> <button class="btn small ${p.active?'danger':''}" data-active="${p.id}" data-to="${p.active?'0':'1'}">${p.active?'Turn off access':'Turn on access'}</button>`:'');
+      return `<tr><td>${personCell(p.id)}</td><td class="stat">${esc(p.email)}</td><td><span class="role ${p.role}">${roleLabel(p.role)}</span></td><td>${finCell(p)}</td><td class="stat">${p.active?'Active':'Access off'}</td><td style="text-align:right">${ctl}</td></tr>`}).join('')+
+    invites.map(i=>`<tr><td class="muted">Invited</td><td class="stat">${esc(i.email)}</td><td><span class="role ${i.role}">${roleLabel(i.role)}</span></td><td></td><td class="stat">Hasn’t created an account yet</td><td style="text-align:right"><button class="btn small" data-uninvite="${esc(i.email)}">Cancel invite</button></td></tr>`).join('')+`</tbody>`;
   $('#roster').querySelectorAll('[data-role]').forEach(b=>b.onchange=async()=>{const p=people[b.dataset.role];const {error}=await sb.rpc('set_member',{p_user:p.id,p_role:b.value,p_active:p.active});if(error)toast(friendly(error));else{toast('Role updated');loadTeam()}});
   $('#roster').querySelectorAll('[data-active]').forEach(b=>b.onclick=async()=>{const p=people[b.dataset.active];const {error}=await sb.rpc('set_member',{p_user:p.id,p_role:p.role,p_active:b.dataset.to==='1'});if(error)toast(friendly(error));else{toast('Access updated');loadTeam()}});
+  $('#roster').querySelectorAll('[data-fin-on]').forEach(b=>b.onchange=async()=>{const p=people[b.dataset.finOn];const {error}=await sb.rpc('set_finance',{p_user:p.id,p_on:b.checked});
+    if(error){b.checked=!b.checked;toast(/set_finance|schema cache|does not exist/i.test(error.message||'')?'Finances aren’t set up yet. Run supabase-v22-finances.sql in Supabase first.':friendly(error))}
+    else{toast(`Finance access ${b.checked?'turned on':'turned off'} for ${nameOf(p.id)}`);loadTeam()}});
   $('#roster').querySelectorAll('[data-rename]').forEach(b=>b.onclick=()=>renameForm(people[b.dataset.rename]));
   $('#roster').querySelectorAll('[data-uninvite]').forEach(b=>b.onclick=async()=>{const {error}=await sb.from('invites').delete().eq('email',b.dataset.uninvite);if(error)toast(friendly(error));else loadTeam()});
   const used=Number(size.data)||0;const pct=Math.min(1,used/FREE_DB_BYTES);
@@ -1772,7 +1842,7 @@ const MAX_FILE=50*1024*1024;
 const fileSize=n=>n<1024?n+' B':n<1048576?Math.round(n/1024)+' KB':(n/1048576).toFixed(1)+' MB';
 const filesSetupErr=m=>/attachments|bucket|storage/i.test(m)&&/does not exist|not found|schema cache|relation/i.test(m)?'Files aren’t set up yet. Run supabase-v19-the-arc.sql in Supabase first.':null;
 function filesPanel(){return '<div class="panel filesbox"><div class="panel-h"><h3>Files</h3></div><div class="panel-b"><span class="stat">Loading…</span></div></div>'}
-const FILE_PAGE={opp:'#opp-detail',client:'#cl-detail',agency:'#ag-detail'};
+const FILE_PAGE={opp:'#opp-detail',client:'#cl-detail',agency:'#ag-detail',fin:'#fin-detail'};
 async function loadFiles(kind,id,ed){
   const box=document.querySelector(FILE_PAGE[kind]+' .filesbox');if(!box)return;
   let data,error;
@@ -1783,8 +1853,8 @@ async function loadFiles(kind,id,ed){
     <div class="panel-b">${error?`<span class="stat">${esc(filesSetupErr(error.message||'')||friendly(error))}</span>`
       :list.length?`<ul class="files">${list.map(f=>`<li><button type="button" class="linkbtn" data-fget="${esc(f.id)}" title="Download">${esc(f.name)}</button>
         <span class="stat">${esc(fileSize(f.size||0))} · ${esc(f.uploaded_by?nameOf(f.uploaded_by):'')} · ${esc(fmtWhen(f.created_at))}</span>
-        ${isAdmin()||f.uploaded_by===me.id?`<button type="button" class="btn small ghost danger" data-fdel="${esc(f.id)}">Remove</button>`:''}</li>`).join('')}</ul>`
-      :`<span class="stat">${ed?'No files yet. Attach contracts, insertion orders, artwork or anything else for this record (50 MB max each).':'No files yet.'}</span>`}</div>`;
+        ${(kind==='fin'?canFinance():isAdmin()||f.uploaded_by===me.id)?`<button type="button" class="btn small ghost danger" data-fdel="${esc(f.id)}">Remove</button>`:''}</li>`).join('')}</ul>`
+      :`<span class="stat">${ed?(kind==='fin'?'No finance files yet. Attach invoices, remittances, signed contracts or commission sheets (50 MB max each). Only people with Finance access see these.':'No files yet. Attach contracts, insertion orders, artwork or anything else for this record (50 MB max each).'):'No files yet.'}</span>`}</div>`;
   const up=box.querySelector('input[type=file]');if(up)up.onchange=async()=>{const files=[...up.files];up.value='';if(!files.length)return;up.disabled=true;
     let n=0;for(const f of files){
       if(f.size>MAX_FILE){toast(`${f.name} is bigger than 50 MB`);continue}
@@ -2023,7 +2093,7 @@ function renderOppDetail(){
    <div class="panel g-${o.stage}">
      <div class="oh"><div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(o.deal_name)}</h2>${stagePill(o.stage)}<span class="tag2">${esc(TYPES[o.type]||'')}</span></div>
        <div style="margin-top:4px;font-size:14.5px">Client: <b>${esc(c.name||'')}</b> · Agency: <b>${esc(agencyName(o))}</b></div></div>
-       <div class="actions">${ed?'<button class="btn soft" id="oedit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit deal</button>':''}${canRevert(o)?'<button class="btn" id="orevert" title="Send this deal back to the caller as a lead"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Revert to lead</button>':''}${isAdmin()&&!o.deleted_at?'<button class="btn danger" id="odel">Delete</button>':''}</div></div>
+       <div class="actions">${ed?'<button class="btn soft" id="oedit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit deal</button>':''}${canFinance()&&o.stage==='closed_won'&&!o.deleted_at?'<button class="btn" id="ofin"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>Finances</button>':''}${canRevert(o)?'<button class="btn" id="orevert" title="Send this deal back to the caller as a lead"><svg class="ic" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Revert to lead</button>':''}${isAdmin()&&!o.deleted_at?'<button class="btn danger" id="odel">Delete</button>':''}</div></div>
      <div class="strip">
        ${cellS('Amount',esc(money(o.amount)))}${cellS('Probability',o.probability+'%')}${cellS('Follow Up',followCell(o))}${cellS('Age',ageDays(o)+' day'+(ageDays(o)===1?'':'s'))}
        ${cellS('Owner',o.owner_id?personCell(o.owner_id):'')}${cellS('Client Source',esc(o.lead_source))}${cellS('Created',esc(fmtWhen(o.created_at))+(o.created_by?' by '+esc(nameOf(o.created_by)):''))}
@@ -2061,6 +2131,7 @@ function renderOppDetail(){
   if(ed){$('#oedit').onclick=()=>openOppForm(o);$('#oedit2').onclick=()=>openOppForm(o)}
   if(isAdmin()&&!o.deleted_at)$('#odel').onclick=()=>deleteOpp(o);
   if(canRevert(o))$('#orevert').onclick=()=>revertOpp(o);
+  if($('#ofin'))$('#ofin').onclick=()=>openFin(o.id);
   if((o.lead_id||o.converted_by)&&ed&&!o.deleted_at){$('#apptshowed').onchange=e=>setShowed(o,e.target.checked);$('#apptdate').onclick=()=>apptDateForm(o)}
   if(o.deleted_at&&!o.reverted_at&&isAdmin())$('#orestore').onclick=async()=>{const {error}=await sb.from('opportunities').update({deleted_at:null,deleted_by:null}).eq('id',o.id);if(error)return toast(friendly(error));oppRows=null;toast('Deal restored');openOpp(o.id)};
   box.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>setStage(o,b.dataset.stage));
@@ -3229,6 +3300,332 @@ function exportAppts(){const rows=apRows();if(!rows.length)return toast('No appo
   rows.forEach(o=>lines.push([apCompany(o),o.contact_name||'',o.hist?o.rep_name:o.owner_id?nameOf(o.owner_id):'',o.hist?o.csr_name:o.converted_by?nameOf(o.converted_by):'',o.appt_at?fmtDate(o.appt_at):'',o.appt_at&&!o.hist?fmtTime(o.appt_at):'',o.appt_showed?'Yes':'No',o.appt_notes||'',o.hist?'':agencyName(o),o.hist?'From CSR sheet':o.deal_name].map(csvCell).join(',')));
   download(`the-ark-appointments-${ap.month||'all'}.csv`,lines)}
 function download(name,lines){const blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast(`Exported ${lines.length-1} rows`)}
+
+/* ===================== Finances (v22) ===================== */
+// Everything after a deal is Closed Won: invoices (payment plans), commissions, allocations and finance files.
+// Tables deal_invoices / deal_commissions / deal_allocations; only can_finance() people can read or change them (RLS).
+const ALLOCATIONS=['TBN Linear','TBN+','TBN Israel','YouTube'];
+const ALLOC_SECONDARY=['None','Erick Stakelbeck','Kirk Cameron','Joel Rosenberg'];
+const COM_PRESETS=['2','3','4','7.5'];
+const FIN_STATUS={none:'Not invoiced',open:'Awaiting payment',partial:'Partly paid',overdue:'Overdue',paid:'Paid in full'};
+const FIN_ORDER=['none','open','partial','overdue','paid'];
+const fin={view:'deals',status:'',owner:'',search:'',sort:'closed',deals:[],inv:[],com:[],alc:[],cur:null,loaded:false,
+  rv:'ar',range:'this_year',from:'',to:'',rowner:'',csv:null};
+const fnum=v=>+v||0;
+const fsum=(a,f)=>a.reduce((n,x)=>n+fnum(f(x)),0);
+const m2=v=>money(Math.round(fnum(v)*100)/100)||'$0';
+const rateLabel=c=>c.manual_amount!=null?'Manual':(+c.rate)+'%';
+function comAmt(c,o){return c.manual_amount!=null?fnum(c.manual_amount):fnum(o?.amount)*fnum(c.rate)/100}
+// Commission earned so far = commission × share of the deal collected.
+function comEarned(c,o,paid){const a=fnum(o?.amount);return a>0?comAmt(c,o)*Math.min(1,paid/a):0}
+const comWho=c=>c.person_id?nameOf(c.person_id):(c.person_name||'Someone');
+const dayOf=iso=>iso?ymd(new Date(iso)):'';
+function finSum(o){
+  const inv=fin.inv.filter(i=>i.opp_id===o.id),com=fin.com.filter(c=>c.opp_id===o.id),alc=fin.alc.filter(a=>a.opp_id===o.id);
+  const t=todayYmd(),amt=fnum(o.amount);
+  const invoiced=fsum(inv,i=>i.amount),paid=fsum(inv.filter(i=>i.paid_on),i=>i.amount);
+  const open=inv.filter(i=>!i.paid_on),overdue=open.filter(i=>i.due_date&&i.due_date<t);
+  const status=!inv.length?'none':overdue.length?'overdue':!open.length&&invoiced>=amt-0.005?'paid':paid>0?'partial':'open';
+  return {inv,com,alc,invoiced,paid,outstanding:invoiced-paid,overdueAmt:fsum(overdue,i=>i.amount),overdueN:overdue.length,
+    notInvoiced:Math.max(0,amt-invoiced),next:open.map(i=>i.due_date).filter(Boolean).sort()[0]||'',status,
+    comTotal:fsum(com,c=>comAmt(c,o)),comOwed:fsum(com.filter(c=>!c.paid_on),c=>comAmt(c,o)),allocated:fsum(alc,a=>a.amount)}}
+function invStatus(i){return i.paid_on?['paid','Paid']:i.due_date&&i.due_date<todayYmd()?['overdue','Overdue']:i.sent_on?['open','Sent to client']:i.ar_submitted_on?['open','With AR']:['none','Not sent yet']}
+const finPill=(k,l)=>`<span class="fpill f-${k}">${esc(l||FIN_STATUS[k])}</span>`;
+const finErr=e=>{const m=String(e?.message||e||'');return /deal_invoices|deal_commissions|deal_allocations|can_finance|set_finance|finance/i.test(m)&&/does not exist|schema cache|relation|column|function/i.test(m)?'Finances aren’t set up yet. Run supabase-v22-finances.sql in Supabase first.':friendly(e)};
+
+async function loadFinData(){
+  const [o,i,c,a]=await Promise.all([
+    pageAll(()=>sb.from('opportunities').select('id,deal_name,stage,amount,owner_id,closed_at,created_at,products,lead_source,client:clients(name),agency:agencies(name)').is('deleted_at',null).order('closed_at',{ascending:false,nullsFirst:false}).order('id')),
+    pageAll(()=>sb.from('deal_invoices').select('*').order('due_date',{nullsFirst:false}).order('created_at')),
+    pageAll(()=>sb.from('deal_commissions').select('*').order('created_at')),
+    pageAll(()=>sb.from('deal_allocations').select('*').order('created_at'))]);
+  fin.inv=i;fin.com=c;fin.alc=a;
+  const has=new Set([...i,...c,...a].map(x=>x.opp_id));
+  fin.deals=o.filter(d=>d.stage==='closed_won'||has.has(d.id));fin.loaded=true}
+function syncFinSeg(){$('#fview').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===fin.view))}
+async function loadFin(){
+  if(!canFinance())return;
+  syncFinSeg();$('#fin-detail').hidden=true;$('#fin-list').hidden=fin.view!=='deals';$('#fin-reports').hidden=fin.view!=='reports';
+  $('#fsub').textContent=fin.view==='reports'?'Financial reports: receivables, collections, commissions and allocations. Export any of them to CSV.':'Invoices, payments, commissions and allocations for every Closed Won deal. Click a deal to work on it.';
+  try{await loadFinData()}catch(e){const m=esc(finErr(e));
+    $('#fkpis').innerHTML='';$('#fchips').innerHTML='';$('#fbody').innerHTML=`<tr><td colspan="11"><div class="empty">${m}</div></td></tr>`;
+    $('#frkpis').innerHTML='';$('#frtab1').innerHTML=`<tbody><tr><td><div class="empty">${m}</div></td></tr></tbody>`;$('#frtab2').innerHTML='';return}
+  if(fin.view==='reports')renderFinReports();else renderFinList()}
+$('#fview').querySelectorAll('button').forEach(b=>b.onclick=()=>{fin.view=b.dataset.v;loadFin()});
+
+/* ----- Closed deals list ----- */
+function finListRows(){
+  const q=fin.search.trim().toLowerCase();
+  return fin.deals.map(o=>({o,s:finSum(o)})).filter(({o})=>(!fin.owner||o.owner_id===fin.owner)&&
+    (!q||[o.deal_name,o.client?.name,o.agency?.name,...fin.inv.filter(i=>i.opp_id===o.id).map(i=>i.invoice_no)].join(' ').toLowerCase().includes(q)))}
+function renderFinList(){
+  const owners=[...new Set(fin.deals.map(d=>d.owner_id).filter(Boolean))].sort((a,b)=>nameOf(a).localeCompare(nameOf(b)));
+  $('#fowner').innerHTML=opt('','All owners',fin.owner)+owners.map(id=>opt(id,who(id),fin.owner)).join('');
+  const base=finListRows();const T=k=>base.reduce((n,x)=>n+x.s[k],0);
+  const won=base.filter(x=>x.o.stage==='closed_won');
+  $('#fkpis').innerHTML=[[m2(fsum(won,x=>x.o.amount)),`Closed won · ${won.length} deal${won.length===1?'':'s'}`],[m2(T('invoiced')),'Invoiced'],[m2(T('paid')),'Collected'],
+    [m2(T('outstanding')),'Outstanding'],[m2(T('overdueAmt')),'Overdue'],[m2(T('notInvoiced')),'Not invoiced yet'],[m2(T('comOwed')),'Commissions unpaid']]
+    .map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+  const cnt={};base.forEach(x=>cnt[x.s.status]=(cnt[x.s.status]||0)+1);
+  $('#fchips').innerHTML=`<button class="chip all" data-s="" aria-pressed="${!fin.status}"><i></i>All <b>${base.length}</b></button>`+
+    FIN_ORDER.map(k=>`<button class="chip f-${k}" data-s="${k}" aria-pressed="${fin.status===k}"><i></i>${FIN_STATUS[k]} <b>${cnt[k]||0}</b></button>`).join('');
+  $('#fchips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{fin.status=c.dataset.s;renderFinList()});
+  const by={closed:(a,b)=>String(b.o.closed_at||'').localeCompare(String(a.o.closed_at||'')),due:(a,b)=>(a.s.next||'9999').localeCompare(b.s.next||'9999'),
+    balance:(a,b)=>b.s.outstanding-a.s.outstanding,amount:(a,b)=>fnum(b.o.amount)-fnum(a.o.amount),deal:(a,b)=>a.o.deal_name.localeCompare(b.o.deal_name)};
+  const rows=base.filter(x=>!fin.status||x.s.status===fin.status).sort(by[fin.sort]||by.closed);const t=todayYmd();
+  $('#fbody').innerHTML=rows.length?rows.map(({o,s})=>`<tr class="click" data-id="${o.id}"><td class="wrap"><span class="co">${esc(o.deal_name)}</span>${o.stage!=='closed_won'?`<div class="sub">${esc(STAGES[o.stage]||o.stage)} now</div>`:''}</td>
+      <td class="wrap">${esc(o.client?.name||'')}</td><td class="wrap">${o.agency?esc(o.agency.name):'<span class="muted">Direct</span>'}</td><td>${o.owner_id?personCell(o.owner_id):''}</td>
+      <td>${esc(fmtDate(o.closed_at))}</td><td class="num">${esc(m2(o.amount))}</td><td class="num">${esc(m2(s.invoiced))}</td><td class="num">${esc(m2(s.paid))}</td>
+      <td class="num">${s.outstanding?esc(m2(s.outstanding)):'<span class="muted">$0</span>'}</td><td>${s.next?`<span class="${s.next<t?'overdue':''}">${esc(fmtDate(s.next))}</span>`:''}</td><td>${finPill(s.status)}</td></tr>`).join('')
+    :`<tr><td colspan="11"><div class="empty">${fin.deals.length?'No deals match these filters.':'No Closed Won deals yet. When a deal is marked Closed Won it shows up here.'}</div></td></tr>`;
+  $('#ffoot').textContent=`${rows.length} deal${rows.length===1?'':'s'} · ${m2(fsum(rows,x=>x.o.amount))} closed · ${m2(fsum(rows,x=>x.s.outstanding))} outstanding`;
+  $('#fbody').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>openFin(tr.dataset.id))}
+$('#fsearch').addEventListener('input',e=>{fin.search=e.target.value;renderFinList()});
+$('#fowner').addEventListener('input',e=>{fin.owner=e.target.value;renderFinList()});
+$('#fsort').addEventListener('input',e=>{fin.sort=e.target.value;renderFinList()});
+
+/* ----- One deal ----- */
+async function openFin(id){
+  if(!canFinance())return;
+  if(tab!=='fin')showTab('fin');
+  fin.view='deals';syncFinSeg();$('#fin-list').hidden=true;$('#fin-reports').hidden=true;const box=$('#fin-detail');box.hidden=false;
+  if(!fin.loaded||!fin.deals.some(d=>d.id===id)){box.innerHTML='<div class="panel empty">Loading…</div>';
+    try{await loadFinData()}catch(e){box.innerHTML=`<div class="panel empty"><h3>${esc(finErr(e))}</h3></div>`;return}}
+  if(!fin.deals.some(d=>d.id===id)){box.innerHTML=`<div class="panel empty"><h3>That deal isn’t in Finances</h3>Only Closed Won deals show here.<div style="margin-top:10px"><button class="btn" id="fback">← All closed deals</button></div></div>`;$('#fback').onclick=()=>loadFin();return}
+  fin.cur=id;renderFinDetail();window.scrollTo({top:0})}
+async function finReload(){await loadFinData();renderFinDetail()}
+function renderFinDetail(){
+  const o=fin.deals.find(d=>d.id===fin.cur);if(!o)return loadFin();
+  const s=finSum(o),box=$('#fin-detail'),t=todayYmd();
+  const acts=(k,id,extra='')=>`<td class="fin-acts">${extra}<button type="button" class="btn small soft" data-${k}edit="${id}">Edit</button> <button type="button" class="btn small ghost danger" data-${k}del="${id}">Delete</button></td>`;
+  box.innerHTML=`<div class="actions"><button class="btn ghost" id="fback">← All closed deals</button></div>
+   ${o.stage!=='closed_won'?`<div class="banner"><span>This deal is no longer Closed Won (it is now ${esc(STAGES[o.stage]||o.stage)}). Its finance records are kept here.</span></div>`:''}
+   <div class="panel g-${o.stage}">
+     <div class="oh"><div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(o.deal_name)}</h2>${stagePill(o.stage)}${finPill(s.status)}</div>
+       <div style="margin-top:4px;font-size:14.5px">Client: <b>${esc(o.client?.name||'')}</b> · Agency: <b>${esc(agencyName(o))}</b>${o.owner_id?` · Owner: <b>${esc(nameOf(o.owner_id))}</b>`:''}</div></div>
+       <div class="actions">${canSell()?'<button class="btn soft" id="fopen">Open deal</button>':''}</div></div>
+     <div class="strip">
+       ${cellS('Deal amount',esc(m2(o.amount)))}${cellS('Closed',esc(fmtDate(o.closed_at)))}${cellS('Invoiced',esc(m2(s.invoiced)))}${cellS('Collected',esc(m2(s.paid)))}
+       ${cellS('Outstanding',esc(m2(s.outstanding))+(s.overdueN?` <span class="overdue">${esc(m2(s.overdueAmt))} overdue</span>`:''))}${cellS('Not invoiced yet',esc(m2(s.notInvoiced)))}
+       ${cellS('Commissions',s.com.length?esc(m2(s.comTotal))+(s.comOwed?` <span class="stat">${esc(m2(s.comOwed))} unpaid</span>`:''):'')}${cellS('Allocations',s.alc.length?s.alc.length+(s.allocated?' · '+esc(m2(s.allocated)):''):'')}
+     </div></div>
+   <div class="panel"><div class="panel-h"><div><h3>Invoices${s.inv.length?' · '+s.inv.length:''}</h3><p class="stat" style="margin:2px 0 0">One row per invoice. For a payment plan, add each payment with its own due date.</p></div>
+     <button type="button" class="btn small primary" id="finvadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add invoice</button></div>
+     <div class="tablebox"><table><thead><tr><th>Invoice #</th><th class="num">Amount</th><th>Due</th><th>Submitted to AR</th><th>Sent to client</th><th>Paid</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody>
+     ${s.inv.length?s.inv.map(i=>{const [k,l]=invStatus(i);return `<tr><td><b>${esc(i.invoice_no)||'<span class="muted">—</span>'}</b></td><td class="num">${esc(m2(i.amount))}</td>
+       <td><span class="${!i.paid_on&&i.due_date&&i.due_date<t?'overdue':''}">${esc(fmtDate(i.due_date))}</span></td><td>${esc(fmtDate(i.ar_submitted_on))}</td><td>${esc(fmtDate(i.sent_on))}</td><td>${esc(fmtDate(i.paid_on))}</td>
+       <td>${finPill(k,l)}</td><td class="wrap" style="white-space:pre-wrap;max-width:280px">${esc(i.notes)}</td>${acts('i',i.id,i.paid_on?'':`<button type="button" class="btn small" data-ipay="${i.id}" title="Mark this invoice paid today">Paid today</button> `)}</tr>`}).join('')
+       :`<tr><td colspan="9"><div class="empty">No invoices yet. Click Add invoice.</div></td></tr>`}</tbody>
+     ${s.inv.length?`<tfoot><tr class="total"><td><b>Total</b></td><td class="num"><b>${esc(m2(s.invoiced))}</b></td><td colspan="7" class="stat">${esc(m2(s.paid))} collected · ${esc(m2(s.outstanding))} outstanding${s.notInvoiced?' · '+esc(m2(s.notInvoiced))+' of the deal not invoiced yet':''}</td></tr></tfoot>`:''}</table></div></div>
+   <div class="fincols">
+     <div class="panel"><div class="panel-h"><div><h3>Commissions${s.com.length?' · '+s.com.length:''}</h3><p class="stat" style="margin:2px 0 0">Each salesperson's own rate, on the deal amount. Earned so far follows what has been collected.</p></div>
+       <button type="button" class="btn small primary" id="fcomadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add commission</button></div>
+       <div class="tablebox"><table><thead><tr><th>Salesperson</th><th>Rate</th><th class="num">Commission</th><th class="num">Earned so far</th><th>Paid out</th><th></th></tr></thead><tbody>
+       ${s.com.length?s.com.map(c=>`<tr><td class="wrap">${c.person_id?personCell(c.person_id):esc(c.person_name)}${c.notes?`<div class="sub" style="white-space:pre-wrap">${esc(c.notes)}</div>`:''}</td><td>${esc(rateLabel(c))}</td>
+         <td class="num"><b>${esc(m2(comAmt(c,o)))}</b></td><td class="num">${esc(m2(comEarned(c,o,s.paid)))}</td><td>${c.paid_on?esc(fmtDate(c.paid_on)):'<span class="muted">Not yet</span>'}</td>${acts('c',c.id)}</tr>`).join('')
+         :`<tr><td colspan="6"><div class="empty">No commissions yet.</div></td></tr>`}</tbody>
+       ${s.com.length?`<tfoot><tr class="total"><td colspan="2"><b>Total</b></td><td class="num"><b>${esc(m2(s.comTotal))}</b></td><td class="num">${esc(m2(fsum(s.com,c=>comEarned(c,o,s.paid))))}</td><td colspan="2" class="stat">${esc(m2(s.comOwed))} not paid out</td></tr></tfoot>`:''}</table></div></div>
+     <div class="panel"><div class="panel-h"><div><h3>Allocations${s.alc.length?' · '+s.alc.length:''}</h3><p class="stat" style="margin:2px 0 0">Where this deal's revenue is allocated. Amount is optional.</p></div>
+       <button type="button" class="btn small primary" id="falcadd"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add allocation</button></div>
+       <div class="tablebox"><table><thead><tr><th>Allocation</th><th>Secondary</th><th class="num">Amount</th><th></th></tr></thead><tbody>
+       ${s.alc.length?s.alc.map(a=>`<tr><td class="wrap"><b>${esc(a.allocation)}</b>${a.notes?`<div class="sub" style="white-space:pre-wrap">${esc(a.notes)}</div>`:''}</td><td class="wrap">${a.secondary&&a.secondary!=='None'?esc(a.secondary):'<span class="muted">None</span>'}</td>
+         <td class="num">${a.amount!=null?esc(m2(a.amount)):'<span class="muted">—</span>'}</td>${acts('a',a.id)}</tr>`).join('')
+         :`<tr><td colspan="4"><div class="empty">No allocations yet.</div></td></tr>`}</tbody>
+       ${s.alc.some(a=>a.amount!=null)?`<tfoot><tr class="total"><td colspan="2"><b>Total</b></td><td class="num"><b>${esc(m2(s.allocated))}</b></td><td class="stat">${fnum(o.amount)&&Math.abs(s.allocated-fnum(o.amount))>0.005?esc(m2(fnum(o.amount)-s.allocated))+(s.allocated<fnum(o.amount)?' left':' over'):''}</td></tr></tfoot>`:''}</table></div></div>
+   </div>
+   ${filesPanel()}`;
+  $('#fback').onclick=()=>{fin.cur=null;loadFin()};
+  if($('#fopen'))$('#fopen').onclick=()=>openOpp(o.id);
+  $('#finvadd').onclick=()=>invoiceForm(o,null);$('#fcomadd').onclick=()=>commissionForm(o,null);$('#falcadd').onclick=()=>allocationForm(o,null);
+  const del=(table,list,label)=>async id=>{const r=list.find(x=>x.id===id);if(!r||!confirm(`Delete this ${label}? This can't be undone.`))return;
+    const {error}=await sb.from(table).delete().eq('id',id);if(error)return toast(finErr(error));toast(label[0].toUpperCase()+label.slice(1)+' deleted');finReload()};
+  const wire=(k,list,form,d)=>{box.querySelectorAll(`[data-${k}edit]`).forEach(b=>b.onclick=()=>form(o,list.find(x=>x.id===b.dataset[k+'edit'])));
+    box.querySelectorAll(`[data-${k}del]`).forEach(b=>b.onclick=()=>d(b.dataset[k+'del']))};
+  wire('i',s.inv,invoiceForm,del('deal_invoices',s.inv,'invoice'));wire('c',s.com,commissionForm,del('deal_commissions',s.com,'commission'));wire('a',s.alc,allocationForm,del('deal_allocations',s.alc,'allocation'));
+  box.querySelectorAll('[data-ipay]').forEach(b=>b.onclick=async()=>{const id=b.dataset.ipay;
+    const {error}=await sb.from('deal_invoices').update({paid_on:todayYmd()}).eq('id',id);if(error)return toast(finErr(error));await finReload();
+    toast('Invoice marked paid today',{undo:async()=>{const {error}=await sb.from('deal_invoices').update({paid_on:null}).eq('id',id);if(error)throw error;await finReload();toast('Paid date cleared')}})});
+  loadFiles('fin',o.id,true)}
+
+/* ----- Forms ----- */
+const fval=(fd,k)=>String(fd.get(k)||'').trim();
+const fdate=(fd,k)=>fval(fd,k)||null;
+function invoiceForm(o,i){const s=finSum(o);const v=k=>esc(i?.[k]??'');
+  const left=Math.round(s.notInvoiced*100)/100;
+  openModal(i?'Edit invoice':'Add invoice',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}${!i&&s.inv.length?` · ${esc(m2(left))} not invoiced yet`:''}</p><div class="fgrid">
+    <label class="f">Invoice number<input type="text" name="invoice_no" value="${v('invoice_no')}" autocomplete="off" maxlength="80"></label>
+    <label class="f">Amount <span class="req">*</span><input type="text" name="amount" inputmode="decimal" required value="${i?v('amount'):left?esc(String(left)):''}" placeholder="e.g. 2500.00"></label>
+    <label class="f">Due date<input type="date" name="due_date" value="${v('due_date')}"></label>
+    <label class="f">Submitted to AR<input type="date" name="ar_submitted_on" value="${v('ar_submitted_on')}"></label>
+    <label class="f">Sent to client<input type="date" name="sent_on" value="${v('sent_on')}"></label>
+    <label class="f">Paid<input type="date" name="paid_on" value="${v('paid_on')}"></label>
+    <label class="f wide">Notes<textarea name="notes" rows="3">${v('notes')}</textarea></label></div>`,
+  {submit:i?'Save invoice':'Add invoice',onSubmit:async fd=>{
+    const amount=parseAmount(fd.get('amount'));if(amount==null){toast('Type the invoice amount, like 2500 or 2,500.00');return false}
+    const row={invoice_no:fval(fd,'invoice_no'),amount,due_date:fdate(fd,'due_date'),ar_submitted_on:fdate(fd,'ar_submitted_on'),sent_on:fdate(fd,'sent_on'),paid_on:fdate(fd,'paid_on'),notes:fval(fd,'notes')};
+    const {error}=i?await sb.from('deal_invoices').update(row).eq('id',i.id):await sb.from('deal_invoices').insert({...row,opp_id:o.id});
+    if(error){toast(finErr(error));return false}
+    toast(i?'Invoice saved':'Invoice added');await finReload()}})}
+
+function commissionForm(o,c){
+  const kind=!c?'':c.manual_amount!=null?'manual':COM_PRESETS.includes(String(+c.rate))?String(+c.rate):'custom';
+  const ps=sellers().map(p=>p.id);if(c?.person_id&&!ps.includes(c.person_id))ps.push(c.person_id);
+  const other=!!c&&!c.person_id;
+  openModal(c?'Edit commission':'Add commission',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}</p><div class="fgrid">
+    <label class="f">Salesperson <span class="req">*</span><select name="person_id">${opt('','Choose a person',c?.person_id||(other?'__other':''))}${ps.map(id=>opt(id,nameOf(id),c?.person_id||'')).join('')}${opt('__other','Someone else (type a name)',other?'__other':'')}</select></label>
+    <label class="f" id="cmname" ${other?'':'hidden'}>Their name<input type="text" name="person_name" value="${esc(c?.person_name||'')}" maxlength="120"></label>
+    <label class="f">Commission rate <span class="req">*</span><select name="kind">${opt('','Choose a rate',kind)}${COM_PRESETS.map(r=>opt(r,r+'%',kind)).join('')}${opt('custom','Custom %',kind)}${opt('manual','Manual dollar amount',kind)}</select></label>
+    <label class="f" id="cmrate" ${kind==='custom'?'':'hidden'}>Custom rate (%)<input type="text" name="rate" inputmode="decimal" value="${kind==='custom'?esc(String(+c.rate)):''}" placeholder="e.g. 5.25"></label>
+    <label class="f" id="cmamt" ${kind==='manual'?'':'hidden'}>Commission amount ($)<input type="text" name="manual_amount" inputmode="decimal" value="${kind==='manual'?esc(String(c.manual_amount)):''}" placeholder="e.g. 750"></label>
+    <label class="f">Paid out on<input type="date" name="paid_on" value="${esc(c?.paid_on||'')}"></label>
+    <label class="f wide">Notes<textarea name="notes" rows="2">${esc(c?.notes||'')}</textarea></label>
+    <p class="stat wide" id="cmpv" style="margin:0;grid-column:1/-1"></p></div>`,
+  {submit:c?'Save commission':'Add commission',onSubmit:async fd=>{
+    const pid=fval(fd,'person_id'),k=fval(fd,'kind');
+    if(!pid){toast('Choose the salesperson');return false}
+    if(pid==='__other'&&!fval(fd,'person_name')){toast('Type their name');return false}
+    if(!k){toast('Choose a commission rate');return false}
+    let rate=null,manual=null;
+    if(k==='manual'){manual=parseAmount(fd.get('manual_amount'));if(manual==null){toast('Type the commission amount in dollars');return false}}
+    else if(k==='custom'){rate=parseAmount(fd.get('rate'));if(rate==null||rate>100){toast('Type a custom rate between 0 and 100');return false}}
+    else rate=+k;
+    const row={person_id:pid==='__other'?null:pid,person_name:pid==='__other'?fval(fd,'person_name'):nameOf(pid),rate,manual_amount:manual,paid_on:fdate(fd,'paid_on'),notes:fval(fd,'notes')};
+    const {error}=c?await sb.from('deal_commissions').update(row).eq('id',c.id):await sb.from('deal_commissions').insert({...row,opp_id:o.id});
+    if(error){toast(finErr(error));return false}
+    toast(c?'Commission saved':'Commission added');await finReload()}});
+  const f=$('#mform');
+  const upd=()=>{const k=f.kind.value;$('#cmrate').hidden=k!=='custom';$('#cmamt').hidden=k!=='manual';$('#cmname').hidden=f.person_id.value!=='__other';
+    const r=k==='manual'?null:k==='custom'?parseAmount(f.rate.value):k?+k:null;const m=k==='manual'?parseAmount(f.manual_amount.value):null;
+    $('#cmpv').textContent=k==='manual'&&m!=null?`Commission: ${m2(m)}`:r!=null&&r!==undefined?`Commission: ${m2(fnum(o.amount)*r/100)} (${r}% of ${m2(o.amount)})`:''};
+  ['change','input'].forEach(ev=>f.addEventListener(ev,upd));upd()}
+
+function allocationForm(o,a){const s=finSum(o);
+  const al=[...new Set([...ALLOCATIONS,a?.allocation].filter(Boolean))],se=[...new Set([...ALLOC_SECONDARY,a?.secondary].filter(Boolean))];
+  openModal(a?'Edit allocation':'Add allocation',`<p class="stat" style="margin:0 0 10px">${esc(o.deal_name)} · deal amount ${esc(m2(o.amount))}${s.allocated?` · ${esc(m2(s.allocated))} allocated so far`:''}</p><div class="fgrid">
+    <label class="f">Allocation <span class="req">*</span><select name="allocation" required>${opt('','Choose one',a?.allocation||'')}${al.map(x=>opt(x,x,a?.allocation||'')).join('')}</select></label>
+    <label class="f">Secondary allocation <span class="req">*</span><select name="secondary" required>${se.map(x=>opt(x,x,a?.secondary||'None')).join('')}</select></label>
+    <label class="f">Amount (optional)<input type="text" name="amount" inputmode="decimal" value="${a?.amount!=null?esc(String(a.amount)):''}" placeholder="e.g. 10000"></label><span></span>
+    <label class="f wide">Notes<textarea name="notes" rows="2">${esc(a?.notes||'')}</textarea></label></div>`,
+  {submit:a?'Save allocation':'Add allocation',onSubmit:async fd=>{
+    const amount=parseAmount(fd.get('amount'));if(amount===undefined){toast('Type the amount as a number, or leave it blank');return false}
+    const row={allocation:fval(fd,'allocation'),secondary:fval(fd,'secondary')||'None',amount,notes:fval(fd,'notes')};
+    const {error}=a?await sb.from('deal_allocations').update(row).eq('id',a.id):await sb.from('deal_allocations').insert({...row,opp_id:o.id});
+    if(error){toast(finErr(error));return false}
+    toast(a?'Allocation saved':'Allocation added');await finReload()}})}
+
+/* ----- Reports ----- */
+function finRange(){const n=new Date(),y=n.getFullYear(),m=n.getMonth(),q=Math.floor(m/3);const d=(Y,M,D)=>ymd(new Date(Y,M,D));
+  switch(fin.range){
+    case 'this_month':return [d(y,m,1),d(y,m+1,0)];case 'last_month':return [d(y,m-1,1),d(y,m,0)];
+    case 'this_q':return [d(y,q*3,1),d(y,q*3+3,0)];case 'last_q':return [d(y,q*3-3,1),d(y,q*3,0)];
+    case 'this_year':return [d(y,0,1),d(y,11,31)];case 'last_year':return [d(y-1,0,1),d(y-1,11,31)];
+    case 'custom':return [fin.from||'0000-01-01',fin.to||'9999-12-31'];default:return ['0000-01-01','9999-12-31']}}
+const inRng=(day,[a,b])=>fin.range==='all'||(!!day&&day>=a&&day<=b);
+const monthLabel=k=>{const [y,m]=k.split('-');return new Date(+y,+m-1,1).toLocaleDateString([],{month:'short',year:'numeric'})};
+// cols: {h, num, v:row=>value for CSV, html:row=>cell HTML (optional)}
+function finTable(el,cols,rows,{foot,empty='Nothing to show for these filters.'}={}){
+  $(el).innerHTML=`<thead><tr>${cols.map(c=>`<th${c.num?' class="num"':''}>${esc(c.h)}</th>`).join('')}</tr></thead><tbody>`+
+    (rows.length?rows.map(r=>`<tr${r._opp?` class="click" data-fid="${r._opp}"`:''}>${cols.map(c=>`<td class="${c.num?'num':'wrap'}">${c.html?c.html(r):esc(c.v(r))}</td>`).join('')}</tr>`).join('')
+      :`<tr><td colspan="${cols.length}"><div class="empty">${esc(empty)}</div></td></tr>`)+'</tbody>'+
+    (foot&&rows.length?`<tfoot><tr class="total">${cols.map((c,i)=>`<td class="${c.num?'num':''}"><b>${esc(foot[i]??'')}</b></td>`).join('')}</tr></tfoot>`:'');
+  $(el).querySelectorAll('tr[data-fid]').forEach(tr=>tr.onclick=()=>openFin(tr.dataset.fid))}
+const mcol=(h,f)=>({h,num:1,v:r=>Math.round(fnum(f(r))*100)/100,html:r=>esc(m2(f(r)))});
+const ncol=(h,f)=>({h,num:1,v:f});
+const tcol=(h,f,html)=>({h,v:f,html});
+const dcol=(h,f)=>({h,v:r=>fmtDate(f(r)),html:r=>esc(fmtDate(f(r)))});
+function renderFinReports(){
+  const rng=finRange(),t=todayYmd(),rv=fin.rv,isCom=rv==='com';
+  $('#frv').value=rv;$('#frange').value=fin.range;$('#ffromf').hidden=$('#ftof').hidden=fin.range!=='custom';$('#ffrom').value=fin.from;$('#fto').value=fin.to;
+  $('#frangef').hidden=rv==='ar';$('#frownerl').textContent=isCom?'Salesperson':'Deal owner';
+  const ownIds=isCom?[...new Set(fin.com.map(c=>c.person_id).filter(Boolean))]:[...new Set(fin.deals.map(d=>d.owner_id).filter(Boolean))];
+  if(fin.rowner&&!ownIds.includes(fin.rowner))fin.rowner='';
+  $('#frowner').innerHTML=opt('',isCom?'All salespeople':'All owners',fin.rowner)+ownIds.sort((a,b)=>nameOf(a).localeCompare(nameOf(b))).map(id=>opt(id,who(id),fin.rowner)).join('');
+  const byId={};fin.deals.forEach(d=>byId[d.id]=d);
+  const deals=fin.deals.filter(d=>isCom||!fin.rowner||d.owner_id===fin.rowner);const dealSet=new Set(deals.map(d=>d.id));
+  const sums={};fin.deals.forEach(d=>sums[d.id]=finSum(d));
+  const D=r=>byId[r.opp_id]||{},dealCol=tcol('Deal',r=>D(r).deal_name||'',r=>`<span class="co">${esc(D(r).deal_name||'')}</span>`),clientCol=tcol('Client',r=>D(r).client?.name||'');
+  const kp=a=>$('#frkpis').innerHTML=a.map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+  const head=(t1,s1,t2,s2,note)=>{$('#frt1').textContent=t1;$('#frs1').textContent=s1;$('#frt2').textContent=t2;$('#frs2').textContent=s2;$('#frnote').textContent=note};
+  const rngTxt=fin.range==='all'?'all time':fmtDate(rng[0])+' – '+fmtDate(rng[1]);
+  const tag=r=>({...r,_opp:r.opp_id});
+  let cols2,rows2,name;
+  if(rv==='ar'){
+    const open=fin.inv.filter(i=>!i.paid_on&&dealSet.has(i.opp_id)).map(i=>({...tag(i),late:i.due_date&&i.due_date<t?Math.round((new Date(t+'T12:00:00')-new Date(i.due_date+'T12:00:00'))/864e5):0}))
+      .sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
+    const B=[['Not due yet',r=>!r.late],['1–30 days late',r=>r.late>=1&&r.late<=30],['31–60 days late',r=>r.late>30&&r.late<=60],['61–90 days late',r=>r.late>60&&r.late<=90],['Over 90 days late',r=>r.late>90]];
+    const tot=fsum(open,i=>i.amount),od=open.filter(r=>r.late);
+    const won=deals.filter(d=>d.stage==='closed_won');
+    kp([[m2(tot),`Outstanding · ${open.length} invoice${open.length===1?'':'s'}`],[m2(fsum(od,i=>i.amount)),`Overdue · ${od.length}`],[m2(fsum(open.filter(r=>!r.late),i=>i.amount)),'Not due yet'],
+      [m2(fsum(won,d=>sums[d.id].notInvoiced)),'Closed won, not invoiced yet'],[m2(fsum(open.filter(r=>!r.sent_on),i=>i.amount)),'Not sent to client yet']]);
+    head('Aging','Unpaid invoices by how late they are, as of today.','Unpaid invoices','Every invoice without a paid date, soonest due first. Click a row to open the deal.','Receivables are as of today, so the Dates filter doesn’t apply.');
+    finTable('#frtab1',[tcol('Age',r=>r.l),ncol('Invoices',r=>r.n),mcol('Amount',r=>r.a),tcol('Share',r=>r.p)],
+      B.map(([l,f])=>{const x=open.filter(f),a=fsum(x,i=>i.amount);return {l,n:x.length,a,p:tot?Math.round(100*a/tot)+'%':'—'}}),{foot:['Total',open.length,m2(tot),'100%']});
+    cols2=[dealCol,clientCol,tcol('Invoice #',r=>r.invoice_no),mcol('Amount',r=>r.amount),dcol('Due',r=>r.due_date),
+      {h:'Days late',num:1,v:r=>r.late||'',html:r=>r.late?`<span class="overdue">${r.late}</span>`:''},dcol('Submitted to AR',r=>r.ar_submitted_on),dcol('Sent to client',r=>r.sent_on),
+      tcol('Owner',r=>D(r).owner_id?nameOf(D(r).owner_id):''),tcol('Notes',r=>r.notes)];rows2=open;name='receivables';
+  }else if(rv==='cash'){
+    const paid=fin.inv.filter(i=>i.paid_on&&inRng(i.paid_on,rng)&&dealSet.has(i.opp_id)).map(tag).sort((a,b)=>b.paid_on.localeCompare(a.paid_on));
+    const tp=paid.filter(i=>i.sent_on).map(i=>Math.round((new Date(i.paid_on+'T12:00:00')-new Date(i.sent_on+'T12:00:00'))/864e5));
+    const due=paid.filter(i=>i.due_date),ontime=due.filter(i=>i.paid_on<=i.due_date).length;
+    kp([[m2(fsum(paid,i=>i.amount)),'Collected'],[String(paid.length),'Invoices paid'],[tp.length?Math.round(tp.reduce((a,b)=>a+b,0)/tp.length)+' days':'—','Average days to pay (sent → paid)'],[due.length?Math.round(100*ontime/due.length)+'%':'—','Paid on time']]);
+    head('By month','Payments received each month (by paid date).','Payments received','Every invoice paid in these dates. Click a row to open the deal.','Collections use each invoice’s paid date: '+rngTxt+'.');
+    const bm={};paid.forEach(i=>{const k=i.paid_on.slice(0,7);(bm[k]=bm[k]||{k,n:0,a:0}).n++;bm[k].a+=fnum(i.amount)});
+    const ms=Object.values(bm).sort((a,b)=>a.k.localeCompare(b.k));
+    finTable('#frtab1',[tcol('Month',r=>monthLabel(r.k)),ncol('Invoices paid',r=>r.n),mcol('Collected',r=>r.a)],ms,{foot:['Total',paid.length,m2(fsum(paid,i=>i.amount))]});
+    cols2=[dcol('Paid',r=>r.paid_on),dealCol,clientCol,tcol('Invoice #',r=>r.invoice_no),mcol('Amount',r=>r.amount),dcol('Due',r=>r.due_date),dcol('Sent to client',r=>r.sent_on),
+      ncol('Days to pay',r=>r.sent_on?Math.round((new Date(r.paid_on+'T12:00:00')-new Date(r.sent_on+'T12:00:00'))/864e5):''),tcol('Owner',r=>D(r).owner_id?nameOf(D(r).owner_id):'')];rows2=paid;name='collections';
+  }else if(rv==='com'){
+    const rows=fin.com.filter(c=>inRng(dayOf(D(c).closed_at),rng)&&(!fin.rowner||c.person_id===fin.rowner)&&byId[c.opp_id]).map(c=>{const o=D(c),s=sums[c.opp_id];
+      return {...tag(c),who:comWho(c),amt:comAmt(c,o),earned:comEarned(c,o,s.paid),collected:s.paid}}).sort((a,b)=>a.who.localeCompare(b.who)||String(D(b).closed_at).localeCompare(String(D(a).closed_at)));
+    const T=k=>fsum(rows,r=>r[k]);
+    kp([[m2(T('amt')),'Total commission'],[m2(T('earned')),'Earned so far (on collected)'],[m2(fsum(rows.filter(r=>r.paid_on),r=>r.amt)),'Paid out'],[m2(fsum(rows.filter(r=>!r.paid_on),r=>r.amt)),'Not paid out yet']]);
+    head('By salesperson','Commission on deals closed in these dates. Earned so far = commission × share of the deal collected.','Every commission','One row per salesperson per deal. Click a row to open the deal.','Commissions use the date the deal closed: '+rngTxt+'.');
+    const g={};rows.forEach(r=>{const x=g[r.who]=g[r.who]||{who:r.who,deals:new Set(),dealAmt:0,amt:0,earned:0,paid:0,owed:0};x.deals.add(r.opp_id);x.dealAmt+=fnum(D(r).amount);x.amt+=r.amt;x.earned+=r.earned;if(r.paid_on)x.paid+=r.amt;else x.owed+=r.amt});
+    const gs=Object.values(g).sort((a,b)=>b.amt-a.amt);
+    finTable('#frtab1',[tcol('Salesperson',r=>r.who),ncol('Deals',r=>r.deals.size),mcol('Deal amount',r=>r.dealAmt),mcol('Commission',r=>r.amt),mcol('Earned so far',r=>r.earned),mcol('Paid out',r=>r.paid),mcol('Not paid out',r=>r.owed)],gs,
+      {foot:['Total',new Set(rows.map(r=>r.opp_id)).size,'',m2(T('amt')),m2(T('earned')),m2(fsum(gs,x=>x.paid)),m2(fsum(gs,x=>x.owed))]});
+    cols2=[tcol('Salesperson',r=>r.who),dealCol,clientCol,dcol('Closed',r=>D(r).closed_at),mcol('Deal amount',r=>D(r).amount),tcol('Rate',r=>rateLabel(r)),mcol('Commission',r=>r.amt),
+      mcol('Collected on deal',r=>r.collected),mcol('Earned so far',r=>r.earned),{h:'Paid out',v:r=>fmtDate(r.paid_on),html:r=>r.paid_on?esc(fmtDate(r.paid_on)):'<span class="muted">Not yet</span>'},tcol('Notes',r=>r.notes)];rows2=rows;name='commissions';
+  }else if(rv==='alc'){
+    const inR=deals.filter(d=>inRng(dayOf(d.closed_at),rng));const ids=new Set(inR.map(d=>d.id));
+    const rows=fin.alc.filter(a=>ids.has(a.opp_id)).map(tag).sort((a,b)=>a.allocation.localeCompare(b.allocation)||String(a.secondary).localeCompare(String(b.secondary)));
+    const withA=new Set(rows.map(r=>r.opp_id));
+    kp([[String(withA.size),'Deals with allocations'],[String(inR.filter(d=>d.stage==='closed_won'&&!withA.has(d.id)).length),'Closed won deals with no allocation'],[m2(fsum(rows,r=>r.amount)),'Allocated amount']]);
+    head('By allocation','Deals closed in these dates, by allocation and secondary allocation. A deal with several allocations counts under each.','Every allocation','Click a row to open the deal.','Allocations use the date the deal closed: '+rngTxt+'.');
+    const g={};rows.forEach(r=>{const k=r.allocation+'|'+(r.secondary||'None');const x=g[k]=g[k]||{a:r.allocation,s:r.secondary||'None',deals:new Set(),amt:0,dealAmt:0};if(!x.deals.has(r.opp_id)){x.deals.add(r.opp_id);x.dealAmt+=fnum(D(r).amount)}x.amt+=fnum(r.amount)});
+    const gs=Object.values(g).sort((x,y)=>x.a.localeCompare(y.a)||x.s.localeCompare(y.s));
+    finTable('#frtab1',[tcol('Allocation',r=>r.a),tcol('Secondary',r=>r.s),ncol('Deals',r=>r.deals.size),mcol('Allocated amount',r=>r.amt),mcol('Deal amount',r=>r.dealAmt)],gs,{foot:['Total','',withA.size,m2(fsum(rows,r=>r.amount)),'']});
+    cols2=[tcol('Allocation',r=>r.allocation),tcol('Secondary',r=>r.secondary||'None'),dealCol,clientCol,dcol('Closed',r=>D(r).closed_at),mcol('Deal amount',r=>D(r).amount),
+      {h:'Allocated',num:1,v:r=>r.amount??'',html:r=>r.amount!=null?esc(m2(r.amount)):'<span class="muted">—</span>'},tcol('Notes',r=>r.notes)];rows2=rows;name='allocations';
+  }else{
+    const inR=deals.filter(d=>d.stage==='closed_won'&&inRng(dayOf(d.closed_at),rng)).sort((a,b)=>String(b.closed_at).localeCompare(String(a.closed_at)));
+    const S=k=>fsum(inR,d=>sums[d.id][k]);
+    kp([[m2(fsum(inR,d=>d.amount)),`Closed won · ${inR.length} deal${inR.length===1?'':'s'}`],[m2(S('invoiced')),'Invoiced'],[m2(S('paid')),'Collected'],[m2(S('outstanding')),'Outstanding'],[m2(S('notInvoiced')),'Not invoiced yet'],[m2(S('comTotal')),'Commissions']]);
+    head('By month closed','Closed Won deals by the month they closed, and where their money stands today.','Closed Won deals','Click a row to open the deal.','Deals use the date they closed: '+rngTxt+'.');
+    const bm={};inR.forEach(d=>{const k=dayOf(d.closed_at).slice(0,7),s=sums[d.id];const x=bm[k]=bm[k]||{k,n:0,amt:0,inv:0,paid:0,out:0};x.n++;x.amt+=fnum(d.amount);x.inv+=s.invoiced;x.paid+=s.paid;x.out+=s.outstanding});
+    finTable('#frtab1',[tcol('Month',r=>monthLabel(r.k)),ncol('Deals',r=>r.n),mcol('Amount',r=>r.amt),mcol('Invoiced',r=>r.inv),mcol('Collected',r=>r.paid),mcol('Outstanding',r=>r.out)],
+      Object.values(bm).sort((a,b)=>a.k.localeCompare(b.k)),{foot:['Total',inR.length,m2(fsum(inR,d=>d.amount)),m2(S('invoiced')),m2(S('paid')),m2(S('outstanding'))]});
+    const sx=r=>sums[r.id];
+    cols2=[tcol('Deal',r=>r.deal_name,r=>`<span class="co">${esc(r.deal_name)}</span>`),tcol('Client',r=>r.client?.name||''),tcol('Agency',r=>r.agency?.name||'Direct'),tcol('Owner',r=>r.owner_id?nameOf(r.owner_id):''),
+      dcol('Closed',r=>r.closed_at),mcol('Amount',r=>r.amount),mcol('Invoiced',r=>sx(r).invoiced),mcol('Collected',r=>sx(r).paid),mcol('Outstanding',r=>sx(r).outstanding),mcol('Commissions',r=>sx(r).comTotal),
+      tcol('Allocations',r=>sx(r).alc.map(a=>a.allocation+(a.secondary&&a.secondary!=='None'?' / '+a.secondary:'')).join('; ')),{h:'Status',v:r=>FIN_STATUS[sx(r).status],html:r=>finPill(sx(r).status)}];
+    rows2=inR.map(d=>({...d,_opp:d.id}));name='closed-won';
+  }
+  finTable('#frtab2',cols2,rows2);
+  fin.csv={name:`the-ark-finance-${name}-${ymd(new Date())}.csv`,cols:cols2,rows:rows2}}
+$('#frv').addEventListener('input',e=>{fin.rv=e.target.value;fin.rowner='';renderFinReports()});
+$('#frange').addEventListener('input',e=>{fin.range=e.target.value;renderFinReports()});
+$('#ffrom').addEventListener('input',e=>{fin.from=e.target.value;renderFinReports()});
+$('#fto').addEventListener('input',e=>{fin.to=e.target.value;renderFinReports()});
+$('#frowner').addEventListener('input',e=>{fin.rowner=e.target.value;renderFinReports()});
+$('#fexport').onclick=()=>{
+  if(fin.view==='reports'){const c=fin.csv;if(!c||!c.rows.length)return toast('Nothing to export');
+    return download(c.name,[c.cols.map(x=>csvCell(x.h)).join(','),...c.rows.map(r=>c.cols.map(x=>csvCell(x.v(r))).join(','))])}
+  const rows=finListRows().filter(x=>!fin.status||x.s.status===fin.status);if(!rows.length)return toast('No deals to export');
+  const H=['Deal Name','Client','Agency','Owner','Closed','Amount','Invoiced','Collected','Outstanding','Overdue','Not invoiced','Next due','Status','Commissions','Commission unpaid','Allocations'];
+  download(`the-ark-finance-deals-${ymd(new Date())}.csv`,[H.map(csvCell).join(','),...rows.map(({o,s})=>[o.deal_name,o.client?.name||'',o.agency?.name||'Direct',o.owner_id?nameOf(o.owner_id):'',fmtDate(o.closed_at),
+    fnum(o.amount),s.invoiced,s.paid,s.outstanding,s.overdueAmt,s.notInvoiced,fmtDate(s.next),FIN_STATUS[s.status],s.comTotal,s.comOwed,
+    s.alc.map(a=>a.allocation+(a.secondary&&a.secondary!=='None'?' / '+a.secondary:'')).join('; ')].map(csvCell).join(','))])};
 
 $('#backboard').onclick=()=>setTab('board');
 

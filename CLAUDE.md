@@ -72,6 +72,13 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 - Reports > Call volume: Dates filter (`cv.range`, `cvRange()`): today, yesterday, this/last week, last 7/30 days, picked dates, or a whole month (only whole months take typed hours).
 - Reports > Deals: stage table, likelihood to close, products (`dealTables`), and By quarter for admins (`quarterTable`); all in the PDF.
 
+## Version 22 (Finances)
+- Who: `can_finance()` (SQL) / `canFinance()` (page) = Owners, the new `finance` role, or anyone with `profiles.finance` = true. Only an Owner switches it (`set_finance(user, on)`, "Finance access" column on Team; guard trigger `guard_profile_finance`). Admins do NOT get it automatically. The Finance role sees only the Finances tab (`isFinRole()`; Leads tab, search and New Lead hidden; `allowed()` returns only 'fin'). View as previews never show Finances.
+- Tab `fin` (`#tab-fin`): `loadFin()` → `loadFinData()` (deals that are Closed Won or already have finance rows) → `renderFinList()` (KPIs, status chips, table) or `renderFinReports()`; `openFin(id)` → `renderFinDetail()`. Deal pages show a "Finances" button on Closed Won deals for finance people.
+- Tables: `deal_invoices` (invoice_no, amount, due_date, ar_submitted_on, sent_on, paid_on, notes), `deal_commissions` (person_id or person_name, `rate` % or `manual_amount` $, paid_on), `deal_allocations` (allocation, secondary, optional amount). RLS: can_finance() only. Finance files = `attachments` kind `fin`, storage path `fin/<deal id>/…`.
+- Lists in the page: `ALLOCATIONS`, `ALLOC_SECONDARY`, `COM_PRESETS` (2, 3, 4, 7.5). Commission = manual amount, or deal amount × rate; "earned so far" = commission × share of the deal collected.
+- Reports (Finances > Reports): Receivables (aging, as of today), Collections (by paid date), Commissions, Allocations, Closed Won deals (by close date). Export CSV; no PDF yet.
+
 ## Pay rules
 $18/hour + $50 per appointment that SHOWED (`PAY_RATE`, `APPT_BONUS`). Hours = clock_out − clock_in − break, rounded to 2 decimals before multiplying. Pay periods: 1st–15th and 16th–end of month. "Booked" appointments are shown for information only.
 
