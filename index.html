@@ -540,7 +540,7 @@ ul.files li .danger{margin-left:auto}
       <div class="gres" id="gres" hidden></div>
     </div>
     <button class="btn primary" id="newdealtop" data-salesonly hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New Deal</button>
-    <button class="btn primary" id="newleadbtn" data-call hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New lead</button>
+    <button class="btn primary" id="newleadbtn" data-call hidden><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New Lead</button>
     <select id="viewas" class="role viewas" hidden title="Switch which view of The Ark you see" aria-label="View The Ark as"></select>
     <div class="me"><span id="meav"></span><div class="meta"><b id="mename"></b><span id="merole" class="role"></span></div>
       <button class="btn ghost small" id="signout" title="Sign out"><svg class="ic" viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg><span class="sotxt">Sign out</span></button></div>
@@ -1555,7 +1555,7 @@ function openNewLead(){
   const ids=Object.values(people).filter(x=>x.active).map(x=>x.id);
   const assign=isAdmin()?`<label class="f wide">Assign to<select name="__owner"><option value="">Unassigned (assign later on Leads)</option>${ids.map(id=>`<option value="${id}">${esc(who(id))}</option>`).join('')}</select></label>`
     :`<p class="stat wide" style="margin:0">This lead will be yours.</p>`;
-  openModal('New lead',`<div class="fgrid">${assign}${NEW_LEAD_FIELDS.map(fld).join('')}</div><p class="stat" style="margin:10px 0 0">Add at least a company or a contact name. Leads that match a phone or email already in The Ark can't be added twice.</p>`,
+  openModal('New Lead',`<div class="fgrid">${assign}${NEW_LEAD_FIELDS.map(fld).join('')}</div><p class="stat" style="margin:10px 0 0">Add at least a company or a contact name. Leads that match a phone or email already in The Ark can't be added twice.</p>`,
     {submit:'Add lead',onSubmit:async fd=>{
       const rec={};NEW_LEAD_FIELDS.forEach(([k,l])=>{if(l)rec[k]=String(fd.get(k)||'').trim()});
       if(!rec.company&&!rec.first_name&&!rec.last_name){toast('Add a company or a contact name');return false}
