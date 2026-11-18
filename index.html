@@ -871,11 +871,12 @@ ul.files li .danger{margin-left:auto}
         <div class="panel"><div class="panel-h"><h2>Upcoming appointments</h2></div><div id="appts"></div></div>
       </div>
       <div class="panel">
-        <div class="panel-h"><div><h2>People</h2><p class="stat" style="margin:2px 0 0">Invite someone, then send them this site's address. They click "Create your account" and use the invited email.</p></div></div>
+        <div class="panel-h"><div><h2>People</h2><p class="stat" style="margin:2px 0 0">Invite someone, then send them this site's address. They click "Create your account" and use the invited email. No email yet? Use "Add without email" and invite them later; everything you record for them moves to their account when they sign up.</p></div></div>
         <form class="toolbar" id="inviteform">
           <input type="email" id="invemail" placeholder="name@company.com" required style="flex:1 1 240px;width:auto">
           <select id="invrole" aria-label="Role"><option value="caller">Caller</option><option value="salesperson">Salesperson</option><option value="admin">Admin</option><option value="finance">Finance</option></select>
           <button class="btn primary" type="submit">Invite</button>
+          <button class="btn" type="button" id="addperson">Add without email</button>
         </form>
         <div class="tablebox"><table id="roster"></table></div>
       </div>
@@ -965,7 +966,7 @@ function dayGroup(iso){if(!iso)return'Never contacted';const d=new Date(iso),n=n
 const contactName=l=>[l.first_name,l.last_name].filter(Boolean).join(' ');
 const PALETTE=['#3563e9','#0e9384','#7a5af8','#dd2590','#e04f16','#15803d','#0086c9','#9e77ed'];
 function colorFor(id){let h=0;for(const c of String(id))h=(h*31+c.charCodeAt(0))>>>0;return PALETTE[h%PALETTE.length]}
-function nameOf(id){const p=people[id];return p?(p.full_name||p.email):'Former teammate'}
+function nameOf(id){const p=people[id];return p?(p.full_name||p.email||'Unnamed'):'Former teammate'}
 function who(id){if(!id)return'Unassigned';return id===me?.id?nameOf(id)+' (you)':nameOf(id)}
 function avatar(id){const n=nameOf(id);const ini=n.split(/[\s@.]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()||'?';return `<span class="av" style="--avc:${colorFor(id)}">${esc(ini)}</span>`}
 const personCell=id=>id?`<span class="person">${avatar(id)}${esc(who(id))}</span>`:'<span class="muted">Unassigned</span>';
@@ -1704,7 +1705,7 @@ function renderImport(){
 const canRename=p=>p&&(isOwner()||(isAdmin()&&['caller','salesperson'].includes(p.role))||p.id===me?.id);
 function renameForm(p){
   openModal('Rename '+nameOf(p.id),`<label class="f wide">Full name<input type="text" name="name" value="${esc(p.full_name||'')}" maxlength="80" required autocomplete="off"></label>
-    <p class="stat" style="margin:10px 0 0">This is how ${esc(p.email)} shows everywhere in The Ark.</p>`,
+    <p class="stat" style="margin:10px 0 0">This is how ${p.email?esc(p.email):'this person'} shows everywhere in The Ark.</p>`,
     {submit:'Save name',onSubmit:async fd=>{const n=String(fd.get('name')||'').trim();if(!n){toast('Type a name');return false}
       const {error}=await sb.rpc('set_member_name',{p_user:p.id,p_name:n});
       if(error){if(/set_member_name/i.test(error.message||''))throw new Error('Run supabase-v17-names-appts.sql in Supabase first.');throw error}
@@ -1732,14 +1733,14 @@ async function loadTeam(){
   $('#appts').innerHTML=aps.length?`<div class="tablebox"><table><tbody>${aps.map(l=>`<tr class="click" data-id="${l.id}"><td>${esc(fmtFull(l.appt_at))}</td><td><span class="co">${esc(l.company)}</span><div class="sub">${esc(contactName(l))}${l.appt_rep?' · with '+esc(l.appt_rep):''}</div></td><td>${l.appt_booked_by?personCell(l.appt_booked_by):''}</td></tr>`).join('')}</tbody></table></div>`
     :`<div class="empty">No upcoming appointments yet.</div>`;
   $('#appts').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>openLead(tr.dataset.id));
-  const invites=inv.data||[];
+  const invites=(inv.data||[]).filter(i=>!i.profile_id),invFor={};(inv.data||[]).forEach(i=>{if(i.profile_id)invFor[i.profile_id]=i});
   const ps=Object.values(people).sort((a,b)=>(a.role==='owner'?-1:0)-(b.role==='owner'?-1:0)||nameOf(a.id).localeCompare(nameOf(b.id)));
   // Finance access: always on for Owners and the Finance role; the Owner ticks it for anyone else.
   const finCell=p=>p.role==='owner'||p.role==='finance'?'<span class="stat">Always</span>'
     :isOwner()?`<label class="stat" style="display:inline-flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" data-fin-on="${p.id}" ${p.finance?'checked':''}>${p.finance?'On':'Off'}</label>`:`<span class="stat">${p.finance?'On':'Off'}</span>`;
   $('#roster').innerHTML=`<thead><tr><th>Person</th><th>Email</th><th>Role</th><th>Finance access</th><th>Status</th><th></th></tr></thead><tbody>`+
     ps.map(p=>{const rn=canRename(p)?`<button class="btn small" data-rename="${p.id}">Rename</button> `:'';const ctl=rn+(isOwner()&&p.id!==me.id&&p.id!==mainOwner()?.id?`<select data-role="${p.id}" aria-label="Role" style="width:auto">${['caller','salesperson','admin','finance','owner'].map(r=>`<option value="${r}" ${r===p.role?'selected':''}>${roleLabel(r)}</option>`).join('')}</select> <button class="btn small ${p.active?'danger':''}" data-active="${p.id}" data-to="${p.active?'0':'1'}">${p.active?'Turn off access':'Turn on access'}</button>`:'');
-      return `<tr><td>${personCell(p.id)}</td><td class="stat">${esc(p.email)}</td><td><span class="role ${p.role}">${roleLabel(p.role)}</span></td><td>${finCell(p)}</td><td class="stat">${p.active?'Active':'Access off'}</td><td style="text-align:right">${ctl}</td></tr>`}).join('')+
+      return `<tr><td>${personCell(p.id)}</td><td class="stat">${p.email?esc(p.email):noLoginCell(p,invFor[p.id])}</td><td><span class="role ${p.role}">${roleLabel(p.role)}</span></td><td>${finCell(p)}</td><td class="stat">${p.active?(p.email?'Active':invFor[p.id]?'Invited, no account yet':'No login yet'):'Access off'}</td><td style="text-align:right">${ctl}</td></tr>`}).join('')+
     invites.map(i=>`<tr><td class="muted">Invited</td><td class="stat">${esc(i.email)}</td><td><span class="role ${i.role}">${roleLabel(i.role)}</span></td><td></td><td class="stat">Hasn’t created an account yet</td><td style="text-align:right"><button class="btn small" data-uninvite="${esc(i.email)}">Cancel invite</button></td></tr>`).join('')+`</tbody>`;
   $('#roster').querySelectorAll('[data-role]').forEach(b=>b.onchange=async()=>{const p=people[b.dataset.role];const {error}=await sb.rpc('set_member',{p_user:p.id,p_role:b.value,p_active:p.active});if(error)toast(friendly(error));else{toast('Role updated');loadTeam()}});
   $('#roster').querySelectorAll('[data-active]').forEach(b=>b.onclick=async()=>{const p=people[b.dataset.active];const {error}=await sb.rpc('set_member',{p_user:p.id,p_role:p.role,p_active:b.dataset.to==='1'});if(error)toast(friendly(error));else{toast('Access updated');loadTeam()}});
@@ -1747,12 +1748,37 @@ async function loadTeam(){
     if(error){b.checked=!b.checked;toast(/set_finance|schema cache|does not exist/i.test(error.message||'')?'Finances aren’t set up yet. Run supabase-v22-finances.sql in Supabase first.':friendly(error))}
     else{toast(`Finance access ${b.checked?'turned on':'turned off'} for ${nameOf(p.id)}`);loadTeam()}});
   $('#roster').querySelectorAll('[data-rename]').forEach(b=>b.onclick=()=>renameForm(people[b.dataset.rename]));
+  $('#roster').querySelectorAll('[data-invite-p]').forEach(b=>b.onclick=()=>invitePersonForm(people[b.dataset.inviteP],invFor[b.dataset.inviteP]));
   $('#roster').querySelectorAll('[data-uninvite]').forEach(b=>b.onclick=async()=>{const {error}=await sb.from('invites').delete().eq('email',b.dataset.uninvite);if(error)toast(friendly(error));else loadTeam()});
   const used=Number(size.data)||0;const pct=Math.min(1,used/FREE_DB_BYTES);
   $('#capmeter').style.setProperty('--mc',pct>.8?'var(--bad)':pct>.6?'var(--warn)':'var(--ok)');$('#capmeter i').style.width=(100*pct)+'%';
   $('#capnote').textContent=`${(cnt.count||0).toLocaleString()} leads stored, using ${(used/1048576).toFixed(0)} MB of the free plan's 500 MB. When this gets high, export finished leads, move them to the Trash, then delete them forever.`;
 }
 $('#period').querySelectorAll('button').forEach(b=>b.onclick=()=>{period=b.dataset.p;$('#period').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));loadTeam()});
+// People added without an email: on the team (assign leads, timesheets) but can't sign in until invited.
+const canAddRole=r=>isAdmin()&&(['caller','salesperson'].includes(r)||(isOwner()&&['admin','finance'].includes(r)));
+const v23Err=e=>/add_member|invite_member|schema cache|does not exist/i.test(e?.message||'')?new Error('Run supabase-v23-add-people.sql in Supabase first.'):e;
+function noLoginCell(p,i){const can=canAddRole(p.role);
+  return i?`Invited: ${esc(i.email)}${can?` <button class="btn small" data-invite-p="${p.id}">Change</button> <button class="btn small" data-uninvite="${esc(i.email)}">Cancel invite</button>`:''}`
+    :`<span class="muted">No email</span>${can?` <button class="btn small primary" data-invite-p="${p.id}">Invite</button>`:''}`}
+function addPersonForm(){
+  const roles=['caller','salesperson','admin','finance'].filter(canAddRole);
+  openModal('Add a person without email',`<label class="f wide">Full name *<input type="text" name="name" maxlength="80" required autocomplete="off"></label>
+    <label class="f wide">Role<select name="role">${roles.map(r=>`<option value="${r}">${roleLabel(r)}</option>`).join('')}</select></label>
+    <label class="f wide">Email (optional)<input type="email" name="email" placeholder="Leave blank to invite later" autocomplete="off"></label>
+    <p class="stat" style="margin:10px 0 0">They show up right away, so you can assign leads and enter their time. They can't sign in until you invite them with an email.</p>`,
+    {submit:'Add person',onSubmit:async fd=>{const name=String(fd.get('name')||'').trim(),email=String(fd.get('email')||'').trim().toLowerCase();
+      const {error}=await sb.rpc('add_member',{p_name:name,p_role:fd.get('role'),p_email:email||null});if(error)throw v23Err(error);
+      toast(email?`Added ${name} and invited ${email}. Send them this site's address.`:`Added ${name}. Invite them when you have their email.`);setTimeout(loadTeam,0)}});
+}
+function invitePersonForm(p,i){
+  openModal((i?'Change invite for ':'Invite ')+nameOf(p.id),`<label class="f wide">Email *<input type="email" name="email" value="${esc(i?.email||'')}" required autocomplete="off"></label>
+    <p class="stat" style="margin:10px 0 0">Send them this site's address. They click "Create your account" and use this email. Their leads, time and history stay with them.</p>`,
+    {submit:i?'Save invite':'Invite',onSubmit:async fd=>{const email=String(fd.get('email')||'').trim().toLowerCase();
+      const {error}=await sb.rpc('invite_member',{p_user:p.id,p_email:email});if(error)throw v23Err(error);
+      toast(`Invited ${email}. Send them this site's address.`);setTimeout(loadTeam,0)}});
+}
+$('#addperson').onclick=addPersonForm;
 $('#inviteform').onsubmit=async e=>{e.preventDefault();const email=$('#invemail').value.trim().toLowerCase();
   const {error}=await sb.from('invites').insert({email,role:$('#invrole').value,invited_by:me.id});
   if(error)return toast(/duplicate/i.test(error.message)?'That email is already invited':friendly(error));
