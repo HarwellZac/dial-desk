@@ -83,7 +83,7 @@ alter table public.leads add column if not exists deleted_by uuid references pub
 -- Version 3 additions: conversion to an opportunity, last edited by
 alter table public.leads drop constraint if exists leads_status_check;
 alter table public.leads add constraint leads_status_check
-  check (status in ('new','call1','call2','call3','on_ice','engaged','has_agency','already_opp','gatekeeper','appointment','converted','dead','bad_info'));
+  check (status in ('new','needs_rebook','call1','call2','call3','on_ice','engaged','has_agency','already_opp','gatekeeper','appointment','converted','dead','bad_info'));
 alter table public.leads add column if not exists sales_owner_id uuid references public.profiles(id) on delete set null;
 alter table public.leads add column if not exists opportunity_id uuid;
 alter table public.leads add column if not exists converted_at timestamptz;
@@ -759,7 +759,7 @@ end $$;
 alter table public.opportunities drop constraint if exists opportunities_stage_check;
 update public.opportunities set stage = 'proposal' where stage = 'negotiation';
 alter table public.opportunities add constraint opportunities_stage_check
-  check (stage in ('prospecting','proposal','nurturing','closed_won','closed_lost'));
+  check (stage in ('prospecting','proposal','nurturing','agreement','closed_won','closed_lost'));
 alter table public.opportunities add column if not exists follow_up_date date;
 alter table public.opportunities alter column close_date drop not null;
 create index if not exists opps_follow_idx on public.opportunities (follow_up_date);
@@ -2925,3 +2925,15 @@ end $$;
 revoke execute on function public.revert_opportunity(uuid, text, boolean) from anon;
 
 select 'The Ark version 24 is ready (agencies, Needs Rebooked, Agreement Submitted, deleting)' as result;
+
+-- =====================================================================
+-- The Ark version 25: "Needs Rebooked" sorts last when the Leads list is sorted by status.
+-- Safe to run more than once. Paste into Supabase > SQL Editor > Run.
+-- =====================================================================
+alter table public.leads drop column if exists status_rank;
+alter table public.leads add column status_rank int generated always as (
+  case status when 'new' then 1 when 'call1' then 2 when 'call2' then 3 when 'call3' then 4 when 'engaged' then 5 when 'has_agency' then 6
+    when 'on_ice' then 7 when 'already_opp' then 8 when 'gatekeeper' then 9 when 'appointment' then 10 when 'converted' then 11
+    when 'bad_info' then 12 when 'dead' then 13 when 'needs_rebook' then 14 else 15 end) stored;
+
+select 'The Ark version 25 is ready (Needs Rebooked sorts last)' as result;
