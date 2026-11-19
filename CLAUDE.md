@@ -30,7 +30,7 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 
 ## Database
 - `supabase-setup.sql` is the full schema: every table, RLS policy, trigger and function. It must stay safe to re-run (`if not exists`, `create or replace`, `drop policy if exists`).
-- `supabase-vNN-<topic>.sql` files are stand-alone pastes for each version that changed the database (v7–v23). `supabase-fix-owner.sql` is a one-off repair that makes the earliest login the Owner.
+- `supabase-vNN-<topic>.sql` files are stand-alone pastes for each version that changed the database (v7–v24). `supabase-fix-owner.sql` is a one-off repair that makes the earliest login the Owner.
 - To change the database:
   1. Write a new `supabase-vNN-<topic>.sql` with just the change (also re-runnable).
   2. Fold the same change into `supabase-setup.sql`.
@@ -81,6 +81,15 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 - Finance labels, titles and buttons use Title Case (every word capitalized).
 - Lists in the page: `ALLOCATIONS`, `ALLOC_SECONDARY`, `COM_PRESETS` (2, 3, 4, 7.5). Commission = manual amount, or deal amount × rate; "earned so far" = commission × share of the deal collected.
 - Reports (Finances > Reports): Receivables (aging, as of today), Collections (by paid date), Commissions, Allocations, Closed Won deals (by close date). Export CSV; no PDF yet.
+
+## Version 24 (agencies, Needs Rebooked, Agreement Submitted, deleting)
+- Callers' Leads list hides `CALLER_HIDDEN` (On Ice, Bad Info, Already Opportunity, Has Agency, Dead, Converted): chips, counts and rows (`filtered()`, `renderBoard()`). Callers' top bar no longer shows "Appts this month".
+- Lead status `needs_rebook` ("Needs Rebooked", rank 0). Deal page "Needs Rebooked" box (`canRebook`, `rebookOpp`) calls `revert_opportunity(opp, reason, p_rebook => true)`: deal owner/creator salesperson or admin, not Closed Won. Revert/rebook always returns leads to their caller (`owner_id = coalesce(owner_id, converted_by)`).
+- `leads.is_agency` = "Has Agency" box at the top of the lead (`#isagency` in `renderHead`) = this lead IS an agency; its `agency_for` shows beside it. `link_agency_lead(lead, p_client)` ticks it on the agency lead, adds the agency to `agencies` (Call Center source, contact details) and the Client name to `agencies.agency_for` via `add_agency_client()`. The Has Agency form has a "Client" box (defaults to the lead's company); the agency form has one too.
+- `convert_lead()` on an agency lead: ensures the agency from the lead's details and makes one deal per name in `agency_for` (deal name "Client - ..."), each through the agency, converting each client's own lead (`agency_lead_id` = agency lead, name match either way) to its deal. `revert_opportunity()` sends all live non-won deals of an agency lead back together; `unconvert_lead()` removes every deal the conversion made.
+- Deal stage `agreement` ("Agreement Submitted", 90%). Only admins/Owners set or leave Closed Won (`guard_opps`, `canStage()`, `stageChoices()`).
+- Deleting (admins/Owners): lead page "Delete lead" (to the Trash), deals (existing), `delete_client()` (soft: `clients.deleted_at`, its deals soft-deleted; `ensure_client()` revives by name; `loadLookups()` hides deleted), `delete_agency()` (hard; clients/deals become Direct; returns file paths for the page to remove from storage). `confirmDelete()` is the confirm box.
+- Files panels accept drag and drop (`loadFiles`, `.filesbox.drop`).
 
 ## Pay rules
 $18/hour + $50 per appointment that SHOWED (`PAY_RATE`, `APPT_BONUS`). Hours = clock_out − clock_in − break, rounded to 2 decimals before multiplying. Pay periods: 1st–15th and 16th–end of month. "Booked" appointments are shown for information only.
