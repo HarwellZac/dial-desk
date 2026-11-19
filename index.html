@@ -903,7 +903,7 @@ const FREE_DB_BYTES = 500 * 1024 * 1024;
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const STATUSES={new:'New',needs_rebook:'Needs Rebooked',call1:'1st Call',call2:'2nd Call',call3:'3rd Call',engaged:'Engaged',has_agency:'Has Agency',on_ice:'On Ice',already_opp:'Already Opportunity',gatekeeper:'Gatekeeper (old)',appointment:'Appointment Set',converted:'Converted',dead:'Dead',bad_info:'Bad Information'};
-const STATUS_ORDER=['new','needs_rebook','call1','call2','call3','engaged','has_agency','on_ice','already_opp','gatekeeper','appointment','converted','bad_info','dead'];
+const STATUS_ORDER=['new','call1','call2','call3','engaged','has_agency','on_ice','already_opp','gatekeeper','appointment','converted','bad_info','dead','needs_rebook'];
 const OPEN=['new','needs_rebook','call1','call2','call3','engaged','has_agency','gatekeeper'];
 // Logging one of these sends the lead back to the Owner (the 3rd call also puts it On Ice).
 // Callers don't see these in their Leads list (they've left the caller's hands or are parked).
