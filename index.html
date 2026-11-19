@@ -26,6 +26,7 @@
 }
 /* Status colors: --c main, --t tint, --ink text */
 .s-new{--c:#2563eb;--t:#e3ecff;--ink:#1d4ed8}
+.s-needs_rebook{--c:#ea580c;--t:#ffedd5;--ink:#c2410c}
 .s-call1{--c:#0891b2;--t:#dcf3f8;--ink:#0e6f87}
 .s-call2{--c:#7c3aed;--t:#efe7ff;--ink:#6025d0}
 .s-call3{--c:#db2777;--t:#fde5f0;--ink:#b0185d}
@@ -266,6 +267,13 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 .g-prospecting{--c:#2563eb;--t:#e3ecff;--ink:#1d4ed8}
 .g-proposal{--c:#7c3aed;--t:#efe7ff;--ink:#6025d0}
 .g-nurturing{--c:#0891b2;--t:#dcf3f8;--ink:#0e6f87}
+.g-agreement{--c:#0d9488;--t:#d5f5f0;--ink:#0f766e}
+.agtop{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.agchk{display:inline-flex;gap:7px;align-items:center;font-weight:700;font-size:13.5px;cursor:pointer;padding:5px 11px;border:1px solid var(--line-2);border-radius:999px;background:var(--surface)}
+.agchk.on{background:#fae8ff;border-color:#c026d3;color:#a21caf}
+.agfor{font-size:14.5px;background:#fae8ff;color:#701a75;padding:5px 11px;border-radius:8px}
+.showchk.rebook{border-color:#fdba74;color:#c2410c}
+.filesbox.drop{outline:2px dashed var(--accent,#3563e9);outline-offset:-6px;background:#f2f6ff}
 .g-closed_won{--c:#16a34a;--t:#ddf5e5;--ink:#11803a}
 .g-closed_lost{--c:#6b7280;--t:#eceef1;--ink:#4b5563}
 .role.salesperson{background:#e6f7ec;color:#15803d}
@@ -894,10 +902,12 @@ const SUPABASE_KEY = 'sb_publishable__2tlKocdNJ9JImcWkSOwuw_LaeHxDsK';
 const FREE_DB_BYTES = 500 * 1024 * 1024;
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const STATUSES={new:'New',call1:'1st Call',call2:'2nd Call',call3:'3rd Call',engaged:'Engaged',has_agency:'Has Agency',on_ice:'On Ice',already_opp:'Already Opportunity',gatekeeper:'Gatekeeper (old)',appointment:'Appointment Set',converted:'Converted',dead:'Dead',bad_info:'Bad Information'};
-const STATUS_ORDER=['new','call1','call2','call3','engaged','has_agency','on_ice','already_opp','gatekeeper','appointment','converted','bad_info','dead'];
-const OPEN=['new','call1','call2','call3','engaged','has_agency','gatekeeper'];
+const STATUSES={new:'New',needs_rebook:'Needs Rebooked',call1:'1st Call',call2:'2nd Call',call3:'3rd Call',engaged:'Engaged',has_agency:'Has Agency',on_ice:'On Ice',already_opp:'Already Opportunity',gatekeeper:'Gatekeeper (old)',appointment:'Appointment Set',converted:'Converted',dead:'Dead',bad_info:'Bad Information'};
+const STATUS_ORDER=['new','needs_rebook','call1','call2','call3','engaged','has_agency','on_ice','already_opp','gatekeeper','appointment','converted','bad_info','dead'];
+const OPEN=['new','needs_rebook','call1','call2','call3','engaged','has_agency','gatekeeper'];
 // Logging one of these sends the lead back to the Owner (the 3rd call also puts it On Ice).
+// Callers don't see these in their Leads list (they've left the caller's hands or are parked).
+const CALLER_HIDDEN=['on_ice','bad_info','already_opp','has_agency','dead','converted'];
 const TO_OWNER=['call3','already_opp','dead','bad_info'];
 const BOOKING_URL='https://bookings.cloud.microsoft/book/G413aa0ae9ab046ceb8be704a8c367bc8@tbn.tv/?ismsaljsauthenabled';
 const FIELDS=[
@@ -1098,8 +1108,8 @@ async function gsearch(raw){const s=searchTerm(raw);const seq=++gSeq;if(s.length
   const [a,b,cq]=await Promise.all([
     (isCaller()?sb.from('leads').select('id,company,first_name,last_name,phone,mobile,email,status').eq('owner_id',me.id):sb.from('leads').select('id,company,first_name,last_name,phone,mobile,email,status')).is('deleted_at',null).like('search_text',`%${likeEsc(s)}%`).order('last_call_at',{ascending:false,nullsFirst:false}).limit(8),
     canSell()?sb.from('opportunities').select('id,deal_name,stage,amount,client:clients(name)').is('deleted_at',null).ilike('deal_name',`%${likeEsc(term)}%`).limit(5):Promise.resolve({data:[]}),
-    canSell()?sb.from('clients').select('id,name,city,state').ilike('name',`%${likeEsc(term)}%`).limit(4):Promise.resolve({data:[]})]);
-  if(seq!==gSeq)return;gRows=[...(cq.data||[]).map(c=>({...c,kind:'client'})),...(b.data||[]).map(o=>({...o,kind:'opp'})),...(a.error?[]:a.data).map(l=>({...l,kind:'lead'}))];gIdx=-1;renderG(a.error)}
+    canSell()?sb.from('clients').select('id,name,city,state,deleted_at').ilike('name',`%${likeEsc(term)}%`).limit(4):Promise.resolve({data:[]})]);
+  if(seq!==gSeq)return;gRows=[...(cq.data||[]).filter(c=>!c.deleted_at).map(c=>({...c,kind:'client'})),...(b.data||[]).map(o=>({...o,kind:'opp'})),...(a.error?[]:a.data).map(l=>({...l,kind:'lead'}))];gIdx=-1;renderG(a.error)}
 function renderG(error){const box=$('#gres');box.hidden=false;
   if(error){box.innerHTML=`<div class="none">${esc(friendly(error))}</div>`;return}
   if(!gRows.length){box.innerHTML=`<div class="none">Nothing matches "${esc($('#gq').value.trim())}".</div>`;return}
@@ -1120,7 +1130,16 @@ function renderLeadNav(){const o=leadOrder();const i=cur?o.indexOf(cur.id):-1;
   if(l&&canConvert(l)){const caller=!canSell();
     acts.innerHTML=`<a class="btn bookbtn" href="${BOOKING_URL}" target="_blank" rel="noopener" title="Opens the TBN booking page in a new tab"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Book appointment</a><button class="btn primary ${caller?'apptbtn':''}" id="convbtn">${caller?'<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 15l2 2 4-4"/></svg>Appointment Set!':'<svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Convert lead'}</button>`;
     $('#convbtn').onclick=openConvert}
-  else acts.innerHTML=''}
+  else acts.innerHTML='';
+  if(l&&isAdmin()&&!l.deleted_at){acts.insertAdjacentHTML('beforeend','<button class="btn danger" id="ldel">Delete lead</button>');
+    $('#ldel').onclick=()=>confirmDelete('Delete this lead?',`<b>${esc(l.company||contactName(l)||'This lead')}</b> moves to the Trash. You can restore it, or delete it forever, from the Trash on the Leads page.`,'Delete lead',async()=>{
+      const {error}=await sb.from('leads').update({deleted_at:new Date().toISOString(),deleted_by:me.id}).eq('id',l.id);if(error)throw error;
+      toast('Lead moved to the Trash',{undo:async()=>{const {error}=await sb.from('leads').update({deleted_at:null,deleted_by:null}).eq('id',l.id);if(error)throw error;toast('Lead restored');openLead(l.id)}});
+      setTimeout(()=>setTab('board'),0)})}}
+// A confirm box for deleting things (the page can't use the browser's own confirm()).
+function confirmDelete(title,html,label,run){openModal(title,`<p style="margin:0">${html}</p>`,{submit:label,onSubmit:async()=>{await run()}});
+  const b=$('#mform [type=submit]');if(b)b.classList.add('danger')}
+const v24Err=e=>/delete_client|delete_agency|schema cache|does not exist/i.test(e?.message||'')?new Error('Run supabase-v24-agencies-rebook.sql in Supabase first.'):e;
 $('#prevlead').onclick=()=>{const id=cur&&neighbor(cur.id,-1);if(id){window.scrollTo({top:0});selectLead(id)}};
 $('#nextlead').onclick=()=>{const id=cur&&neighbor(cur.id,1);if(id){window.scrollTo({top:0});selectLead(id)}};
 let leadSeq=0;
@@ -1160,6 +1179,8 @@ function renderHead(){
   const ph=p=>p?`${esc(fmtPhone(p))} <button class="copy" data-copy="${esc(digits(p))}">Copy</button>`:'';
   const own=l.owner_id===me.id;const canRe=!l.deleted_at&&l.status!=='converted'&&(isAdmin()||own);
   $('#lhead').className='panel '+sc(l.status);
+  // "Has Agency" box: this lead IS an agency. It shows who the agency represents right at the top.
+  const agBox=ce||l.is_agency?`<div class="agtop">${ce?`<label class="agchk ${l.is_agency?'on':''}" title="Tick if this lead is an advertising agency"><input type="checkbox" id="isagency" ${l.is_agency?'checked':''}>Has Agency</label>`:'<span class="agchk on">Agency</span>'}${l.is_agency?`<span class="agfor">Agency for: <b>${l.agency_for?esc(l.agency_for):'no clients named yet'}</b></span>`:''}</div>`:'';
   const csz=esc([l.city,[l.state,l.zip].filter(Boolean).join(' ')].filter(Boolean).join(', '));
   const strip=ce?`
       ${ecell('Direct phone','phone',ph(l.phone),'num')}${ecell('Mobile','mobile',ph(l.mobile),'num')}
@@ -1172,7 +1193,7 @@ function renderHead(){
       ${cell('Industry',esc(l.industry))}${cell('Job title',esc(l.title))}
       ${cell('Company phone',ph(l.company_phone),'num')}${cell('City · State · ZIP',csz)}`;
   $('#lhead').innerHTML=`<div class="lh">
-      <div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="${ce?'ie':''}" ${ce?'tabindex="0" data-f="company" title="Click to edit"':''}>${esc(l.company)||(ce?'<span class="add">Add company name</span>':'Unnamed company')}${ce?PEN:''}</h2>${l.company?`<button class="copy" data-copy="${esc(l.company)}" title="Copy company name">Copy</button>`:''}${pill(l.status)}</div>
+      <div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 class="${ce?'ie':''}" ${ce?'tabindex="0" data-f="company" title="Click to edit"':''}>${esc(l.company)||(ce?'<span class="add">Add company name</span>':'Unnamed company')}${ce?PEN:''}</h2>${l.company?`<button class="copy" data-copy="${esc(l.company)}" title="Copy company name">Copy</button>`:''}${pill(l.status)}</div>${agBox}
         <div class="who">${ce?`${ed('first_name,last_name',contactName(l)?`<b>${esc(contactName(l))}</b>`:'','Add contact name')}`
           :`${contactName(l)?`<b>${esc(contactName(l))}</b>`:'<span class="muted">No contact name</span>'}${l.title?` <span class="muted">· ${esc(l.title)}</span>`:''}`}</div>
         ${ce?'<div class="stat" style="margin-top:6px">Click any detail to change it. Enter saves, Esc cancels.</div>':''}</div>
@@ -1189,6 +1210,10 @@ function renderHead(){
   $('#lhead').querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copy(b.dataset.copy,b));
   if(ce)wireInline($('#lhead'));
   if(canRe)$('#reassign').onclick=reassignForm;
+  if($('#isagency'))$('#isagency').onchange=async e=>{const on=e.target.checked;
+    const {error}=await sb.from('leads').update({is_agency:on}).eq('id',l.id);
+    if(error){e.target.checked=!on;return toast(/is_agency/.test(error.message||'')?'Run supabase-v24-agencies-rebook.sql in Supabase first.':friendly(error))}
+    cur.is_agency=on;renderHead();toast(on?'Marked as an agency':'No longer marked as an agency')};
   renderUndoBar();
 }
 function renderAbout(){
@@ -1215,8 +1240,9 @@ function renderAbout(){
 // "Has Agency": who represents this company. logIt = also log the call as Has Agency.
 function leadAgencyForm(logIt){const l=cur;const id=l.id;
   const F=[['agency_name','Agency name',1],['agency_contact','Contact at the agency'],['agency_phone','Phone'],['agency_email','Email']];
-  openModal(logIt?'Has Agency':'Agency details',`${logIt?'<p class="stat" style="margin:0">Who handles advertising for this company? This logs the call as <b>Has Agency</b>, saves the agency on this lead, and adds the agency to your leads as a new lead that notes it represents this company. It carries over to the deal when the appointment is set.</p>':''}
+  openModal(logIt?'Has Agency':'Agency details',`${logIt?'<p class="stat" style="margin:0">Who handles advertising for this company? This logs the call as <b>Has Agency</b>, saves the agency on this lead, adds the agency to your leads as a new lead that notes it represents this company, and adds it to the Agencies tab. It carries over to the deal when the appointment is set.</p>':''}
     <div class="fgrid">${F.map(([k,lab,req])=>`<label class="f ${req?'wide':''}">${lab}${req?' <span class="req">*</span>':''}<input type="${k==='agency_email'?'email':'text'}" name="${k}" value="${esc(l[k]||'')}" ${req?'required':''} ${k==='agency_name'?'list="dl-agencies"':''}></label>`).join('')}
+    <label class="f wide">Client <span class="req">*</span> <span class="hint">who this agency represents</span><input type="text" name="agency_client" required value="${esc(l.company||contactName(l))}"></label>
     ${logIt?`<label class="f wide">Note for this call <span class="hint">optional</span><textarea name="note">${esc(draft.note||'')}</textarea></label>`:''}</div>`,
     {submit:logIt?'Save as Has Agency':'Save agency',onSubmit:async fd=>{
       const patch={},prev={};F.forEach(([k])=>{const v=String(fd.get(k)||'').trim();if(v!==(l[k]||'')){patch[k]=v;prev[k]=l[k]||''}});
@@ -1227,7 +1253,7 @@ function leadAgencyForm(logIt){const l=cur;const id=l.id;
       // The agency becomes its own lead for this caller (or is linked to the agency's lead if it already exists).
       let link=null,linkMsg='';
       if(String(fd.get('agency_name')||'').trim()&&(logIt||!l.agency_lead_id||patch.agency_name)){
-        const {data,error}=await sb.rpc('link_agency_lead',{p_lead:id});
+        const {data,error}=await sb.rpc('link_agency_lead',{p_lead:id,p_client:String(fd.get('agency_client')||'').trim()||null});lookups.loaded=false;
         if(error){linkMsg=/link_agency_lead/i.test(error.message||'')?' (Run supabase-v19-the-arc.sql to add agencies as leads.)':' The agency lead wasn’t added: '+friendly(error)}
         else if(data){link=data;linkMsg=data.created?` ${String(fd.get('agency_name')).trim()} was added to ${data.mine?'your':data.owner+'’s'} leads.`:` ${String(fd.get('agency_name')).trim()} is already a lead (${data.mine?'yours':data.owner+' has it'}), so it was noted there.`}}
       refreshBoardRow(id,logIt?{status:'has_agency',...patch}:patch);
@@ -1444,7 +1470,9 @@ async function undoLeadEdit(hid){
 function ownerFilter(){if(!canSell())return me.id;const o=board.owner;return o==='__me'?me.id:(o&&o!=='__none'?o:null)}
 function filtered(q,withStatus=true){const o=ownerFilter();if(o)q=q.eq('owner_id',o);else if(canSell()&&board.owner==='__none')q=q.is('owner_id',null);
   q=board.trash?q.not('deleted_at','is',null):q.is('deleted_at',null);
-  if(withStatus&&board.statuses.size)q=board.statuses.size===1?q.eq('status',[...board.statuses][0]):q.in('status',[...board.statuses]);
+  const sts=[...board.statuses].filter(k=>!(isCaller()&&CALLER_HIDDEN.includes(k)));
+  if(withStatus&&sts.length)q=sts.length===1?q.eq('status',sts[0]):q.in('status',sts);
+  else if(isCaller()&&!board.trash)q=q.not('status','in',`(${CALLER_HIDDEN.join(',')})`);
   const s=searchTerm(board.search);if(s)q=q.like('search_text',`%${likeEsc(s)}%`);
   const x=extraFilters();if(x.p_state)q=q.ilike('state',likeEsc(x.p_state));if(x.p_industry)q=q.ilike('industry',`%${likeEsc(x.p_industry)}%`);
   if(x.p_never)q=q.is('last_call_at',null);if(x.p_last_before)q=q.lt('last_call_at',x.p_last_before);if(x.p_last_after)q=q.gte('last_call_at',x.p_last_after);
@@ -1494,7 +1522,7 @@ async function loadMyKpis(){
     const [st,cb]=await Promise.all([sb.rpc('call_report',{p_from:from.toISOString(),p_to:to.toISOString()}),
       sb.from('leads').select('id',{count:'exact',head:true}).eq('owner_id',me.id).in('status',OPEN).is('deleted_at',null).lte('callback_at',n.toISOString())]);
     const mine=(st.data||[]).filter(r=>r.caller_id===me.id);const today=ymd(n);const tot=(rows,k)=>rows.reduce((x,r)=>x+(Number(r[k])||0),0);
-    $('#mykpis').innerHTML=[['Calls today',tot(mine.filter(r=>r.day===today),'calls')],['Appts this month',tot(mine,'appts')],['Calls this month',tot(mine,'calls')],['Callbacks due',cb.count]]
+    $('#mykpis').innerHTML=[['Calls today',tot(mine.filter(r=>r.day===today),'calls')],...(isCaller()?[]:[['Appts this month',tot(mine,'appts')]]),['Calls this month',tot(mine,'calls')],['Callbacks due',cb.count]]
       .map(([k,v])=>`<span><b>${(Number(v)||0).toLocaleString()}</b>${k}</span>`).join('')}catch{}}
 function renderBoardControls(){
   const ow=$('#lowner'),as=$('#assignto'),ss=$('#setstatus');const ids=Object.values(people).filter(p=>p.active).map(p=>p.id);const av=as.value,sv=ss.value;
@@ -1504,9 +1532,9 @@ function renderBoardControls(){
   ow.value=board.owner;as.value=av||me.id;ss.value=sv||'dead';$('#lsort').value=board.sort;$('#lsort').disabled=board.trash;$('#lsort2').value=board.sort2;$('#lsort2').disabled=board.trash;
 }
 function renderBoard(){
-  const a=isAdmin(),sc2=canSell();const all=Object.values(board.counts).reduce((x,y)=>x+y,0);
+  const a=isAdmin(),sc2=canSell();const hid=k=>isCaller()&&CALLER_HIDDEN.includes(k);const all=Object.entries(board.counts).filter(([k])=>!hid(k)).reduce((x,[,y])=>x+y,0);
   $('#chips').innerHTML=`<button class="chip all" data-s="" aria-pressed="${!board.statuses.size&&!board.trash}"><i></i>All leads${board.trash?'':` <b>${all.toLocaleString()}</b>`}</button>`+
-    STATUS_ORDER.filter(k=>k!=='gatekeeper'||board.counts[k]||board.statuses.has(k)).map(k=>`<button class="chip ${sc(k)}" data-s="${k}" aria-pressed="${!board.trash&&board.statuses.has(k)}"><i></i>${STATUSES[k]}${board.trash?'':` <b>${(board.counts[k]||0).toLocaleString()}</b>`}</button>`).join('')+
+    STATUS_ORDER.filter(k=>!hid(k)&&(k!=='gatekeeper'||board.counts[k]||board.statuses.has(k))).map(k=>`<button class="chip ${sc(k)}" data-s="${k}" aria-pressed="${!board.trash&&board.statuses.has(k)}"><i></i>${STATUSES[k]}${board.trash?'':` <b>${(board.counts[k]||0).toLocaleString()}</b>`}</button>`).join('')+
     (a?`<button class="chip trash" data-trash="1" aria-pressed="${board.trash}"><i></i>Trash <b>${board.trashN.toLocaleString()}</b></button>`:'');
   // Tap one status to see it, tap more to combine them; "All leads" clears.
   $('#chips').querySelectorAll('.chip').forEach(c=>c.onclick=()=>{const k=c.dataset.s||'';
@@ -1785,9 +1813,12 @@ $('#inviteform').onsubmit=async e=>{e.preventDefault();const email=$('#invemail'
   $('#invemail').value='';toast(`Invited ${email}. Send them this site's address.`);loadTeam()};
 
 /* ===================== Sales: shared ===================== */
-const STAGES={prospecting:'Qualifying',proposal:'Proposal/Price Quote',nurturing:'Nurturing',closed_won:'Closed Won',closed_lost:'Closed Lost',negotiation:'Negotiation/Review'};
-const STAGE_ORDER=['prospecting','nurturing','proposal','closed_won','closed_lost'];
-const STAGE_PROB={prospecting:10,nurturing:25,proposal:75,closed_won:100,closed_lost:0};
+const STAGES={prospecting:'Qualifying',proposal:'Proposal/Price Quote',agreement:'Agreement Submitted',nurturing:'Nurturing',closed_won:'Closed Won',closed_lost:'Closed Lost',negotiation:'Negotiation/Review'};
+const STAGE_ORDER=['prospecting','nurturing','proposal','agreement','closed_won','closed_lost'];
+// Only Owners and admins mark a deal Closed Won (or move it out of Closed Won); salespeople still see it.
+const canStage=(o,k)=>isAdmin()||(k!=='closed_won'&&o?.stage!=='closed_won');
+const stageChoices=cur=>!isAdmin()&&cur==='closed_won'?['closed_won']:STAGE_ORDER.filter(k=>isAdmin()||k!=='closed_won');
+const STAGE_PROB={prospecting:10,nurturing:25,proposal:75,agreement:90,closed_won:100,closed_lost:0};
 const CLOSED=['closed_won','closed_lost'];
 const TYPES={first_deal:'New Client',returning:'Returning Client',new_returning_agency:'New Client, Returning Agency'};
 // Client sources (stored in lead_source on deals, client_source on clients). "Call Center" is set automatically when a caller books the appointment.
@@ -1829,8 +1860,8 @@ const clientById=id=>lookups.clientRows.find(x=>x.id===id)||null;
 const agencyById=id=>lookups.agencyRows.find(x=>x.id===id)||null;
 async function loadLookups(force){
   if(lookups.loaded&&!force)return;
-  const [c,a]=await Promise.all([pageAll(()=>sb.from('clients').select('*').order('name')),pageAll(()=>sb.from('agencies').select('*').order('name'))]);
-  lookups.clientRows=c;lookups.agencyRows=a;
+  const [c0,a]=await Promise.all([pageAll(()=>sb.from('clients').select('*').order('name')),pageAll(()=>sb.from('agencies').select('*').order('name'))]);
+  const c=c0.filter(x=>!x.deleted_at);lookups.clientRows=c;lookups.agencyRows=a;
   lookups.clients={};c.forEach(x=>lookups.clients[x.id]=x.name);lookups.agencies={};a.forEach(x=>lookups.agencies[x.id]=x.name);lookups.loaded=true;
   $('#dl-clients').innerHTML=c.map(x=>`<option value="${esc(x.name)}"></option>`).join('');
   $('#dl-agencies').innerHTML=a.map(x=>`<option value="${esc(x.name)}"></option>`).join('');
@@ -1880,8 +1911,14 @@ async function loadFiles(kind,id,ed){
       :list.length?`<ul class="files">${list.map(f=>`<li><button type="button" class="linkbtn" data-fget="${esc(f.id)}" title="Download">${esc(f.name)}</button>
         <span class="stat">${esc(fileSize(f.size||0))} · ${esc(f.uploaded_by?nameOf(f.uploaded_by):'')} · ${esc(fmtWhen(f.created_at))}</span>
         ${(kind==='fin'?canFinance():isAdmin()||f.uploaded_by===me.id)?`<button type="button" class="btn small ghost danger" data-fdel="${esc(f.id)}">Remove</button>`:''}</li>`).join('')}</ul>`
-      :`<span class="stat">${ed?(kind==='fin'?'No finance files yet. Attach invoices, remittances, signed contracts or commission sheets (50 MB max each). Only people with Finance access see these.':'No files yet. Attach contracts, insertion orders, artwork or anything else for this record (50 MB max each).'):'No files yet.'}</span>`}</div>`;
-  const up=box.querySelector('input[type=file]');if(up)up.onchange=async()=>{const files=[...up.files];up.value='';if(!files.length)return;up.disabled=true;
+      :`<span class="stat">${ed?(kind==='fin'?'No finance files yet. Attach invoices, remittances, signed contracts or commission sheets (50 MB max each). Only people with Finance access see these.':'No files yet. Drag files here or click Attach files: contracts, insertion orders, artwork or anything else for this record (50 MB max each).'):'No files yet.'}</span>`}</div>`;
+  const up=box.querySelector('input[type=file]');
+  // Drop files anywhere on the Files panel, or use Attach files.
+  box.ondragover=box.ondragenter=ed?e=>{if(![...(e.dataTransfer?.types||[])].includes('Files'))return;e.preventDefault();box.classList.add('drop')}:null;
+  box.ondragleave=ed?e=>{if(!box.contains(e.relatedTarget))box.classList.remove('drop')}:null;
+  box.ondrop=ed?e=>{e.preventDefault();box.classList.remove('drop');const fs=[...(e.dataTransfer?.files||[])];if(fs.length)upload(fs)}:null;
+  if(up)up.onchange=()=>{const fs=[...up.files];up.value='';if(fs.length)upload(fs)};
+  async function upload(files){if(up)up.disabled=true;
     let n=0;for(const f of files){
       if(f.size>MAX_FILE){toast(`${f.name} is bigger than 50 MB`);continue}
       toast(`Uploading ${f.name}…`);
@@ -1891,8 +1928,8 @@ async function loadFiles(kind,id,ed){
       if(ue){toast(filesSetupErr(ue.message||'')||'Couldn’t upload '+f.name+': '+friendly(ue));continue}
       const {error:ie}=await sb.from('attachments').insert({kind,parent_id:id,name:f.name.slice(0,250),path,size:f.size,mime:f.type||'',uploaded_by:me.id});
       if(ie){await sb.storage.from('attachments').remove([path]);toast(filesSetupErr(ie.message||'')||friendly(ie));continue}n++}
-    up.disabled=false;
-    if(n)toast(n===1?'File attached':n+' files attached');loadFiles(kind,id,ed)};
+    if(up)up.disabled=false;
+    if(n)toast(n===1?'File attached':n+' files attached');loadFiles(kind,id,ed)}
   box.querySelectorAll('[data-fget]').forEach(b=>b.onclick=async()=>{const f=list.find(x=>x.id===b.dataset.fget);if(!f)return;
     const {data,error}=await sb.storage.from('attachments').createSignedUrl(f.path,300,{download:f.name});if(error)return toast(friendly(error));
     const a=document.createElement('a');a.href=data.signedUrl;a.rel='noopener';document.body.appendChild(a);a.click();a.remove()});
@@ -1967,6 +2004,8 @@ async function refreshLeadNotes(){const id=cur.id;const [c,n,h]=await Promise.al
   if(cur?.id!==id)return;curCalls=c.data||curCalls;curNotes=n.data||curNotes;curHist=h.data||curHist;renderNotes()}
 
 /* ===================== Convert lead ===================== */
+// Shown on Appointment Set! / Convert for a lead that is an agency.
+const agencyConvNote=l=>l.is_agency?`<div class="banner" style="margin:0"><span>This lead is an agency. ${l.agency_for?`One deal is made for each client it represents: <b>${esc(l.agency_for)}</b>, all through ${esc(l.company||'this agency')}.`:'No clients are named yet, so one deal is made.'} ${esc(l.company||'The agency')} is added to the Agencies tab.</span></div>`:'';
 async function openConvert(){
   const l=cur;try{await loadLookups()}catch(e){return toast(friendly(e))}
   const s=sellers();if(!s.length)return toast('Add a salesperson on the Team page first');
@@ -1975,16 +2014,16 @@ async function openConvert(){
   const client=(l.company||contactName(l)).trim();
   const known=Object.values(lookups.clients).some(n=>n.toLowerCase().trim()===client.toLowerCase());
   const appt=l.appt_at?toLocalInput(new Date(l.appt_at)):'';
-  const body=`<p class="stat" style="margin:0">${caller?'Great work! This books the appointment and hands the lead to the salesperson you choose as a new deal.':'This creates a deal owned by the salesperson you choose and marks the lead <b>Converted</b>.'} The lead's contact and company details carry over.</p>
+  const body=`<p class="stat" style="margin:0">${caller?'Great work! This books the appointment and hands the lead to the salesperson you choose as a new deal.':'This creates a deal owned by the salesperson you choose and marks the lead <b>Converted</b>.'} The lead's contact and company details carry over.</p>${agencyConvNote(l)}
    <div class="fgrid">
     <label class="f wide">Assign to salesperson <span class="req">*</span><select name="sales" required><option value="">Choose a salesperson</option>${s.map(p=>opt(p.id,nameOf(p.id)+(p.role==='salesperson'?'':' ('+roleLabel(p.role)+')'),'')).join('')}</select></label>
     <label class="f">Appointment date and time ${caller?'<span class="req">*</span>':'<span class="hint">optional</span>'}<input type="datetime-local" name="appt" id="cappt" ${caller?'required':''} value="${esc(appt)}"></label>
     <label class="f">Follow Up date <span class="hint">defaults to the appointment day</span><input type="date" name="follow" id="cfollow" value="${esc(appt?appt.slice(0,10):'')}"></label>
     <label class="f wide">Deal Name <span class="req">*</span><input type="text" name="deal" required value="${esc(client+' - '+new Date().toLocaleDateString([],{month:'short',year:'numeric'}))}"></label>
     <label class="f">Client Name <span class="req">*</span><input type="text" name="client" required list="dl-clients" value="${esc(client)}"></label>
-    <label class="f">Agency <span class="hint">pick one, type a new one, or leave blank for Direct</span><input type="text" name="agency" list="dl-agencies" placeholder="Direct (no agency)" value="${esc(l.agency_name||'')}"></label>
+    <label class="f">Agency <span class="hint">pick one, type a new one, or leave blank for Direct</span><input type="text" name="agency" list="dl-agencies" placeholder="Direct (no agency)" value="${esc(l.is_agency?(l.company||''):(l.agency_name||''))}"></label>
     <label class="f">Type <span class="req">*</span><select name="type">${opt('first_deal','1st Deal',known?'':'first_deal')}${opt('returning','Returning Client',known?'returning':'')}</select></label>
-    <label class="f">Stage<select name="stage">${STAGE_ORDER.map(k=>opt(k,STAGES[k],'prospecting')).join('')}</select></label>
+    <label class="f">Stage<select name="stage">${stageChoices('').map(k=>opt(k,STAGES[k],'prospecting')).join('')}</select></label>
     <label class="f">Amount<span class="money"><i>$</i><input type="text" name="amount" inputmode="decimal" placeholder="0" value=""></span></label>
     ${productsField([])}
     <label class="f wide">Description<textarea name="desc">${esc(curNotes.find(n=>!n.deleted_at)?.body||'')}</textarea></label>
@@ -2013,7 +2052,7 @@ function openApptSet(l,s){
   // Whatever the caller just typed (call note or note box) goes first; they can still edit it.
   const typed=[draft?.note,draft?.noteText].map(x=>String(x||'').trim()).filter(Boolean).join('\n');
   const notes=[typed,leadHistoryText()].filter(Boolean).join('\n\n');
-  const body=`<p class="stat" style="margin:0">Nice work! Check the details, pick the salesperson, and add any notes. Everything else on this lead (company details, call history) goes with it.</p>
+  const body=`<p class="stat" style="margin:0">Nice work! Check the details, pick the salesperson, and add any notes. Everything else on this lead (company details, call history) goes with it.</p>${agencyConvNote(l)}
    <div class="fgrid">
     <label class="f wide">Company Name <span class="req">*</span><input type="text" name="company" required value="${esc(l.company||'')}"></label>
     <div class="fsec">Contact</div>
@@ -2024,7 +2063,7 @@ function openApptSet(l,s){
     <label class="f wide">Job title<input type="text" name="title" value="${esc(l.title||'')}"></label>
     <div class="fsec">Appointment</div>
     <label class="f">Appointment date and time <span class="req">*</span><input type="datetime-local" name="appt" required value="${l.appt_at?esc(toLocalInput(new Date(l.appt_at))):''}"></label>
-    <label class="f">Agency <span class="hint">leave blank if they buy direct</span><input type="text" name="agency" list="dl-agencies" placeholder="Direct (no agency)" value="${esc(l.agency_name||'')}"></label>
+    <label class="f">Agency <span class="hint">leave blank if they buy direct</span><input type="text" name="agency" list="dl-agencies" placeholder="Direct (no agency)" value="${esc(l.is_agency?(l.company||''):(l.agency_name||''))}"></label>
     <label class="f wide">Assign to salesperson <span class="req">*</span><select name="sales" required><option value="">Choose a salesperson</option>${s.map(p=>opt(p.id,nameOf(p.id)+(p.role==='salesperson'?'':' ('+roleLabel(p.role)+')'),'')).join('')}</select></label>
     <label class="f wide">Notes for the salesperson <span class="hint">your latest note is already here · add to it or change it</span><textarea name="desc" style="min-height:160px">${esc(notes)}</textarea></label>
    </div>`;
@@ -2125,7 +2164,7 @@ function renderOppDetail(){
        ${cellS('Owner',o.owner_id?personCell(o.owner_id):'')}${cellS('Client Source',esc(o.lead_source))}${cellS('Created',esc(fmtWhen(o.created_at))+(o.created_by?' by '+esc(nameOf(o.created_by)):''))}
        ${cellS('Last edited',o.updated_by?esc(fmtWhen(o.updated_at))+' by '+esc(nameOf(o.updated_by)):'Not edited yet')}
      </div>
-     <div class="path">${STAGE_ORDER.map((k,i)=>`<button type="button" data-stage="${k}" class="${k===o.stage?'on':(i<si&&!CLOSED.includes(o.stage)?'done':'')}" ${ed&&k!==o.stage?'':'disabled'} title="${ed&&k!==o.stage?'Move to '+STAGES[k]:''}">${STAGES[k]}</button>`).join('')}</div>
+     <div class="path">${STAGE_ORDER.map((k,i)=>`<button type="button" data-stage="${k}" class="${k===o.stage?'on':(i<si&&!CLOSED.includes(o.stage)?'done':'')}" ${ed&&k!==o.stage&&canStage(o,k)?'':'disabled'} title="${ed&&k!==o.stage?(canStage(o,k)?'Move to '+STAGES[k]:'Only an Owner or admin can change Closed Won'):''}">${STAGES[k]}</button>`).join('')}</div>
    </div>
    ${o.deleted_at?'':followBox(o,ed,CLOSED.includes(o.stage))}
    ${o.lead_id||o.converted_by?apptBox(o,ed):''}
@@ -2157,6 +2196,7 @@ function renderOppDetail(){
   if(ed){$('#oedit').onclick=()=>openOppForm(o);$('#oedit2').onclick=()=>openOppForm(o)}
   if(isAdmin()&&!o.deleted_at)$('#odel').onclick=()=>deleteOpp(o);
   if(canRevert(o))$('#orevert').onclick=()=>revertOpp(o);
+  if($('#needsrebook'))$('#needsrebook').onchange=e=>{e.target.checked=false;rebookOpp(o)};
   if($('#ofin'))$('#ofin').onclick=()=>openFin(o.id);
   if((o.lead_id||o.converted_by)&&ed&&!o.deleted_at){$('#apptshowed').onchange=e=>setShowed(o,e.target.checked);$('#apptdate').onclick=()=>apptDateForm(o)}
   if(o.deleted_at&&!o.reverted_at&&isAdmin())$('#orestore').onclick=async()=>{const {error}=await sb.from('opportunities').update({deleted_at:null,deleted_by:null}).eq('id',o.id);if(error)return toast(friendly(error));oppRows=null;toast('Deal restored');openOpp(o.id)};
@@ -2229,6 +2269,15 @@ async function addOppNote(){
 // Any change to a deal's fields can be put back from the history.
 const OPP_UNDO=new Set(['deal_name','client_id','agency_id','type','stage','probability','amount','follow_up_date','lead_source','description','products','appt_at','appt_showed']);
 /* ===================== Appointment showed + revert to lead ===================== */
+// Needs Rebooked: the deal goes back to the caller's leads marked Needs Rebooked.
+const canRebook=o=>!!o&&!o.deleted_at&&!!o.lead_id&&o.stage!=='closed_won'&&(isAdmin()||(isSales()&&(o.owner_id===me.id||o.created_by===me.id)));
+function rebookOpp(o){const caller=o.converted_by?nameOf(o.converted_by):'the caller';
+  openModal('Needs Rebooked',`<p style="margin:0">This sends <b>${esc(o.deal_name)}</b> back to ${esc(caller)}’s leads marked <b>Needs Rebooked</b>, so they can set a new appointment. The deal leaves the pipeline but stays in the history.</p>
+    <label class="f">What happened? <span class="hint">optional, added as a note on the lead</span><textarea name="why" rows="3" placeholder="e.g. No show, they asked to move it to next week"></textarea></label>`,
+    {submit:'Send back as Needs Rebooked',onSubmit:async fd=>{
+      const {error}=await sb.rpc('revert_opportunity',{p_opp:o.id,p_reason:String(fd.get('why')||'').trim(),p_rebook:true});
+      if(error){toast(/p_rebook|does not exist|schema cache/i.test(error.message||'')?'Run supabase-v24-agencies-rebook.sql in Supabase first.':friendly(error));return false}
+      oppRows=null;lookups.loaded=false;toast(`Sent back to ${caller} as Needs Rebooked`);setTimeout(()=>{showOppList();loadOpps()},0)}})}
 const canRevert=o=>!!o&&!o.deleted_at&&!!o.lead_id&&(isAdmin()||(isSales()&&(o.owner_id===me.id||o.created_by===me.id)));
 function apptBox(o,ed){const can=ed&&!o.deleted_at;const caller=o.converted_by?nameOf(o.converted_by):'';
   const payDay=o.appt_at||o.appt_showed_at;
@@ -2237,7 +2286,7 @@ function apptBox(o,ed){const can=ed&&!o.deleted_at;const caller=o.converted_by?n
   return `<div class="panel apptbox"><div style="display:grid;gap:3px;min-width:0"><span class="k">Appointment</span>
       <span style="font-size:15px"><b>${o.appt_at?esc(fmtFull(o.appt_at)):'No date set'}</b>${can?' <button class="linkbtn" id="apptdate">Change</button>':''}</span>
       <span class="stat">${info}</span></div>
-    <label class="showchk ${o.appt_showed?'yes':''} ${can?'':'dis'}"><input type="checkbox" id="apptshowed" ${o.appt_showed?'checked':''} ${can?'':'disabled'}>Appointment showed</label></div>`}
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="showchk ${o.appt_showed?'yes':''} ${can?'':'dis'}"><input type="checkbox" id="apptshowed" ${o.appt_showed?'checked':''} ${can?'':'disabled'}>Appointment showed</label>${canRebook(o)?'<label class="showchk rebook" title="Send this back to the caller to set a new appointment"><input type="checkbox" id="needsrebook">Needs Rebooked</label>':''}</div></div>`}
 async function setShowed(o,on){
   const {error}=await sb.from('opportunities').update({appt_showed:on}).eq('id',o.id);if(error){toast(friendly(error));return openOpp(o.id)}
   oppRows=null;await openOpp(o.id);
@@ -2291,7 +2340,7 @@ async function openOppForm(o,pre={}){
    <label class="f">Agency Name <span class="hint">optional</span><input type="text" name="agency" list="dl-agencies" value="${esc(aName)}" placeholder="Pick an agency or type a new one" autocomplete="off"><span class="hint" id="agnote"></span></label>
    <label class="f">Deal Owner${isAdmin()?'':' <span class="hint">only admins can change</span>'}<select name="owner_id" ${isAdmin()?'':'disabled'}>${sellers().map(p=>opt(p.id,who(p.id),ownerSel)).join('')}</select></label>
    <label class="f">Deal Type <span class="req">*</span><select name="type">${Object.entries(TYPES).map(([k,v])=>opt(k,v,o?.type||'first_deal')).join('')}</select></label>
-   <label class="f">Stage <span class="req">*</span><select name="stage" id="fstage">${STAGE_ORDER.map(k=>opt(k,STAGES[k],o?.stage||'prospecting')).join('')}</select></label>
+   <label class="f">Stage <span class="req">*</span><select name="stage" id="fstage">${stageChoices(o?.stage).map(k=>opt(k,STAGES[k],o?.stage||'prospecting')).join('')}</select></label>
    <label class="f">Probability (%) <span class="req">*</span><input type="number" name="probability" id="fprob" min="0" max="100" required value="${o?.probability??10}"></label>
    <label class="f">Amount<span class="money"><i>$</i><input type="text" name="amount" inputmode="decimal" placeholder="0" value="${o?.amount!=null?Number(o.amount).toLocaleString(undefined,{maximumFractionDigits:2}):''}"></span></label>
    <label class="f">Follow Up <span class="hint">date to check back</span><input type="date" name="follow_up_date" value="${esc(o?.follow_up_date||'')}"></label>
@@ -2378,9 +2427,10 @@ function openAgencyForm(a,after){
   const isNew=!a;a=a||{};
   const body=`<div class="fgrid">${AGENCY_F.map(([k,l])=>`<label class="f">${l}${k==='name'?' <span class="req">*</span>':''}<input type="${k==='email'?'email':'text'}" name="${k}" value="${esc(a[k]||'')}" ${k==='name'?'required':''}></label>`).join('')}
     <label class="f">Agency Source<select name="source">${sourceOptions(AGENCY_SOURCES,a.source||'')}</select></label>
+    <label class="f wide">Client <span class="hint">who this agency represents · separate several with commas</span><input type="text" name="agency_for" list="dl-clients" value="${esc(a.agency_for||'')}" autocomplete="off"></label>
     ${contactFields(a)}</div>`;
   openModal(isNew?'New Agency':'Edit Agency',body,{submit:isNew?'Add agency':'Save',wide:true,onSubmit:async fd=>{
-    const rec={};AGENCY_F.forEach(([k])=>rec[k]=String(fd.get(k)||'').trim());rec.source=fd.get('source')||'';Object.assign(rec,readContacts(fd));
+    const rec={};AGENCY_F.forEach(([k])=>rec[k]=String(fd.get(k)||'').trim());rec.source=fd.get('source')||'';rec.agency_for=String(fd.get('agency_for')||'').split(',').map(x=>x.trim()).filter(Boolean).join(', ');Object.assign(rec,readContacts(fd));
     if(isNew){const {data,error}=await sb.from('agencies').insert({...rec,created_by:me.id}).select('id').single();
       if(error){toast(/duplicate/i.test(error.message)?'That agency is already in the list':friendly(error));return false}
       lookups.loaded=false;ag.rows=[];toast('Agency added');setTimeout(()=>openAgency(data.id),0);return}
@@ -2442,7 +2492,7 @@ async function openClient(id){
   box.innerHTML=`<div class="actions"><button class="btn ghost" id="clback">← All clients</button></div>
     <div class="panel"><div class="oh" style="border-left-color:#0e9384"><div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(c.name)}</h2><span class="tag2">${esc(TYPES[c.client_type]||'')}</span>${c.client_source?`<span class="tag2">${esc(c.client_source)}</span>`:''}</div>
         <div style="margin-top:4px;font-size:14.5px">Agency: ${a?`<button class="linkbtn" id="clag">${esc(a.name)}</button>`:'<b>Direct</b>'} · Owner: <b>${esc(c.owner_id?nameOf(c.owner_id):'—')}</b></div></div>
-      <div class="actions">${ed?'<button class="btn soft" id="cledit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit client</button>':''}<button class="btn primary" id="cldeal"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New deal for this client</button></div></div>
+      <div class="actions">${isAdmin()?'<button class="btn danger" id="cldel">Delete client</button>':''}${ed?'<button class="btn soft" id="cledit"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit client</button>':''}<button class="btn primary" id="cldeal"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New deal for this client</button></div></div>
       <div class="strip">${cellS('Deals',fmtN(st.deals))}${cellS('Open pipeline',(money(st.open)||'$0')+` <span class="muted">· ${st.openN} open</span>`)}${cellS('Closed won',(money(st.won)||'$0')+` <span class="muted">· ${st.wonN} won</span>`)}${cellS('Created',esc(fmtWhen(c.created_at))+(c.created_by?' by '+esc(nameOf(c.created_by)):''))}</div></div>
     ${followBox(c,ed,false)}
     ${ed?'':'<p class="stat" style="margin:0">Only '+esc(c.owner_id?nameOf(c.owner_id):'the owner')+' or an admin can change this client.</p>'}
@@ -2467,6 +2517,9 @@ async function openClient(id){
     ${finInvPanel()}`;
   $('#clback').onclick=()=>{showClList();renderClients()};
   if(ed)$('#cledit').onclick=()=>openClientForm(c);
+  if($('#cldel'))$('#cldel').onclick=()=>{const live=deals.filter(o=>!o.deleted_at).length;confirmDelete(`Delete ${c.name}?`,`This removes the client from the Clients list${live?` and moves its ${live} deal${live===1?'':'s'} to deleted deals`:''}. Adding a client with the same name later brings it back.`,'Delete client',async()=>{
+    const {error}=await sb.rpc('delete_client',{p_client:c.id});if(error)throw v24Err(error);
+    lookups.loaded=false;oppRows=null;toast(`${c.name} deleted`);setTimeout(()=>loadClients(),0)})};
   $('#cldeal').onclick=()=>openOppForm(null,{client:c.name,agency:a?.name||''});
   if($('#clag'))$('#clag').onclick=()=>openAgency(a.id);
   box.querySelectorAll('tr[data-opp]').forEach(tr=>tr.onclick=()=>openOpp(tr.dataset.opp));
@@ -3157,8 +3210,8 @@ async function openAgency(id){
   const keepN=ag.cur?.id===id?ag.cur:null;ag.cur={id,a,notes:null,notesErr:null,noteText:keepN?.noteText||''};const direct=id==='direct';
   box.innerHTML=`<div class="actions"><button class="btn ghost" id="agback">← All agencies</button></div>
     <div class="panel"><div class="oh" style="border-left-color:#c026d3"><div style="min-width:0"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>${esc(direct?'Direct (no agency)':a.name)}</h2>${a.source?`<span class="tag2">Source: ${esc(a.source)}</span>`:''}</div>
-        <div class="stat" style="margin-top:4px">${direct?'Clients who buy from us directly, with no agency in between.':esc([a.contact_name,fmtPhone(a.phone),a.email,a.website].filter(Boolean).join(' · '))||'No contact details yet.'}</div></div>
-      <div class="actions">${!direct&&canSell()?'<button class="btn soft" id="agedit2"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit Agency</button>':''}
+        <div class="stat" style="margin-top:4px">${direct?'Clients who buy from us directly, with no agency in between.':esc([a.contact_name,fmtPhone(a.phone),a.email,a.website].filter(Boolean).join(' · '))||'No contact details yet.'}</div>${!direct&&a.agency_for?`<div style="margin-top:6px;font-size:14.5px">Client: <b>${esc(a.agency_for)}</b> <span class="muted">· who this agency represents</span></div>`:''}</div>
+      <div class="actions">${!direct&&isAdmin()?'<button class="btn danger" id="agdel">Delete agency</button>':''}${!direct&&canSell()?'<button class="btn soft" id="agedit2"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Edit Agency</button>':''}
         ${!direct&&canSell()?'<button class="btn" id="agnewcl"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New client</button><button class="btn primary" id="agnewdeal"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New deal</button>':''}</div></div>
       <div class="strip">${cellS('Clients',fmtN(groups.length))}${cellS('Deals',fmtN(st.deals))}${cellS('Open pipeline',(money(st.open)||'$0')+` <span class="muted">· ${st.openN} open</span>`)}${cellS('Closed won',(money(st.won)||'$0')+` <span class="muted">· ${st.wonN} won</span>`)}</div></div>
     ${direct?'':`<div class="ocols" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="panel"><div class="panel-h"><h3>Agency contacts</h3></div><div class="panel-b"><dl class="kv">
@@ -3178,6 +3231,10 @@ async function openAgency(id){
   $('#agback').onclick=()=>{showAgList();renderAgencies()};
   const reopen=async()=>{await loadLookups(true);ag.rows=lookups.agencyRows;await loadOppRows(true);openAgency(id)};
   if($('#agedit2'))$('#agedit2').onclick=()=>openAgencyForm(a,reopen);
+  if($('#agdel'))$('#agdel').onclick=()=>confirmDelete(`Delete ${a.name}?`,`This removes the agency, its notes and files for good. Its clients and deals stay and become <b>Direct</b>.`,'Delete agency',async()=>{
+    const {data,error}=await sb.rpc('delete_agency',{p_agency:a.id});if(error)throw v24Err(error);
+    const paths=(data||[]).map(r=>typeof r==='string'?r:Object.values(r)[0]).filter(Boolean);if(paths.length)await sb.storage.from('attachments').remove(paths);
+    lookups.loaded=false;oppRows=null;ag.rows=[];toast(`${a.name} deleted`);setTimeout(()=>loadAgencies(),0)});
   if($('#agnewcl'))$('#agnewcl').onclick=()=>openClientForm(null,null,{agency:a.name});
   if($('#agnewdeal'))$('#agnewdeal').onclick=()=>openOppForm(null,{agency:a.name});
   box.querySelectorAll('[data-cl]').forEach(b=>b.onclick=()=>openClient(b.dataset.cl));
