@@ -276,13 +276,18 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 .tag2.reuse{background:#dcfce7;color:#15803d;border-color:#86efac}
 .kpi.reusekpi{border-color:#86efac;background:#f0fdf4}
 tr.muted-row td{color:var(--muted)}
-/* Thanksgiving (only in November) */
+/* Thanksgiving (only in November): a few warm touches, nothing in the way */
+body.thx{background:linear-gradient(180deg,#fffaf3 0,var(--bg) 420px)}
 .thx .top{border-top:3px solid transparent;border-image:linear-gradient(90deg,#9a3412,#ea580c,#f59e0b,#ca8a04,#7c2d12) 1}
 .thx .logo .mark{position:relative}
-.thx .logo .mark::after{content:'\1F341';position:absolute;right:-7px;bottom:-5px;font-size:12px;line-height:1}
-.thxbar{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:9px 14px;border-radius:12px;background:linear-gradient(90deg,#fff7ed,#fef3c7);border:1px solid #fed7aa;color:#7c2d12;font-size:14px}
-.thxbar b{font-weight:800}
-.thxbar button{margin-left:auto;background:none;border:0;color:#9a3412;cursor:pointer;font-size:20px;line-height:1;padding:0 4px}
+.thx .logo .mark::after{content:'\1F983';position:absolute;right:-9px;bottom:-7px;font-size:14px;line-height:1}
+.thx .tabs button[aria-selected="true"]{background:#fff1e6;color:#c2410c}
+.thx .pagehead h1::after{content:' \1F342';font-size:.8em}
+.thx #newleadbtn,.thx #newleadpage{background:linear-gradient(135deg,#ea580c,#c2410c);border-color:#c2410c}
+.thx #newleadbtn:hover,.thx #newleadpage:hover{background:linear-gradient(135deg,#c2410c,#9a3412)}
+.leaf{position:fixed;top:-40px;z-index:60;pointer-events:none;font-size:22px;opacity:.85;animation:leaffall linear forwards}
+@keyframes leaffall{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(40px,55vh) rotate(200deg)}100%{transform:translate(-20px,110vh) rotate(400deg);opacity:0}}
+@media (prefers-reduced-motion:reduce){.leaf{display:none}}
 .filesbox.drop{outline:2px dashed var(--accent,#3563e9);outline-offset:-6px;background:#f2f6ff}
 .g-closed_won{--c:#16a34a;--t:#ddf5e5;--ink:#11803a}
 .g-closed_lost{--c:#6b7280;--t:#eceef1;--ink:#4b5563}
@@ -3792,13 +3797,13 @@ $('#backboard').onclick=()=>setTab('board');
 
 
 /* ===================== Thanksgiving (November only) ===================== */
+// Warm colors, a turkey on the logo, a leaf on page titles, and a few leaves that drift down once when the page opens.
 (function(){const d=new Date();if(d.getMonth()!==10)return;document.body.classList.add('thx');
-  let off=false;try{off=localStorage.getItem('ark_thx_'+d.getFullYear())==='off'}catch{}
-  const main=document.querySelector('main.page');if(off||!main)return;
-  const b=document.createElement('div');b.className='thxbar';
-  b.innerHTML='<span aria-hidden="true">\u{1F983}</span><span><b>Happy Thanksgiving from The Ark!</b> Thankful for this team. Here\u2019s to a strong finish to the year. <span aria-hidden="true">\u{1F342}</span></span><button type="button" aria-label="Hide this message" title="Hide">\u00d7</button>';
-  main.prepend(b);b.querySelector('button').onclick=()=>{b.remove();try{localStorage.setItem('ark_thx_'+d.getFullYear(),'off')}catch{}}})();
-
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const L=['\u{1F342}','\u{1F341}','\u{1F343}'];
+  for(let i=0;i<9;i++){const e=document.createElement('span');e.className='leaf';e.textContent=L[i%3];e.setAttribute('aria-hidden','true');
+    e.style.left=(5+Math.random()*90)+'vw';e.style.animationDuration=(6+Math.random()*4)+'s';e.style.animationDelay=(Math.random()*3)+'s';e.style.fontSize=(16+Math.random()*12)+'px';
+    document.body.appendChild(e);setTimeout(()=>e.remove(),14000)}})();
 </script>
 </body>
 </html>
