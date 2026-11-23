@@ -30,7 +30,7 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 
 ## Database
 - `supabase-setup.sql` is the full schema: every table, RLS policy, trigger and function. It must stay safe to re-run (`if not exists`, `create or replace`, `drop policy if exists`).
-- `supabase-vNN-<topic>.sql` files are stand-alone pastes for each version that changed the database (v7–v25). `supabase-fix-owner.sql` is a one-off repair that makes the earliest login the Owner.
+- `supabase-vNN-<topic>.sql` files are stand-alone pastes for each version that changed the database (v7–v26). `supabase-fix-owner.sql` is a one-off repair that makes the earliest login the Owner.
 - To change the database:
   1. Write a new `supabase-vNN-<topic>.sql` with just the change (also re-runnable).
   2. Fold the same change into `supabase-setup.sql`.
@@ -90,6 +90,11 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 - Deal stage `agreement` ("Agreement Submitted", 90%). Only admins/Owners set or leave Closed Won (`guard_opps`, `canStage()`, `stageChoices()`).
 - Deleting (admins/Owners): lead page "Delete lead" (to the Trash), deals (existing), `delete_client()` (soft: `clients.deleted_at`, its deals soft-deleted; `ensure_client()` revives by name; `loadLookups()` hides deleted), `delete_agency()` (hard; clients/deals become Direct; returns file paths for the page to remove from storage). `confirmDelete()` is the confirm box.
 - Files panels accept drag and drop (`loadFiles`, `.filesbox.drop`).
+
+## Version 26 (Lead stats, On Ice age, Thanksgiving)
+- Reports > Lead stats: activity picker `#lsrange` (`ls.range`: last7 default, week, lastweek, month, or a YYYY-MM) via `lsRange()`; never earlier than `TRACK_START` ('2026-11-16', when the team switched over from testing). Live leads = `LIVE` (New, 1st Call, 2nd Call, Engaged, Has Agency); never-called / callbacks / 30-day counts use live leads only. Other statuses are listed under "Not counted as live".
+- `leads.on_ice_at`: set by trigger `stamp_on_ice()` whenever a lead becomes On Ice, cleared when it leaves (backfilled from the 3rd Call date). `on_ice_report()` (admins) lists live On Ice leads. 6+ months On Ice = Reusable Lead (`REUSE_MONTHS`, `iceAge()`, `isReusable()`): On Ice panel on Lead stats (age buckets + list, `renderIce()`), shown on the lead page and in the Leads list "Next step" column.
+- Thanksgiving: in November only, `body.thx` adds an autumn stripe on the top bar and a leaf on the logo, plus a greeting bar the viewer can hide (`localStorage` `ark_thx_<year>`). It switches itself off on Dec 1.
 
 ## Pay rules
 $18/hour + $50 per appointment that SHOWED (`PAY_RATE`, `APPT_BONUS`). Hours = clock_out − clock_in − break, rounded to 2 decimals before multiplying. Pay periods: 1st–15th and 16th–end of month. "Booked" appointments are shown for information only.
