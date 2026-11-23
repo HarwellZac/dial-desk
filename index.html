@@ -273,6 +273,16 @@ ul.tips{margin:0;padding-left:18px;display:grid;gap:5px;color:var(--muted);font-
 .agchk.on{background:#fae8ff;border-color:#c026d3;color:#a21caf}
 .agfor{font-size:14.5px;background:#fae8ff;color:#701a75;padding:5px 11px;border-radius:8px}
 .showchk.rebook{border-color:#fdba74;color:#c2410c}
+.tag2.reuse{background:#dcfce7;color:#15803d;border-color:#86efac}
+.kpi.reusekpi{border-color:#86efac;background:#f0fdf4}
+tr.muted-row td{color:var(--muted)}
+/* Thanksgiving (only in November) */
+.thx .top{border-top:3px solid transparent;border-image:linear-gradient(90deg,#9a3412,#ea580c,#f59e0b,#ca8a04,#7c2d12) 1}
+.thx .logo .mark{position:relative}
+.thx .logo .mark::after{content:'\1F341';position:absolute;right:-7px;bottom:-5px;font-size:12px;line-height:1}
+.thxbar{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:9px 14px;border-radius:12px;background:linear-gradient(90deg,#fff7ed,#fef3c7);border:1px solid #fed7aa;color:#7c2d12;font-size:14px}
+.thxbar b{font-weight:800}
+.thxbar button{margin-left:auto;background:none;border:0;color:#9a3412;cursor:pointer;font-size:20px;line-height:1;padding:0 4px}
 .filesbox.drop{outline:2px dashed var(--accent,#3563e9);outline-offset:-6px;background:#f2f6ff}
 .g-closed_won{--c:#16a34a;--t:#ddf5e5;--ink:#11803a}
 .g-closed_lost{--c:#6b7280;--t:#eceef1;--ink:#4b5563}
@@ -731,13 +741,16 @@ ul.files li .danger{margin-left:auto}
       </div>
       <div id="rep-leads" class="page" hidden>
         <div class="panel"><div class="filters">
-          <label class="f">Activity month<select id="lsmonth"></select></label>
+          <label class="f">Activity<select id="lsrange"></select></label>
           <label class="f">Status table shows<select id="lsmode"><option value="n">Number of leads</option><option value="pct">% of each caller’s leads</option></select></label>
-          <span class="stat" style="flex:1 1 280px;align-self:center">Lead counts are as of right now. Calls, appointments, hours and pay are for the month you pick. Active = New, 1st Call and 2nd Call.</span>
+          <span class="stat" style="flex:1 1 280px;align-self:center" id="lsnote">Lead counts are as of right now. Calls, appointments, hours and pay are for the dates you pick (nothing before Nov 16, 2026, when the team switched over). Live leads = New, 1st Call, 2nd Call, Engaged and Has Agency.</span>
         </div></div>
         <div class="kpis" id="lskpis"></div>
         <div class="kpis" id="lskpis2"></div>
-        <div class="panel"><div class="panel-h"><div><h2>Where the leads are</h2><p class="stat" style="margin:2px 0 0">Every live lead by status, for the whole team.</p></div></div><div class="tablebox"><table id="lsmix"></table></div></div>
+        <div class="panel"><div class="panel-h"><div><h2>Where the leads are</h2><p class="stat" style="margin:2px 0 0">Live leads by status for the whole team, then the leads that aren’t counted as live.</p></div></div><div class="tablebox"><table id="lsmix"></table></div></div>
+        <div class="panel"><div class="panel-h"><div><h2>On Ice and Reusable leads</h2><p class="stat" style="margin:2px 0 0">A lead goes On Ice when it’s marked 3rd Call. After 6 months On Ice it counts as a <b>Reusable Lead</b>, ready to call again. Dead and Bad Information leads are never included.</p></div>
+          <label class="f" style="margin:0">Show<select id="lsiceview"><option value="reuse">Reusable leads (6+ months)</option><option value="all">All On Ice leads</option></select></label></div>
+          <div class="kpis" id="lsicekpis" style="margin:0 16px 12px"></div><div class="tablebox"><table id="lsicetable"></table></div></div>
         <div class="panel"><div class="panel-h"><div><h2>Lead status by caller</h2><p class="stat" style="margin:2px 0 0" id="lsmatsub"></p></div></div><div class="tablebox"><table id="lsmat"></table></div></div>
         <div class="panel"><div class="panel-h"><div><h2 id="lsperftitle">Caller performance</h2><p class="stat" style="margin:2px 0 0">Show rate = appointments that showed ÷ appointments booked. Cost per appointment = caller pay (hours × $18 + $50 per showed) ÷ appointments booked.</p></div></div><div class="tablebox"><table id="lsperf"></table></div></div>
       </div>
@@ -1200,6 +1213,7 @@ function renderHead(){
       <div class="metas">
         <span>Last contact <b>${l.last_call_at?esc(fmtFull(l.last_call_at)):'Never'}</b>${lastCall&&l.last_call_at?' by '+esc(who(lastCall.caller_id)):''}</span>
         <span>Calls <b>${l.attempts||0}</b></span>
+        ${l.status==='on_ice'&&l.on_ice_at?(a=>`<span>On Ice <b>${esc(iceText(a))}</b> (since ${esc(fmtDate(l.on_ice_at))})${isReusable(a)?' <span class="tag2 reuse">Reusable Lead</span>':''}</span>`)(iceAge(l.on_ice_at)):''}
         ${l.status==='appointment'&&l.appt_at?`<span>Appointment <b>${esc(fmtFull(l.appt_at))}</b>${l.appt_rep?' with '+esc(l.appt_rep):''}</span>`:l.callback_at?`<span>Callback <b>${esc(fmtFull(l.callback_at))}</b></span>`:''}
         ${canSell()?`<span>${l.owner_id?personCell(l.owner_id):'<span class="muted">Unassigned</span>'}${canRe?' <button class="linkbtn" id="reassign">Reassign</button>':''}</span>`
           :own?`<span>Assigned to <b>you</b>${canRe?' · <button class="linkbtn" id="reassign">Reassign</button>':''}</span>`:''}
@@ -1505,7 +1519,7 @@ function sortedOne(q){switch(board.trash?'deleted':board.sort){
 let boardSeq=0;
 async function loadBoard(){
   const seq=++boardSeq;renderBoardControls();
-  const cols='id,company,first_name,last_name,title,phone,mobile,company_phone,email,status,owner_id,attempts,last_call_at,callback_at,appt_at,notes,notes_at,notes_by,deleted_at,deleted_by,created_at,sales_owner_id';
+  const cols='id,company,first_name,last_name,title,phone,mobile,company_phone,email,status,owner_id,attempts,last_call_at,callback_at,appt_at,notes,notes_at,notes_by,deleted_at,deleted_by,created_at,sales_owner_id,on_ice_at';
   const s=searchTerm(board.search);
   const [r,c,t]=await Promise.all([
     sorted(filtered(sb.from('leads').select(cols,{count:'exact'}))).range(board.page*PAGE,board.page*PAGE+PAGE-1),
@@ -1554,7 +1568,7 @@ function renderBoard(){
   let html='';
   for(const l of board.rows){
     if(grouping){const g=gOf(l);if(g!==lastG){lastG=g;html+=`<tr class="grp"><td colspan="${cols}">${esc(g)}<span>${gCount[g]} on this page</span></td></tr>`}}
-    const next=l.status==='converted'?'Converted → '+who(l.sales_owner_id):l.status==='appointment'&&l.appt_at?'Appt '+fmtWhen(l.appt_at):l.callback_at&&OPEN.includes(l.status)?'Callback '+fmtWhen(l.callback_at):'';
+    const next=l.status==='on_ice'&&l.on_ice_at?(a=>(isReusable(a)?'Reusable · ':'')+'On Ice '+iceText(a))(iceAge(l.on_ice_at)):l.status==='converted'?'Converted → '+who(l.sales_owner_id):l.status==='appointment'&&l.appt_at?'Appt '+fmtWhen(l.appt_at):l.callback_at&&OPEN.includes(l.status)?'Callback '+fmtWhen(l.callback_at):'';
     const note=l.notes||'';
     html+=`<tr class="click lead-row ${sc(l.status)}" data-id="${l.id}">${a?`<td><input type="checkbox" data-sel="${l.id}" ${board.all||board.sel.has(l.id)?'checked':''} aria-label="Select lead"></td>`:''}
       <td class="wrap"><span class="co">${esc(l.company||'—')}</span></td><td class="wrap"><span class="cn">${esc(contactName(l))}</span><div class="sub">${esc(l.title||'')}</div></td>
@@ -2999,84 +3013,127 @@ $('#tsadd').onclick=()=>tsForm(null);
 
 
 /* ===================== Reports: lead stats (admins) ===================== */
-const ACTIVE=['new','call1','call2'];
-const ls={month:'',mode:'n',rows:[],calls:[],showed:[],entries:[],people:[]};
+// Live leads = the ones still being worked. On Ice, Dead, Bad Information and the rest aren't live.
+const LIVE=['new','call1','call2','engaged','has_agency'];
+// Everything before this day was testing, so Lead stats never counts activity before it.
+const TRACK_START='2026-11-16';
+const REUSE_MONTHS=6;
+const ls={range:'last7',mode:'n',iceView:'reuse',rows:[],calls:[],showed:[],entries:[],people:[],ice:[],iceErr:null};
 const pct=(a,b)=>b?a/b*100:null;const fmtPct=v=>v==null?'—':(v<10&&v>0?v.toFixed(1):Math.round(v))+'%';
+// How long a lead has been On Ice: whole months plus days. 6+ months = Reusable Lead.
+function iceAge(at){const s=new Date(at),t=new Date();let m=(t.getFullYear()-s.getFullYear())*12+t.getMonth()-s.getMonth();if(t.getDate()<s.getDate())m--;m=Math.max(0,m);
+  const an=new Date(s);an.setMonth(an.getMonth()+m);return {m,d:Math.max(0,Math.floor((t-an)/864e5)),total:Math.max(0,Math.floor((t-s)/864e5))}}
+function iceText(a){return a.m?`${a.m} mo${a.d?' '+a.d+' d':''}`:`${a.total} day${a.total===1?'':'s'}`}
+function isReusable(a){return a.m>=REUSE_MONTHS}
+// The activity dates picked, as [first day, last day], never before TRACK_START.
+function lsRange(){const t=new Date();t.setHours(0,0,0,0);const d=k=>{const x=new Date(t);x.setDate(x.getDate()+k);return ymd(x)};const dow=(t.getDay()+6)%7;let a,b=ymd(t);
+  if(ls.range==='week')a=d(-dow);else if(ls.range==='lastweek'){a=d(-dow-7);b=d(-dow-1)}else if(ls.range==='month')a=ymd(new Date(t.getFullYear(),t.getMonth(),1));
+  else if(/^\d{4}-\d{2}$/.test(ls.range)){const m=monthOf(ls.range);a=ymd(m);b=ymd(new Date(m.getFullYear(),m.getMonth()+1,0))}else a=d(-6);
+  if(a<TRACK_START)a=TRACK_START;if(b<a)b=a;return [a,b]}
+function lsLabel(){const [a,b]=lsRange();return a===b?fmtDate(a):`${fmtDate(a)} – ${fmtDate(b)}`}
 async function loadLeadStats(){
-  const now=new Date();if(!ls.month)ls.month=monthKey(now);
-  $('#lsmonth').innerHTML=Array.from({length:13},(_,i)=>new Date(now.getFullYear(),now.getMonth()-i,1)).map(d=>opt(monthKey(d),monthName(d),ls.month)).join('');
-  $('#lsmode').value=ls.mode;$('#lskpis').innerHTML='<div class="kpi"><span>Loading…</span></div>';$('#lskpis2').innerHTML='';
-  const sel=monthOf(ls.month);const last=pad2(new Date(sel.getFullYear(),sel.getMonth()+1,0).getDate());
-  const from=new Date(sel.getFullYear(),sel.getMonth(),0),to=new Date(sel.getFullYear(),sel.getMonth()+1,2);
-  const [a,b,c,d]=await Promise.all([sb.rpc('lead_status_report'),sb.rpc('call_report',{p_from:from.toISOString(),p_to:to.toISOString()}),
-    sb.rpc('appt_pay_report',{p_from:`${ls.month}-01`,p_to:`${ls.month}-${last}`}),
-    sb.from('time_entries').select('caller_id,clock_in,clock_out,break_minutes').gte('clock_in',from.toISOString()).lt('clock_in',to.toISOString())]);
+  const now=new Date();const months=[];for(let x=new Date(now.getFullYear(),now.getMonth()-1,1);monthKey(x)>=TRACK_START.slice(0,7);x=new Date(x.getFullYear(),x.getMonth()-1,1))months.push(x);
+  $('#lsrange').innerHTML=[['last7','Last 7 days'],['week','This week (Mon–today)'],['lastweek','Last week (Mon–Sun)'],['month','This month']].map(([v,l])=>opt(v,l,ls.range)).join('')+months.map(x=>opt(monthKey(x),monthName(x),ls.range)).join('');
+  $('#lsmode').value=ls.mode;$('#lsiceview').value=ls.iceView;$('#lskpis').innerHTML='<div class="kpi"><span>Loading…</span></div>';$('#lskpis2').innerHTML='';
+  const [fa,fb]=lsRange();const qf=new Date(fa+'T00:00:00'),qt=new Date(fb+'T00:00:00');qf.setDate(qf.getDate()-1);qt.setDate(qt.getDate()+2);
+  const [a,b,c,d,e]=await Promise.all([sb.rpc('lead_status_report'),sb.rpc('call_report',{p_from:qf.toISOString(),p_to:qt.toISOString()}),
+    sb.rpc('appt_pay_report',{p_from:fa,p_to:fb}),
+    sb.from('time_entries').select('caller_id,clock_in,clock_out,break_minutes').gte('clock_in',qf.toISOString()).lt('clock_in',qt.toISOString()),
+    sb.rpc('on_ice_report')]);
   const err=a.error||b.error||c.error||d.error;
-  if(err){const m=String(err.message||'');$('#lskpis').innerHTML=`<div class="kpi"><span>${esc(/lead_status_report/.test(m)&&/does not exist|schema cache/i.test(m)?'This needs the version 9 database update. Run supabase-v9-reports.sql in Supabase.':timeErr(err))}</span></div>`;['#lsmix','#lsmat','#lsperf'].forEach(t=>$(t).innerHTML='');return}
-  const k=ls.month;
+  if(err){const m=String(err.message||'');$('#lskpis').innerHTML=`<div class="kpi"><span>${esc(/lead_status_report/.test(m)&&/does not exist|schema cache/i.test(m)?'This needs the version 9 database update. Run supabase-v9-reports.sql in Supabase.':timeErr(err))}</span></div>`;['#lsmix','#lsmat','#lsperf','#lsicetable'].forEach(t=>$(t).innerHTML='');return}
+  const inR=day=>day>=fa&&day<=fb;
   ls.rows=(a.data||[]).map(r=>({owner:r.owner_id||'',status:r.status,n:+r.n,never:+r.never_called,due:+r.callbacks_due,stale:+r.stale30}));
-  ls.calls=(b.data||[]).filter(x=>String(x.day).slice(0,7)===k).map(x=>({id:x.caller_id,calls:+x.calls||0,appts:+x.appts||0}));
+  ls.calls=(b.data||[]).filter(x=>inR(String(x.day).slice(0,10))).map(x=>({id:x.caller_id,calls:+x.calls||0,appts:+x.appts||0}));
   ls.showed=(c.data||[]).map(x=>({id:x.caller_id,n:+x.showed||0}));
-  ls.entries=(d.data||[]).filter(e=>ctDay(e.clock_in).slice(0,7)===k);
-  const ids=new Set([...ls.rows.map(r=>r.owner).filter(Boolean),...ls.calls.map(x=>x.id),...ls.showed.map(x=>x.id),...ls.entries.map(e=>e.caller_id)]);
+  ls.entries=(d.data||[]).filter(x=>inR(ctDay(x.clock_in)));
+  ls.iceErr=e.error?(/on_ice_report|does not exist|schema cache/i.test(e.error.message||'')?'Run supabase-v26-on-ice-age.sql in Supabase to see On Ice ages.':friendly(e.error)):null;
+  ls.ice=(e.data||[]).map(r=>({...r,age:iceAge(r.on_ice_at)}));
+  const ids=new Set([...ls.rows.map(r=>r.owner).filter(Boolean),...ls.calls.map(x=>x.id),...ls.showed.map(x=>x.id),...ls.entries.map(x=>x.caller_id)]);
   ls.people=Object.values(people).filter(p=>(p.role==='caller'&&p.active)||ids.has(p.id)).sort((x,y)=>(x.role==='caller'?0:1)-(y.role==='caller'?0:1)||nameOf(x.id).localeCompare(nameOf(y.id))).map(p=>p.id);
   ids.forEach(id=>{if(!ls.people.includes(id))ls.people.push(id)});
   renderLeadStats()}
 // One row of numbers per person ('' = unassigned leads).
 function lsStat(id){const rows=ls.rows.filter(r=>r.owner===id);const by={};STATUS_ORDER.forEach(s=>by[s]=0);rows.forEach(r=>by[r.status]=(by[r.status]||0)+r.n);
-  const total=rows.reduce((n,r)=>n+r.n,0),active=ACTIVE.reduce((n,s)=>n+(by[s]||0),0);
-  const sum=(arr,f)=>arr.reduce((n,x)=>n+f(x),0);
+  const sum=(arr,f)=>arr.reduce((n,x)=>n+f(x),0);const liveRows=rows.filter(r=>LIVE.includes(r.status));
+  const total=sum(rows,r=>r.n),live=sum(liveRows,r=>r.n);
+  const ice=ls.ice.filter(r=>(r.owner_id||'')===id);const reuse=ice.filter(r=>isReusable(r.age)).length;
   const calls=sum(ls.calls.filter(x=>x.id===id),x=>x.calls),booked=sum(ls.calls.filter(x=>x.id===id),x=>x.appts),showed=sum(ls.showed.filter(x=>x.id===id),x=>x.n);
   const mins=sum(ls.entries.filter(e=>e.caller_id===id),e=>shiftMins(e)||0);const hours=Math.round(mins/60*100)/100;
   const pay=Math.round((hours*PAY_RATE+showed*APPT_BONUS)*100)/100;
-  return {id,by,total,active,never:sum(rows,r=>r.never),due:sum(rows,r=>r.due),stale:sum(rows,r=>r.stale),calls,booked,showed,hours,pay,
+  return {id,by,total,live,never:sum(liveRows,r=>r.never),due:sum(liveRows,r=>r.due),stale:sum(liveRows,r=>r.stale),ice:ice.length,reuse,calls,booked,showed,hours,pay,
     showRate:pct(showed,booked),callsPerAppt:booked?calls/booked:null,cph:hours>0?calls/hours:null,apptPer8:hours>0?booked/hours*8:null,costPerAppt:booked?pay/booked:null}}
-function lsTeam(list){const t={by:{},total:0,active:0,never:0,due:0,stale:0,calls:0,booked:0,showed:0,hours:0,pay:0};STATUS_ORDER.forEach(s=>t.by[s]=0);
-  list.forEach(x=>{STATUS_ORDER.forEach(s=>t.by[s]+=x.by[s]||0);['total','active','never','due','stale','calls','booked','showed','hours','pay'].forEach(k=>t[k]+=x[k])});
+const LS_SUM=['total','live','never','due','stale','ice','reuse','calls','booked','showed','hours','pay'];
+function lsTeam(list){const t={by:{}};LS_SUM.forEach(k=>t[k]=0);STATUS_ORDER.forEach(s=>t.by[s]=0);
+  list.forEach(x=>{STATUS_ORDER.forEach(s=>t.by[s]+=x.by[s]||0);LS_SUM.forEach(k=>t[k]+=x[k])});
   t.hours=Math.round(t.hours*100)/100;t.pay=Math.round(t.pay*100)/100;
   return {...t,showRate:pct(t.showed,t.booked),callsPerAppt:t.booked?t.calls/t.booked:null,cph:t.hours>0?t.calls/t.hours:null,apptPer8:t.hours>0?t.booked/t.hours*8:null,costPerAppt:t.booked?t.pay/t.booked:null}}
-function lsData(){const st=ls.people.map(lsStat);const un=lsStat('');const all=lsTeam([...st,un]);return {st,un,all,mon:monthName(monthOf(ls.month))}}
+function lsData(){const st=ls.people.map(lsStat);const un=lsStat('');const all=lsTeam([...st,un]);return {st,un,all,mon:lsLabel()}}
+const NOT_LIVE=()=>STATUS_ORDER.filter(s=>!LIVE.includes(s));
+function iceBuckets(){const b=[0,0,0,0];ls.ice.forEach(r=>{const m=r.age.m;b[m>=REUSE_MONTHS?3:m>=3?2:m>=1?1:0]++});return b}
+function iceList(){return ls.iceView==='all'?ls.ice:ls.ice.filter(r=>isReusable(r.age))}
 function renderLeadStats(){const {st,un,all,mon}=lsData();
-  $('#lskpis').innerHTML=[[fmtN(all.total),'Live leads'],[fmtN(all.active),`Active · ${fmtPct(pct(all.active,all.total))} of leads`],[fmtN(all.booked),`Appointments booked · ${mon}`],
+  $('#lskpis').innerHTML=[[fmtN(all.live),'Live leads · New, 1st/2nd Call, Engaged, Has Agency'],[fmtN(all.booked),`Appointments booked · ${mon}`],
     [fmtN(all.showed),`Showed · ${fmtPct(all.showRate)} show rate`],[fmtN(all.calls),`Calls · ${all.callsPerAppt==null?'—':fmtN(all.callsPerAppt,1)} per appointment`],
-    [all.costPerAppt==null?'—':usd(all.costPerAppt),'Caller cost per appointment']].map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
-  $('#lskpis2').innerHTML=[[fmtN(all.never),'Never called'],[fmtN(all.due),'Callbacks due or overdue'],[fmtN(all.stale),'Open leads not called in 30+ days'],[fmtN(un.total),'Unassigned leads'],
+    [all.costPerAppt==null?'—':usd(all.costPerAppt),'Caller cost per appointment'],[fmtN(all.reuse),'Reusable leads · On Ice 6+ months']].map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
+  $('#lskpis2').innerHTML=[[fmtN(all.never),'Live leads never called'],[fmtN(all.due),'Callbacks due or overdue'],[fmtN(all.stale),'Live leads not called in 30+ days'],[fmtN(un.live),'Unassigned live leads'],
     [all.cph==null?'—':fmtN(all.cph,1),'Calls per hour on the clock'],[all.apptPer8==null?'—':fmtN(all.apptPer8,2),'Appointments per 8 hours']].map(([v,k])=>`<div class="kpi"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join('');
-  // Team status mix
-  const max=Math.max(1,...STATUS_ORDER.map(s=>all.by[s]));
-  $('#lsmix').innerHTML=`<thead><tr><th>Status</th><th class="num">Leads</th><th class="num">% of all leads</th><th></th></tr></thead><tbody>`+
-    STATUS_ORDER.map(s=>`<tr><td>${pill(s)}</td><td class="num">${fmtN(all.by[s])}</td><td class="num">${fmtPct(pct(all.by[s],all.total))}</td><td style="width:45%"><div class="mixcell"><div class="mixbar ${sc(s)}" style="width:${all.by[s]/max*100}%;background:var(--c)"></div></div></td></tr>`).join('')
-    +`<tr class="activerow"><td>Active (New + 1st Call + 2nd Call)</td><td class="num">${fmtN(all.active)}</td><td class="num">${fmtPct(pct(all.active,all.total))}</td><td></td></tr>`
-    +`<tr class="total"><td>All live leads</td><td class="num">${fmtN(all.total)}</td><td class="num">100%</td><td></td></tr></tbody>`;
+  // Team status mix: live statuses (with share of live leads), then the rest
+  const max=Math.max(1,...LIVE.map(s=>all.by[s]));
+  const bar=s=>`<div class="mixcell"><div class="mixbar ${sc(s)}" style="width:${Math.min(100,all.by[s]/max*100)}%;background:var(--c)"></div></div>`;
+  $('#lsmix').innerHTML=`<thead><tr><th>Status</th><th class="num">Leads</th><th class="num">% of live leads</th><th></th></tr></thead><tbody>`+
+    LIVE.map(s=>`<tr><td>${pill(s)}</td><td class="num">${fmtN(all.by[s])}</td><td class="num">${fmtPct(pct(all.by[s],all.live))}</td><td style="width:45%">${bar(s)}</td></tr>`).join('')
+    +`<tr class="total"><td>Live leads</td><td class="num">${fmtN(all.live)}</td><td class="num">100%</td><td></td></tr>`
+    +`<tr class="grp"><td colspan="4">Not counted as live</td></tr>`
+    +NOT_LIVE().filter(s=>s!=='gatekeeper'&&s!=='call3'||all.by[s]).map(s=>`<tr class="muted-row"><td>${pill(s)}</td><td class="num">${fmtN(all.by[s])}</td><td class="num"></td><td></td></tr>`).join('')+'</tbody>';
   // Status by caller
-  const P=ls.mode==='pct';$('#lsmatsub').textContent=P?'Each number is the share of that caller’s own leads.':'Number of live leads each caller has in each status.';
-  const cellv=(x,s)=>P?fmtPct(pct(x.by[s],x.total)):fmtN(x.by[s]);
-  const mrow=(name,x,cls='')=>`<tr class="${cls}"><td>${name}</td><td class="num"><b>${fmtN(x.total)}</b></td><td class="num">${fmtN(x.active)}</td><td class="num">${fmtPct(pct(x.active,x.total))}</td>${STATUS_ORDER.map(s=>`<td class="num">${cellv(x,s)}</td>`).join('')}<td class="num">${fmtN(x.due)}</td><td class="num">${fmtN(x.never)}</td></tr>`;
-  $('#lsmat').innerHTML=`<thead><tr><th>Caller</th><th class="num">Leads</th><th class="num">Active</th><th class="num">% active</th>${STATUS_ORDER.map(s=>`<th class="num">${esc(STATUSES[s])}</th>`).join('')}<th class="num">Callbacks due</th><th class="num">Never called</th></tr></thead><tbody>`+
-    st.map(x=>mrow(personCell(x.id),x)).join('')+(un.total?mrow('<span class="muted">Unassigned</span>',un):'')+mrow('Team total',all,'total')+'</tbody>';
+  const P=ls.mode==='pct';$('#lsmatsub').textContent=P?'Each live status is shown as a share of that caller’s live leads.':'Number of leads each caller has in each live status, plus their On Ice and Reusable leads.';
+  const cellv=(x,s)=>P?fmtPct(pct(x.by[s],x.live)):fmtN(x.by[s]);
+  const mrow=(name,x,cls='')=>`<tr class="${cls}"><td>${name}</td><td class="num"><b>${fmtN(x.live)}</b></td>${LIVE.map(s=>`<td class="num">${cellv(x,s)}</td>`).join('')}<td class="num">${fmtN(x.ice)}</td><td class="num">${fmtN(x.reuse)}</td><td class="num">${fmtN(x.due)}</td><td class="num">${fmtN(x.never)}</td></tr>`;
+  $('#lsmat').innerHTML=`<thead><tr><th>Caller</th><th class="num">Live leads</th>${LIVE.map(s=>`<th class="num">${esc(STATUSES[s])}</th>`).join('')}<th class="num">On Ice</th><th class="num">Reusable</th><th class="num">Callbacks due</th><th class="num">Never called</th></tr></thead><tbody>`+
+    st.map(x=>mrow(personCell(x.id),x)).join('')+(un.live||un.ice?mrow('<span class="muted">Unassigned</span>',un):'')+mrow('Team total',all,'total')+'</tbody>';
   // Performance
   $('#lsperftitle').textContent=`Caller performance · ${mon}`;
   const prow=(name,x,cls='')=>`<tr class="${cls}"><td>${name}</td><td class="num">${fmtN(x.calls)}</td><td class="num">${fmtN(x.hours,2)}</td><td class="num">${x.cph==null?'—':fmtN(x.cph,1)}</td><td class="num"><b>${fmtN(x.booked)}</b></td><td class="num">${x.callsPerAppt==null?'—':fmtN(x.callsPerAppt,1)}</td><td class="num">${fmtN(x.showed)}</td><td class="num">${fmtPct(x.showRate)}</td><td class="num">${usd(x.pay)}</td><td class="num">${x.costPerAppt==null?'—':usd(x.costPerAppt)}</td></tr>`;
   $('#lsperf').innerHTML=`<thead><tr><th>Caller</th><th class="num">Calls</th><th class="num">Hours</th><th class="num">Calls / hour</th><th class="num">Appts booked</th><th class="num">Calls per appt</th><th class="num">Showed</th><th class="num">Show rate</th><th class="num">Caller pay</th><th class="num">Cost per appt</th></tr></thead><tbody>`+
-    (st.length?st.map(x=>prow(personCell(x.id),x)).join('')+prow('Team total',all,'total'):'<tr><td colspan="10"><div class="empty">No callers yet.</div></td></tr>')+'</tbody>'}
-$('#lsmonth').addEventListener('input',e=>{ls.month=e.target.value;loadLeadStats()});
+    (st.length?st.map(x=>prow(personCell(x.id),x)).join('')+prow('Team total',all,'total'):'<tr><td colspan="10"><div class="empty">No callers yet.</div></td></tr>')+'</tbody>';
+  renderIce()}
+// On Ice ages and the Reusable leads list (click a row to open the lead).
+function renderIce(){
+  if(ls.iceErr){$('#lsicekpis').innerHTML='';$('#lsicetable').innerHTML=`<tbody><tr><td><div class="empty">${esc(ls.iceErr)}</div></td></tr></tbody>`;return}
+  const b=iceBuckets();
+  $('#lsicekpis').innerHTML=[[b[0],'On Ice under 1 month'],[b[1],'1 to 3 months'],[b[2],'3 to 6 months'],[b[3],'6+ months · Reusable']].map(([v,k],i)=>`<div class="kpi ${i===3?'reusekpi':''}"><b>${fmtN(v)}</b><span>${esc(k)}</span></div>`).join('');
+  const list=iceList();const shown=list.slice(0,500);
+  $('#lsicetable').innerHTML=`<thead><tr><th>Company</th><th>Contact</th><th>Phone</th><th>Caller</th><th>On Ice since</th><th class="num">Time On Ice</th><th class="num">Calls</th></tr></thead><tbody>`+
+    (shown.length?shown.map(r=>`<tr class="click" data-id="${r.id}"><td class="wrap"><span class="co">${esc(r.company||'—')}</span>${isReusable(r.age)?' <span class="tag2 reuse">Reusable</span>':''}</td><td>${esc(contactName(r))}</td><td class="mono">${esc(fmtPhone(r.phone||r.mobile||r.company_phone))}</td><td>${personCell(r.owner_id)}</td><td>${esc(fmtDate(r.on_ice_at))}</td><td class="num"><b>${esc(iceText(r.age))}</b></td><td class="num">${fmtN(r.attempts||0)}</td></tr>`).join('')
+      :`<tr><td colspan="7"><div class="empty">${ls.iceView==='all'?'No leads are On Ice.':'No Reusable leads yet. A lead becomes Reusable 6 months after it goes On Ice.'}</div></td></tr>`)+
+    (list.length>shown.length?`<tr><td colspan="7" class="stat">Showing the oldest 500 of ${fmtN(list.length)}. Export CSV has them all.</td></tr>`:'')+'</tbody>';
+  $('#lsicetable').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>openLead(tr.dataset.id))}
+$('#lsrange').addEventListener('input',e=>{ls.range=e.target.value;loadLeadStats()});
 $('#lsmode').addEventListener('input',e=>{ls.mode=e.target.value;renderLeadStats()});
+$('#lsiceview').addEventListener('input',e=>{ls.iceView=e.target.value;renderIce()});
 const n1=v=>v==null?'':v.toFixed(1),n2=v=>v==null?'':v.toFixed(2),pc=v=>v==null?'':(Math.round(v*10)/10)+'%';
-function lsTables(){const {st,un,all,mon}=lsData();const list=[...st,...(un.total?[un]:[])];const nm=x=>x.id?nameOf(x.id):'Unassigned';
+function lsTables(){const {st,un,all,mon}=lsData();const list=[...st,...(un.live||un.ice?[un]:[])];const nm=x=>x.id?nameOf(x.id):'Unassigned';const P=ls.mode==='pct';
+  const iceRows=iceList();
   return {mon,all,un,
-    mix:{title:'Where the leads are (as of today)',head:['Status','Leads','% of all leads'],num:[1,2],
-      body:[...STATUS_ORDER.map(s=>[STATUSES[s],all.by[s],pc(pct(all.by[s],all.total))]),['Active (New + 1st Call + 2nd Call)',all.active,pc(pct(all.active,all.total))]],foot:['All live leads',all.total,'100%']},
-    mat:{title:`Lead status by caller (${ls.mode==='pct'?'% of each caller\u2019s leads':'number of leads'})`,head:['Caller','Leads','Active','% active',...STATUS_ORDER.map(s=>STATUSES[s]),'Callbacks due','Never called'],num:Array.from({length:16},(_,i)=>i+1),
-      body:list.map(x=>[nm(x),x.total,x.active,pc(pct(x.active,x.total)),...STATUS_ORDER.map(s=>ls.mode==='pct'?pc(pct(x.by[s],x.total)):x.by[s]),x.due,x.never]),
-      foot:['Team total',all.total,all.active,pc(pct(all.active,all.total)),...STATUS_ORDER.map(s=>ls.mode==='pct'?pc(pct(all.by[s],all.total)):all.by[s]),all.due,all.never]},
+    mix:{title:'Where the leads are (as of today)',head:['Status','Leads','% of live leads'],num:[1,2],
+      body:[...LIVE.map(s=>[STATUSES[s],all.by[s],pc(pct(all.by[s],all.live))]),['Live leads',all.live,'100%'],...NOT_LIVE().filter(s=>(s!=='gatekeeper'&&s!=='call3')||all.by[s]).map(s=>[STATUSES[s]+' (not live)',all.by[s],''])]},
+    mat:{title:`Lead status by caller (${P?'% of each caller’s live leads':'number of leads'})`,head:['Caller','Live leads',...LIVE.map(s=>STATUSES[s]),'On Ice','Reusable','Callbacks due','Never called'],num:Array.from({length:LIVE.length+5},(_,i)=>i+1),
+      body:list.map(x=>[nm(x),x.live,...LIVE.map(s=>P?pc(pct(x.by[s],x.live)):x.by[s]),x.ice,x.reuse,x.due,x.never]),
+      foot:['Team total',all.live,...LIVE.map(s=>P?pc(pct(all.by[s],all.live)):all.by[s]),all.ice,all.reuse,all.due,all.never]},
     perf:{title:`Caller performance - ${mon}`,head:['Caller','Calls','Hours','Calls / hour','Appts booked','Calls per appt','Showed','Show rate','Caller pay','Cost per appt'],num:[1,2,3,4,5,6,7,8,9],
       body:st.map(x=>[nm(x),x.calls,x.hours.toFixed(2),n1(x.cph),x.booked,n1(x.callsPerAppt),x.showed,pc(x.showRate),usd(x.pay),x.costPerAppt==null?'':usd(x.costPerAppt)]),
-      foot:['Team total',all.calls,all.hours.toFixed(2),n1(all.cph),all.booked,n1(all.callsPerAppt),all.showed,pc(all.showRate),usd(all.pay),all.costPerAppt==null?'':usd(all.costPerAppt)]}}}
-function exportLeadStats(){const {st,un,all,mon}=lsData();const list=[...st,...(un.total?[un]:[])];
-  const head=['Month (activity)','Caller','Live leads','Active','% active',...STATUS_ORDER.map(s=>STATUSES[s]),'Callbacks due','Never called','Not called 30+ days','Calls','Hours','Calls per hour','Appointments booked','Calls per appointment','Showed','Show rate','Caller pay','Cost per appointment'];
-  const row=(name,x)=>[mon,name,x.total,x.active,pc(pct(x.active,x.total)),...STATUS_ORDER.map(s=>x.by[s]),x.due,x.never,x.stale,x.calls,x.hours.toFixed(2),n1(x.cph),x.booked,n1(x.callsPerAppt),x.showed,pc(x.showRate),x.pay.toFixed(2),x.costPerAppt==null?'':x.costPerAppt.toFixed(2)];
+      foot:['Team total',all.calls,all.hours.toFixed(2),n1(all.cph),all.booked,n1(all.callsPerAppt),all.showed,pc(all.showRate),usd(all.pay),all.costPerAppt==null?'':usd(all.costPerAppt)]},
+    ice:{title:ls.iceView==='all'?'All On Ice leads (oldest first)':'Reusable leads - On Ice 6+ months (oldest first)',head:['Company','Contact','Phone','Caller','On Ice since','Time On Ice','Calls'],num:[6],empty:'No leads here yet.',
+      body:iceRows.map(r=>[r.company||'',contactName(r),fmtPhone(r.phone||r.mobile||r.company_phone),r.owner_id?nameOf(r.owner_id):'Unassigned',fmtDate(r.on_ice_at),iceText(r.age),r.attempts||0])}}}
+function exportLeadStats(){const {st,un,all,mon}=lsData();const list=[...st,...(un.live||un.ice?[un]:[])];const [fa,fb]=lsRange();
+  const head=['Activity dates','Caller','Live leads',...LIVE.map(s=>STATUSES[s]),'On Ice','Reusable (On Ice 6+ months)','Callbacks due','Never called','Not called 30+ days','Calls','Hours','Calls per hour','Appointments booked','Calls per appointment','Showed','Show rate','Caller pay','Cost per appointment'];
+  const row=(name,x)=>[mon,name,x.live,...LIVE.map(s=>x.by[s]),x.ice,x.reuse,x.due,x.never,x.stale,x.calls,x.hours.toFixed(2),n1(x.cph),x.booked,n1(x.callsPerAppt),x.showed,pc(x.showRate),x.pay.toFixed(2),x.costPerAppt==null?'':x.costPerAppt.toFixed(2)];
   const lines=[head.map(csvCell).join(','),...list.map(x=>row(x.id?nameOf(x.id):'Unassigned',x).map(csvCell).join(',')),row('Team total',all).map(csvCell).join(',')];
-  download(`the-ark-lead-stats-${ls.month}.csv`,lines)}
+  const ice=iceList();
+  lines.push('',[ls.iceView==='all'?'All On Ice leads':'Reusable leads (On Ice 6+ months)'].map(csvCell).join(','),['Company','Contact','Phone','Caller','On Ice since','Time On Ice','Calls'].map(csvCell).join(','),
+    ...ice.map(r=>[r.company||'',contactName(r),fmtPhone(r.phone||r.mobile||r.company_phone),r.owner_id?nameOf(r.owner_id):'Unassigned',fmtDate(r.on_ice_at),iceText(r.age),r.attempts||0].map(csvCell).join(',')));
+  download(`the-ark-lead-stats-${fa}-to-${fb}.csv`,lines)}
 
 /* ===================== PDF downloads (admins) — fits on US Letter paper ===================== */
 function loadScript(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.async=true;
@@ -3135,12 +3192,12 @@ function pdfSpec(){const v=effView();
       kpis:[[fmtN(rows.length),'Appointments'],[fmtN(q),'Qualified (showed)'],[fmtPct(pct(q,rows.length)),'Qualified rate']],
       tables:[{title:'Appointments',head:['Company','Contact','Sales Rep','CSR','Appointment Date','Qualified','Notes'],empty:'No appointments here.',
         body:rows.map(o=>[apCompany(o),o.contact_name||'',o.hist?o.rep_name:o.owner_id?nameOf(o.owner_id):'',o.hist?o.csr_name:o.converted_by?nameOf(o.converted_by):'',o.appt_at?fmtDate(o.appt_at):'',o.appt_showed?'Yes':'',o.appt_notes||''])}]}}
-  if(v==='leads'){const t=lsTables();const a=t.all;
-    return {file:`the-ark-lead-stats-${ls.month}.pdf`,landscape:true,title:'Lead stats',subtitle:`Lead counts as of ${fmtDate(new Date())} · Activity for ${t.mon}`,
-      kpis:[[fmtN(a.total),'Live leads'],[fmtN(a.active),`Active (${pc(pct(a.active,a.total))} of leads)`],[fmtN(a.booked),`Appointments booked in ${t.mon}`],[fmtN(a.showed),`Showed (${pc(a.showRate)||'-'} show rate)`],
-        [fmtN(a.calls),`Calls (${n1(a.callsPerAppt)||'-'} per appointment)`],[a.costPerAppt==null?'-':usd(a.costPerAppt),'Caller cost per appointment'],
-        [fmtN(a.never),'Never called'],[fmtN(a.due),'Callbacks due'],[fmtN(a.stale),'Not called in 30+ days'],[fmtN(t.un.total),'Unassigned leads'],[n1(a.cph)||'-','Calls per hour'],[n2(a.apptPer8)||'-','Appointments per 8 hours']],
-      tables:[t.mix,t.mat,t.perf]}}
+  if(v==='leads'){const t=lsTables();const a=t.all;const [fa,fb]=lsRange();
+    return {file:`the-ark-lead-stats-${fa}-to-${fb}.pdf`,landscape:true,title:'Lead stats',subtitle:`Lead counts as of ${fmtDate(new Date())} · Activity ${t.mon}`,
+      kpis:[[fmtN(a.live),'Live leads'],[fmtN(a.booked),'Appointments booked'],[fmtN(a.showed),`Showed (${pc(a.showRate)||'-'} show rate)`],
+        [fmtN(a.calls),`Calls (${n1(a.callsPerAppt)||'-'} per appointment)`],[a.costPerAppt==null?'-':usd(a.costPerAppt),'Caller cost per appointment'],[fmtN(a.reuse),'Reusable leads (On Ice 6+ months)'],
+        [fmtN(a.never),'Live leads never called'],[fmtN(a.due),'Callbacks due'],[fmtN(a.stale),'Live leads not called in 30+ days'],[fmtN(t.un.live),'Unassigned live leads'],[n1(a.cph)||'-','Calls per hour'],[n2(a.apptPer8)||'-','Appointments per 8 hours']],
+      tables:[t.mix,t.mat,t.perf,t.ice]}}
   if(v==='time'){const list=ts.caller?[ts.caller]:ts.people;const st=list.map(tsStats);const T=tsTotals(st);const pl=tsPeriodLabel();const [pa,pb]=tsRange();
     const rows=ts.entries.filter(x=>list.includes(x.caller_id)&&ctDay(x.clock_in)>=pa&&ctDay(x.clock_in)<=pb).sort((x,y)=>new Date(x.clock_in)-new Date(y.clock_in));
     return {file:`the-ark-timesheet-${pa}-to-${pb}.pdf`,landscape:true,title:`Timesheets · ${pl}`,subtitle:`${ts.caller?nameOf(ts.caller):'All callers'} · $${PAY_RATE}/hour + $${APPT_BONUS} per appointment that showed`,
@@ -3732,6 +3789,15 @@ $('#fexport').onclick=()=>{
     s.alc.map(a=>a.allocation+(a.secondary&&a.secondary!=='None'?' / '+a.secondary:'')).join('; ')].map(csvCell).join(','))])};
 
 $('#backboard').onclick=()=>setTab('board');
+
+
+/* ===================== Thanksgiving (November only) ===================== */
+(function(){const d=new Date();if(d.getMonth()!==10)return;document.body.classList.add('thx');
+  let off=false;try{off=localStorage.getItem('ark_thx_'+d.getFullYear())==='off'}catch{}
+  const main=document.querySelector('main.page');if(off||!main)return;
+  const b=document.createElement('div');b.className='thxbar';
+  b.innerHTML='<span aria-hidden="true">\u{1F983}</span><span><b>Happy Thanksgiving from The Ark!</b> Thankful for this team. Here\u2019s to a strong finish to the year. <span aria-hidden="true">\u{1F342}</span></span><button type="button" aria-label="Hide this message" title="Hide">\u00d7</button>';
+  main.prepend(b);b.querySelector('button').onclick=()=>{b.remove();try{localStorage.setItem('ark_thx_'+d.getFullYear(),'off')}catch{}}})();
 
 </script>
 </body>
