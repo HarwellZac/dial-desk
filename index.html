@@ -288,6 +288,17 @@ body.thx{background:linear-gradient(180deg,#fffaf3 0,var(--bg) 420px)}
 .leaf{position:fixed;top:-40px;z-index:60;pointer-events:none;font-size:22px;opacity:.85;animation:leaffall linear forwards}
 @keyframes leaffall{0%{transform:translate(0,0) rotate(0)}50%{transform:translate(40px,55vh) rotate(200deg)}100%{transform:translate(-20px,110vh) rotate(400deg);opacity:0}}
 @media (prefers-reduced-motion:reduce){.leaf{display:none}}
+.thx #clkbreak::before{content:'\2615\00a0'}
+.thxbuddy{position:fixed;left:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:55;display:flex;align-items:flex-end;gap:6px;pointer-events:none}
+.thxbuddy .tk{pointer-events:auto;font-size:60px;line-height:1;cursor:pointer;background:none;border:0;padding:0;filter:drop-shadow(0 4px 6px rgba(124,45,18,.25));transform-origin:50% 90%;transition:transform .15s}
+.thxbuddy .tk:hover{transform:scale(1.07)}
+.thxbuddy .tk.wob{animation:thxwob .8s ease}
+.thxbuddy .cup{font-size:28px;margin-left:-16px;margin-bottom:0;pointer-events:none}
+.thxbuddy .say{pointer-events:auto;position:relative;max-width:240px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;border-radius:14px;padding:9px 26px 9px 12px;font-size:13.5px;font-weight:600;line-height:1.35;box-shadow:0 6px 18px rgba(124,45,18,.14);margin:0 0 38px 4px}
+.thxbuddy .say::before{content:'';position:absolute;left:-8px;bottom:12px;border:8px solid transparent;border-right-color:#fed7aa;border-left:0}
+.thxbuddy .x{position:absolute;top:3px;right:6px;background:none;border:0;color:#9a3412;cursor:pointer;font-size:16px;line-height:1;padding:2px}
+@keyframes thxwob{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(12deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(5deg)}}
+@media (max-width:700px){.thxbuddy .tk{font-size:42px}.thxbuddy .cup{font-size:20px}.thxbuddy .say{max-width:170px;font-size:12.5px;margin-bottom:26px}}
 .filesbox.drop{outline:2px dashed var(--accent,#3563e9);outline-offset:-6px;background:#f2f6ff}
 .g-closed_won{--c:#16a34a;--t:#ddf5e5;--ink:#11803a}
 .g-closed_lost{--c:#6b7280;--t:#eceef1;--ink:#4b5563}
@@ -1035,7 +1046,7 @@ $('#f-forgot').onsubmit=async e=>{e.preventDefault();busy(e.target,true);
 $('#f-reset').onsubmit=async e=>{e.preventDefault();busy(e.target,true);
   const {error}=await sb.auth.updateUser({password:$('#rp-pass').value});busy(e.target,false);
   if(error)return showAuth('reset',friendly(error));toast('Password saved');enter();};
-$('#signout').onclick=async()=>{await sb.auth.signOut();me=null;showAuth('signin','You’re signed out.','ok')};
+$('#signout').onclick=async()=>{await sb.auth.signOut();me=null;applyThx();showAuth('signin','You’re signed out.','ok')};
 
 let entering=false,openedOnce=false;
 async function enter(){
@@ -1081,7 +1092,7 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{if(b.dataset
 function applyRole(){const a=isAdmin(),sl=canSell();document.querySelectorAll('[data-admin]').forEach(b=>b.hidden=!a);
   document.querySelectorAll('[data-sell]').forEach(b=>b.hidden=!sl);document.querySelectorAll('[data-rep]').forEach(b=>b.hidden=!canSeeReports());
   document.querySelectorAll('[data-callonly]').forEach(b=>b.hidden=!isCaller());document.querySelectorAll('[data-call]').forEach(b=>b.hidden=isSales());document.querySelectorAll('[data-salesonly]').forEach(b=>b.hidden=!isSales());
-  $('#boardsub').textContent=sl?'Every lead, color-coded by status.':'Your leads, color-coded by status.';
+  $('#boardsub').textContent=sl?'Every lead, color-coded by status.':'Your leads, color-coded by status.';applyThx();
   document.querySelectorAll('[data-fin]').forEach(b=>b.hidden=!canFinance());
   // The Finance role works only in Finances: no Leads tab, lead search or New Lead.
   const fr=isFinRole();$('.tabs [data-tab=board]').hidden=fr;$('#gsearch').hidden=fr;if(fr)$('#newleadbtn').hidden=true;
@@ -2057,6 +2068,7 @@ async function openConvert(){
       p_description:String(fd.get('desc')||'').trim(),p_products:readProducts(fd)});
     if(error)throw error;
     lookups.loaded=false;oppRows=null;refreshBoardRow(lid,{status:'converted',sales_owner_id:sid});await reloadLead(lid);
+    if(caller)thxBurst();
     toast(caller?`Appointment booked and sent to ${nameOf(sid)}`:`Converted and assigned to ${nameOf(sid)}`,{undo:async()=>{const {error}=await sb.rpc('unconvert_lead',{p_lead:lid});if(error)throw error;oppRows=null;await reloadLead(lid);toast('Undone')}});
   }});
   const ca=$('#cappt'),cf=$('#cfollow');let touched=false;cf.oninput=()=>touched=true;ca.oninput=()=>{if(!touched)cf.value=ca.value.slice(0,10)};
@@ -2099,6 +2111,7 @@ function openApptSet(l,s){
     if(error)throw error;
     draft.note='';draft.noteText='';
     lookups.loaded=false;oppRows=null;refreshBoardRow(lid,{status:'converted',sales_owner_id:sid,...patch});await reloadLead(lid);
+    thxBurst();
     toast(`Appointment set for ${fmtFull(apAt.toISOString())} and sent to ${nameOf(sid)}`,{undo:async()=>{const {error}=await sb.rpc('unconvert_lead',{p_lead:lid});if(error)throw error;oppRows=null;await reloadLead(lid);toast('Undone')}});
   }});
 }
@@ -3796,14 +3809,35 @@ $('#fexport').onclick=()=>{
 $('#backboard').onclick=()=>setTab('board');
 
 
-/* ===================== Thanksgiving (November only) ===================== */
-// Warm colors, a turkey on the logo, a leaf on page titles, and a few leaves that drift down once when the page opens.
-(function(){const d=new Date();if(d.getMonth()!==10)return;document.body.classList.add('thx');
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  const L=['\u{1F342}','\u{1F341}','\u{1F343}'];
-  for(let i=0;i<9;i++){const e=document.createElement('span');e.className='leaf';e.textContent=L[i%3];e.setAttribute('aria-hidden','true');
-    e.style.left=(5+Math.random()*90)+'vw';e.style.animationDuration=(6+Math.random()*4)+'s';e.style.animationDelay=(Math.random()*3)+'s';e.style.fontSize=(16+Math.random()*12)+'px';
-    document.body.appendChild(e);setTimeout(()=>e.remove(),14000)}})();
+/* ===================== Thanksgiving (callers only, Nov 1–28) ===================== */
+// Only in Caller view, and only through Nov 28. From Nov 29 nothing here runs, so the site looks exactly as it did before.
+var THX_ON=()=>{const d=new Date();return d.getMonth()===10&&d.getDate()<=28};
+var THX_SAY=['☕ Coffee in hand? Let’s make some calls!','Gobble gobble! Ready to fill that calendar?','Every dial gets you closer to a booked appointment. \u{1F4DE}',
+  'Thankful for you! Keep dialing. \u{1F342}','Pumpkin spice and appointments: the perfect pair. \u{1F383}','Book one before lunch and I’ll do a happy dance!',
+  'Leftovers can wait. Callbacks can’t! \u{1F357}','Stuff that calendar like a turkey! \u{1F4C5}','Refill that coffee and keep the streak going. ☕'];
+var thxLeft=false,thxI=0,thxT=null;
+var thxHideKey=()=>'ark_thx_hide_'+ymd(new Date());
+function thxHidden(){try{return localStorage.getItem(thxHideKey())==='1'}catch{return false}}
+function thxLeaves(n,burst){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const L=['\u{1F342}','\u{1F341}','\u{1F343}','\u{1F983}'];
+  for(let i=0;i<n;i++){const e=document.createElement('span');e.className='leaf';e.textContent=L[burst?i%4:i%3];e.setAttribute('aria-hidden','true');
+    e.style.left=(burst?30+Math.random()*40:5+Math.random()*90)+'vw';e.style.animationDuration=(burst?3+Math.random()*2:6+Math.random()*4)+'s';
+    e.style.animationDelay=(Math.random()*(burst?.6:3))+'s';e.style.fontSize=(16+Math.random()*14)+'px';document.body.appendChild(e);setTimeout(()=>e.remove(),14000)}}
+function thxSay(t){const b=$('#thxbuddy');if(!b)return;b.querySelector('.msg').textContent=t;const tk=b.querySelector('.tk');tk.classList.remove('wob');void tk.offsetWidth;tk.classList.add('wob')}
+function thxBuddy(){if($('#thxbuddy'))return;const b=document.createElement('div');b.id='thxbuddy';b.className='thxbuddy';
+  const first=(me?.full_name||'').trim().split(/\s+/)[0];
+  b.innerHTML=`<button type="button" class="tk" title="Gobble!" aria-label="Turkey buddy: click for a new message">\u{1F983}</button><span class="cup" aria-hidden="true">☕</span><div class="say" role="status"><span class="msg"></span><button type="button" class="x" title="Hide the turkey for today" aria-label="Hide the turkey for today">×</button></div>`;
+  document.body.appendChild(b);b.querySelector('.msg').textContent=`Happy Thanksgiving${first?', '+first:''}! \u{1F983} Grab a coffee and let’s dial.`;
+  b.querySelector('.tk').onclick=()=>thxSay(THX_SAY[thxI++%THX_SAY.length]);
+  b.querySelector('.x').onclick=()=>{try{localStorage.setItem(thxHideKey(),'1')}catch{}b.remove()};
+  clearInterval(thxT);thxT=setInterval(()=>{if($('#thxbuddy'))thxSay(THX_SAY[thxI++%THX_SAY.length])},45000)}
+// Called whenever the role or the View as preview changes, and every hour (so it switches off on its own).
+function applyThx(){if(typeof THX_ON!=='function')return;const on=!!me&&isCaller()&&THX_ON();document.body.classList.toggle('thx',on);
+  if(!on){const b=$('#thxbuddy');if(b)b.remove();clearInterval(thxT);document.querySelectorAll('.leaf').forEach(e=>e.remove());return}
+  if(!thxLeft){thxLeft=true;thxLeaves(9)}
+  if(!thxHidden())thxBuddy()}
+// A shower of leaves when a caller books an appointment.
+function thxBurst(){if(!document.body.classList.contains('thx'))return;thxLeaves(24,true);thxSay('Appointment booked! Gobble gobble! \u{1F389}')}
+setInterval(applyThx,3600000);
 </script>
 </body>
 </html>
