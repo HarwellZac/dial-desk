@@ -94,7 +94,7 @@ node -e "const s=require('fs').readFileSync('index.html','utf8');[...s.matchAll(
 ## Version 26 (Lead stats, On Ice age, Thanksgiving)
 - Reports > Lead stats: activity picker `#lsrange` (`ls.range`: last7 default, week, lastweek, month, or a YYYY-MM) via `lsRange()`; never earlier than `TRACK_START` ('2026-11-16', when the team switched over from testing). Live leads = `LIVE` (New, 1st Call, 2nd Call, Engaged, Has Agency); never-called / callbacks / 30-day counts use live leads only. Other statuses are listed under "Not counted as live".
 - `leads.on_ice_at`: set by trigger `stamp_on_ice()` whenever a lead becomes On Ice, cleared when it leaves (backfilled from the 3rd Call date). `on_ice_report()` (admins) lists live On Ice leads. 6+ months On Ice = Reusable Lead (`REUSE_MONTHS`, `iceAge()`, `isReusable()`): On Ice panel on Lead stats (age buckets + list, `renderIce()`), shown on the lead page and in the Leads list "Next step" column.
-- Thanksgiving: in November only, `body.thx` adds an autumn stripe on the top bar and a leaf on the logo, plus a greeting bar the viewer can hide (`localStorage` `ark_thx_<year>`). It switches itself off on Dec 1.
+- Thanksgiving: in November only, `body.thx` adds a warm background tint, an autumn stripe on the top bar, a turkey on the logo, a leaf after page titles, orange New Lead buttons and active tab, and a few `.leaf` elements that drift down once on page load (skipped with reduced motion). No banner. It switches itself off on Dec 1.
 
 ## Pay rules
 $18/hour + $50 per appointment that SHOWED (`PAY_RATE`, `APPT_BONUS`). Hours = clock_out − clock_in − break, rounded to 2 decimals before multiplying. Pay periods: 1st–15th and 16th–end of month. "Booked" appointments are shown for information only.
